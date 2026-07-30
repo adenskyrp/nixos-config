@@ -45,8 +45,17 @@
 	"workspace 1, match:class ^(cs2)$"
       ];
 
+      # -----------------------------------------------------------------------
+      # DAEMON INITIALIZATION
+      # -----------------------------------------------------------------------
       exec-once = [
-	"waybar"
+        # REMOVED: "waybar" is now managed by systemd user service via programs.waybar.systemd
+        
+        # Initializes the audio DSP pipeline silently in the background
+        "easyeffects --gapplication-service"
+        
+        # Binds the graphical Polkit authentication agent to the session
+        "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"
       ];
       exec = [
 	"systemctl --user restart kanshi"
@@ -87,6 +96,8 @@
     pavucontrol           # GTK Volume Mixer
     deepfilternet         # Neural-network noise cancellation filter
     lsp-plugins           # Linux Studio Plugins for 4-band parametric EQ
+    polkit_gnome
+    gamescope
   ];
   services.easyeffects = {
     enable = true;
@@ -96,61 +107,73 @@
     package = pkgs.rofi;
     theme = "gruvbox-dark";
   };
+  # ---------------------------------------------------------------------------
+  # WAYBAR STATUS BAR (Systemd-Orchestrated Wayland Layer Shell)
+  # ---------------------------------------------------------------------------
   programs.waybar = {
     enable = true;
 
+    # Delegates process lifecycle to systemd, ensuring it launches AFTER 
+    # the Wayland display socket and Hyprland IPC are fully initialized.
+    systemd = {
+      enable = true;
+      target = "hyprland-session.target";
+    };
+
     settings = {
       mainbar = {
-	layer = "top";
-	position = "top";
-	height = 30;
-	modules-left = [ "hyprland/workspaces" ];
-	modules-center = [ "hyprland/window" ];
-	modules-right = [ "pulseaudio" "cpu" "battery" "clock" ];
+        layer = "top";
+        position = "top";
+        height = 30;
+        output = [ "DP-1" "*" ]; # Targets your primary BenQ panel explicitly, falling back to any active output
 
-	"hyprland/workspaces" = {
-	  format = "{name}";
-	  disable-scroll = true;
-	};
+        modules-left = [ "hyprland/workspaces" ];
+        modules-center = [ "hyprland/window" ];
+        modules-right = [ "pulseaudio" "cpu" "battery" "clock" ];
 
-	"pulseaudio" = {
-	  format = "{volume}%";
-	  on-click = "pavucontrol";
-	};
+        "hyprland/workspaces" = {
+          format = "{name}";
+          disable-scroll = true;
+        };
 
-	"clock" = {
-	  format = "{:%H:%M}";
-	  tooltip-format = "{:%Y-%m-%d}";
-	};
+        "pulseaudio" = {
+          format = "{volume}%";
+          on-click = "pavucontrol";
+        };
+
+        "clock" = {
+          format = "{:%H:%M}";
+          tooltip-format = "{:%Y-%m-%d}";
+        };
       };
     };
+
     style = ''
-      *{
-	border: none;
-	border-radius: 0;
-	font-family: "FiraCode Nerd Font Propo", "FiraCode Nerd Font", sans-serif;
-	font-size: 13px;
-	min-height: 0;
+      * {
+        border: none;
+        border-radius: 0;
+        font-family: "FiraCode Nerd Font Propo", "FiraCode Nerd Font", sans-serif;
+        font-size: 13px;
+        min-height: 0;
       }
       window#waybar {
-	background-color: rgba(30, 30, 46, 0.9);
-	color: #cdd6f4;
+        background-color: rgba(30, 30, 46, 0.9);
+        color: #cdd6f4;
       }
       #workspaces button {
-	padding: 0 5px;
-	color: #585b70;
+        padding: 0 5px;
+        color: #585b70;
       }
       #workspaces button.active {
-	color: #cba6f7;
+        color: #cba6f7;
       }
       #clock, #battery, #cpu, #pulseaudio {
-	padding: 0 10px;
+        padding: 0 10px;
       }
     '';
   };
   programs.firefox = {
     enable = true;
-    configPath = "${config.xdg.configHome}/mozilla/firefox";
     profiles.crazycat = {
       isDefault = true;
       settings = {

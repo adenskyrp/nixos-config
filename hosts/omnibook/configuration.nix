@@ -25,12 +25,12 @@
         enable = true;
         settings = {
           initial_session = {
-            command = "Hyprland";
+	  command = "start-hyprland";
             user = "crazycat";
           };
           default_session = {
             # Corrected package reference from pkgs.greetd.tuigreet to standalone pkgs.tuigreet
-            command = "${pkgs.tuigreet}/bin/tuigreet --time --cmd Hyprland";
+            command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --cmd start-hyprland";
             user = "crazycat";
           };
         };
@@ -133,4 +133,5 @@
     { domain = "*"; item = "nofile"; type = "soft"; value = "1048576"; }
     { domain = "*"; item = "nofile"; type = "hard"; value = "1048576"; }
   ];
+  services.gnome.gnome-keyring.enable = true;
 }
