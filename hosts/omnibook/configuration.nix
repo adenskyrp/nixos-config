@@ -178,5 +178,27 @@
     '';
   };
 
+  # ---------------------------------------------------------------------------
+  # BLEEDING-EDGE AMD RDNA 3.5 GRAPHICS PIPELINE
+  # ---------------------------------------------------------------------------
+  # Replaces standard Mesa with Chaotic-Nyx's daily git builds for maximum
+  # Vulkan performance on the Radeon 880M.
+  chaotic.mesa-git.enable = true;
+
+  hardware.graphics = {
+    enable = true;
+    enable32Bit = true;
+  };
+
+  # ---------------------------------------------------------------------------
+  # GAMESCOPE MICRO-COMPOSITOR (System-Level Wrapper)
+  # ---------------------------------------------------------------------------
+  programs.gamescope = {
+    enable = true;
+    # Wraps the binary with cap_sys_nice, unlocking the --rt flag in Steam
+    capSysNice = true;
+    # Targets the git master branch provided by the Chaotic-Nyx overlay
+    package = pkgs.gamescope_git;
+  };
   services.irqbalance.enable = false;
 }

@@ -112,7 +112,6 @@
     deepfilternet         
     lsp-plugins           
     polkit_gnome
-    gamescope
     
     # Communication
     vesktop               # Prefer Vesktop for native Wayland PipeWire screensharing
