@@ -17,6 +17,12 @@
   # Use latest kernel.
   boot.kernelPackages = pkgs.linuxPackages_latest;
 
+  boot.kernelParams = [
+    # Prevents runtime power management from suspending the USB host controller.
+    # Essential for 8kHz dongles to prevent the first 2-3ms wake-up packet delay.
+    "usbcore.autosuspend=-1"
+  ];
+
   nix.settings = {
     experimental-features = [ "nix-command" "flakes" ];
     auto-optimise-store = true;
@@ -134,4 +140,43 @@
     { domain = "*"; item = "nofile"; type = "hard"; value = "1048576"; }
   ];
   services.gnome.gnome-keyring.enable = true;
+  # ---------------------------------------------------------------------------
+  # SECURITY & POLKIT
+  # ---------------------------------------------------------------------------
+  security.polkit.enable = true;
+
+  # ---------------------------------------------------------------------------
+  # HIGH-POLLING USB INTERRUPT & POWER MANAGEMENT TUNING
+  # ---------------------------------------------------------------------------
+  services.udev.extraRules = ''
+    ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="258a", ATTR{power/control}="on"
+    ACTION=="add", SUBSYSTEM=="usb", ATTR{product}=="*8k*", ATTR{power/control}="on"
+  '';
+
+  systemd.services.pin-xhci-irq = {
+    description = "Pin Compx 8K xHCI USB Host Controller IRQ to CPU P-Core 2";
+    after = [ "multi-user.target" ];
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    script = ''
+      TARGET_BUS="c5:00.4"
+      TARGET_IRQ=$(${pkgs.gawk}/bin/awk -v bus="$TARGET_BUS" '$0 ~ bus {sub(":", "", $1); print $1}' /proc/interrupts)
+
+      if [ -n "$TARGET_IRQ" ] && [ -f "/proc/irq/$TARGET_IRQ/smp_affinity_list" ]; then
+        echo "2" > "/proc/irq/$TARGET_IRQ/smp_affinity_list"
+      else
+        ALL_IRQS=$(${pkgs.gawk}/bin/awk -F':' '/xhci_hcd/ {print $1}' /proc/interrupts | ${pkgs.findutils}/bin/xargs)
+        for IRQ in $ALL_IRQS; do
+          if [ -f "/proc/irq/$IRQ/smp_affinity_list" ]; then
+            echo "2" > "/proc/irq/$IRQ/smp_affinity_list"
+          fi
+        done
+      fi
+    '';
+  };
+
+  services.irqbalance.enable = false;
 }
