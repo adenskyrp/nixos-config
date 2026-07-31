@@ -51,16 +51,19 @@
       };
 
       # --- WINDOW RULES (Modern V2 Regex Syntax) ---
-      windowrulev2 = [
-        "immediate, class:^(rocketleague)$"
-        "immediate, class:^(cs2)$"
-        "immediate, class:^(osu\!)$"
+      windowrule = [
+        "immediate 1, match:class ^(rocketleague)$"
+        "immediate 1, match:class ^(cs2)$"
+        "immediate 1, match:class ^(osu\!)$"
         
-        "fullscreen, class:^(Minecraft.*)$"
+        "fullscreen 1, match:class ^(Minecraft.*)$"
         
-        "workspace 1, class:^(rocketleague)$"
-        "workspace 1, class:^(osu\!)$"
-        "workspace 1, class:^(cs2)$"
+        "workspace 5, match:class ^(rocketleague)$"
+        "workspace 5, match:class ^(osu\!)$"
+        "workspace 5, match:class ^(cs2)$"
+
+	"immediate 1, match:class ^(steam_app_.*)$"      # Forces tearing/direct scanout for games
+        "no_blur 1, match:class ^(steam_app_.*)$"         # Disables blur overhead on game surfaces
       ];
 
       # --- DAEMON INITIALIZATION ---
@@ -112,7 +115,8 @@
     deepfilternet         
     lsp-plugins           
     polkit_gnome
-    
+    docker-client
+
     # Communication
     vesktop               # Prefer Vesktop for native Wayland PipeWire screensharing
     discord               # Fallback official client
@@ -121,8 +125,43 @@
     protonup-qt
     wineWow64Packages.staging # Fixed deprecation
     winetricks
-  ];
 
+    (writeShellScriptBin "osu-launcher" ''
+      export WINEPREFIX="/home/crazycat/.wine-osu"
+      export STAGING_AUDIO_DURATION="10000"
+      exec ${pkgs.wineWow64Packages.staging}/bin/wine "/home/crazycat/Games/osu/osu!.exe" -devserver akatsuki.gg
+    '')
+  ];
+  programs.ssh = {
+    enable = true;
+
+    # Opt out of legacy defaults to suppress evaluation warnings
+    enableDefaultConfig = false;
+
+    settings = {
+      # Wildcard options applied globally to all SSH connections
+      "*" = {
+        ServerAliveInterval = 30;
+        ServerAliveCountMax = 3;
+        TCPKeepAlive = "yes";
+      };
+
+      # Target host mapping for the Lenovo ThinkPad media server
+      "media-server" = {
+        HostName = "100.126.180.74";      # Active Tailscale CGNAT IP
+        User = "crazycat";                # POSIX user on Debian host
+        HostKeyAlgorithms = "ssh-ed25519"; # Strictly enforce ED25519 host verification
+      };
+    };
+  };
+  programs.bash = {
+    enable = true;
+    shellAliases = {
+      # Replace 'user' and 'debian-ip' with the actual Debian credentials.
+      # This temporarily overrides the target host for a single command.
+      remote-docker = "DOCKER_HOST=ssh://user@debian-ip docker";
+    };
+  };
   # ---------------------------------------------------------------------------
   # BACKGROUND SERVICES & DAEMONS
   # ---------------------------------------------------------------------------
@@ -194,6 +233,7 @@
   # ---------------------------------------------------------------------------
   programs.yazi = {
     enable = true;
+    shellWrapperName = "y";
     # Enables 'y' alias to jump directories on exit
     enableBashIntegration = true; 
   };
@@ -240,13 +280,13 @@
   xdg.desktopEntries = {
     osu-akatsuki = {
       name = "osu! (Akatsuki)";
-      exec = "env WINEPREFIX=\"/home/crazycat/.wine-osu\" STAGING_AUDIO_DURATION=\"10000\" ${pkgs.wineWow64Packages.staging}/bin/wine /home/crazycat/Games/osu/osu\\!.exe -devserver akatsuki.gg";
+      # The complex execution is now handled by our immutable shell script
+      exec = "osu-launcher"; 
       icon = "osu";
       comment = "osu! stable connected to Akatsuki private server";
       terminal = false;
       categories = [ "Game" ];
     };
   };
-
   home.stateVersion = "24.05";
 }

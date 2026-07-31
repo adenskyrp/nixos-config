@@ -15,7 +15,9 @@
   boot.loader.efi.canTouchEfiVariables = true;
 
   # Use latest kernel.
-  boot.kernelPackages = pkgs.linuxPackages_latest;
+  boot.kernelPackages = pkgs.linuxPackages_cachyos;
+
+  hardware.system76.kernel-modules.enable = true;
 
   boot.kernelParams = [
     # Prevents runtime power management from suspending the USB host controller.
@@ -41,13 +43,55 @@
           };
         };
       };
+  # ---------------------------------------------------------------------------
+  # HOME MANAGER INTEGRATION & ATOMIC SAFETY
+  # ---------------------------------------------------------------------------
+  home-manager = {
+    useGlobalPkgs = true;
+    useUserPackages = true;
+
+    # Prevents activation crashes when Home Manager encounters unmanaged local files 
+    # (e.g., ~/.mozilla/firefox/profiles.ini). Automatically appends '.backup'.
+    backupFileExtension = "backup";
+  };
+  # ---------------------------------------------------------------------------
+  # GLOBAL NETWORKING & PRIMARY DNS
+  # ---------------------------------------------------------------------------
+  # Primary DNS server: Points directly to AdGuard Home on the Debian server
+  networking.nameservers = [ "100.96.67.107" ];
+
+  # ---------------------------------------------------------------------------
+  # SPLIT-DNS & CACHING (systemd-resolved)
+  # ---------------------------------------------------------------------------
+  services.resolved = {
+    enable = true;
+
+    # Modernized NixOS 26.05+ structured INI settings mapping directly to resolved.conf
+    settings = {
+      Resolve = {
+        Cache = "yes";                   # RAM-level DNS caching for zero-latency game lookups
+        DNSOverTLS = "opportunistic";     # Encrypts queries when upstream server supports it
+        FallbackDNS = [                  # Replaces deprecated services.resolved.fallbackDns
+          "1.1.1.1#one.one.one.one" 
+          "9.9.9.9#dns.quad9.net"
+        ];
+      };
+    };
+  };
+  # ---------------------------------------------------------------------------
+  # TAILSCALE MESH NETWORK
+  # ---------------------------------------------------------------------------
   services.tailscale = {
     enable = true;
-    # Automatically allow UDP port 41641 for direct peer-to-peer connections
-    openFirewall = true;
+    
+    # Integrate cleanly with systemd-resolved for per-interface split-DNS
+    extraUpFlags = [
+      "--accept-dns=true"
+    ];
   };
 
-  # Allow systemd-resolved and NetworkManager to coexist cleanly with Tailscale DNS
+  # Preserve your sterile boot pipeline: manual daemon activation only
+  systemd.services.tailscaled.wantedBy = pkgs.lib.mkForce [ ];
   networking.firewall.checkReversePath = "loose";
 
   networking.hostName = "nixos"; # Define your hostname.
@@ -206,7 +250,7 @@
   # Thunar requires system-level declaration to mount drives and manage trash.
   programs.thunar = {
     enable = true;
-    plugins = with pkgs.xfce; [
+    plugins = with pkgs; [
       thunar-archive-plugin
       thunar-volman
     ];
