@@ -189,6 +189,14 @@
     '';
   };
 
+  # ---------------------------------------------------------------------------
+  # TERMINAL UTILITIES
+  # ---------------------------------------------------------------------------
+  programs.yazi = {
+    enable = true;
+    # Enables 'y' alias to jump directories on exit
+    enableBashIntegration = true; 
+  };
   programs.firefox = {
     enable = true;
     configPath = ".mozilla/firefox";

@@ -196,9 +196,24 @@
   programs.gamescope = {
     enable = true;
     # Wraps the binary with cap_sys_nice, unlocking the --rt flag in Steam
-    capSysNice = true;
+    capSysNice = false;
     # Targets the git master branch provided by the Chaotic-Nyx overlay
     package = pkgs.gamescope_git;
   };
+  # ---------------------------------------------------------------------------
+  # LIGHTWEIGHT GUI FILE MANAGEMENT
+  # ---------------------------------------------------------------------------
+  # Thunar requires system-level declaration to mount drives and manage trash.
+  programs.thunar = {
+    enable = true;
+    plugins = with pkgs.xfce; [
+      thunar-archive-plugin
+      thunar-volman
+    ];
+  };
+
+  # Daemons required for Thunar to function properly outside a Desktop Environment
+  services.gvfs.enable = true;    # Mount, trash, and other virtual filesystems
+  services.tumbler.enable = true; # Video/Image thumbnail generation
   services.irqbalance.enable = false;
 }

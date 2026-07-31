@@ -16,7 +16,7 @@
       };
       custom = {
 	start = "${pkgs.libnotify}/bin/notify-send 'GameMode' 'Optimizations Active'";
-	end = "${pkgs.libnotify}/bin/notfy-send 'GameMode' 'Optimizations Deactivated'";
+	end = "${pkgs.libnotify}/bin/notify-send 'GameMode' 'Optimizations Deactivated'";
       };
     };
   };
