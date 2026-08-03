@@ -1,39 +1,52 @@
-{config, pkgs, ... }:
+# ~/nixos-config/modules/gaming.nix
+{ config, pkgs, lib, ... }:
 
 {
-  programs.steam = {
-    enable = true;
-    gamescopeSession.enable = true;
-    remotePlay.openFirewall = true;
-    dedicatedServer.openFirewall = true;
-  };
-
-  programs.gamemode = {
-    enable = true;
-    settings = {
-      general = {
-	renice = 10;
-      };
-      custom = {
-	start = "${pkgs.libnotify}/bin/notify-send 'GameMode' 'Optimizations Active'";
-	end = "${pkgs.libnotify}/bin/notify-send 'GameMode' 'Optimizations Deactivated'";
-      };
-    };
-  };
-
+  # ---------------------------------------------------------------------------
+  # KERNEL TUNING FOR HIGH-POLLING & HIGH-REFRESH RENDERING
+  # ---------------------------------------------------------------------------
   boot.kernel.sysctl = {
+    # Disables split-lock mitigation to prevent CPU micro-stutters during 
+    # rapid misaligned memory accesses in Proton game threads.
     "kernel.split_lock_mitigate" = 0;
 
+    # Massively expands virtual memory mapping capability for Esync/Fsync.
     "vm.max_map_count" = 2147483642;
 
+    # Prevents dirty page writeback spikes from locking NVMe I/O queues.
     "vm.dirty_background_ratio" = 5;
     "vm.dirty_ratio" = 10;
   };
+  boot.kernelParams = [ ];
+  # ---------------------------------------------------------------------------
+  # XBOX CONTROLLER PIPELINE (xpadneo)
+  # ---------------------------------------------------------------------------
+  # Ensures proper mapping, deadzones, and rumble translation for Xbox-protocol 
+  # controllers in Proton.
+  hardware.xpadneo.enable = true;
+
+  # ---------------------------------------------------------------------------
+  # STEAM & PROTON PIPELINE
+  # ---------------------------------------------------------------------------
+  programs.steam = {
+    enable = true;
+    remotePlay.openFirewall = true;
+    dedicatedServer.openFirewall = true;
+    gamescopeSession.enable = false;
+  };
+
+  # ---------------------------------------------------------------------------
+  # WAYLAND DIRECT-PRESENTATION ENVIRONMENT
+  # ---------------------------------------------------------------------------
+  environment.sessionVariables = {
+    # Forces Wine/Proton to map directly to Wayland surfaces.
+    # Eliminates Xwayland translation and prevents Steam Input hooks.
+    PROTON_ENABLE_WAYLAND = "1";
+  };
 
   environment.systemPackages = with pkgs; [
-    mangohud
-    protonup-qt
-    gamescope
-    gamemode
+    mangohud      # Vulkan overlay for empirical frame-time analysis
+    protonup-qt   # Proton-GE manager
+    evhz
   ];
 }

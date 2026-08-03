@@ -34,10 +34,10 @@
         ];
       };
 
-      # Desktop Rig
-      desktop = nixpkgs.lib.nixosSystem {
+     # Desktop Rig
+       desktop = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
-        specialArgs = { inherit inputs; };
+         specialArgs = { inherit inputs; };
         modules = [
           chaotic.nixosModules.default
 
