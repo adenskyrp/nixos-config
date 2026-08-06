@@ -1,5 +1,5 @@
 # ~/nixos-config/modules/core.nix
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 
 {
   # ---------------------------------------------------------------------------
@@ -32,18 +32,13 @@
     wifi.powersave = false;
     wifi.macAddress = "permanent";
     
-    # CRITICAL: Prevent the Spectrum router from injecting its IPv4 or IPv6 
-    # DNS servers into systemd-resolved via DHCP or Router Advertisements.
-    dns = "systemd-resolved";
-    
-    # We forcefully inject our encrypted endpoints here, ensuring they are the 
-    # ONLY servers associated with the Wi-Fi link.
-    insertNameservers = [ "9.9.9.9" "1.1.1.1" ];
+    # THE SEVERANCE: Strip NetworkManager of all DNS authority. 
+    # It will no longer pass Spectrum's DHCP/SLAAC servers to systemd-resolved.
+    dns = lib.mkForce "none"; 
   };
-  # Tell the kernel we are managing DNS locally
+  
   networking.nameservers = [ "127.0.0.53" ];
   networking.firewall.checkReversePath = "loose";
-
   services.resolved = {
     enable = true;
     
