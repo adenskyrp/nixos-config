@@ -153,6 +153,12 @@
     };
   };
 
+  programs.git = {
+    enable = true;
+    userName = "adenskyrp";
+    userEmail = "36445815+adenskyrp@users.noreply.github.com";
+  };
+
   # ---------------------------------------------------------------------------
   # INTERACTIVE SHELL ENVIRONMENT (Fish)
   # ---------------------------------------------------------------------------
