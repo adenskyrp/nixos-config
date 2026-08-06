@@ -23,37 +23,41 @@
     memoryPercent = 50; 
   };
   programs.dconf.enable = true;
-  # ---------------------------------------------------------------------------
-  # SYSTEM SHELL REGISTRY (Fish)
-  # ---------------------------------------------------------------------------
-  # Declaratively enabling fish adds it to /etc/shells, bypassing the need for 
-  # imperative `chsh` commands and preventing login lockouts.
-  programs.fish.enable = true;
 
   # ---------------------------------------------------------------------------
-  # COMPETITIVE NETWORKING & BUFFERBLOAT MITIGATION
+  # COMPETITIVE NETWORKING & EDGE DNS
   # ---------------------------------------------------------------------------
   networking.networkmanager = {
     enable = true;
-    wifi.powersave = false; # Crucial for stable ping on wireless
+    wifi.powersave = false;
+    wifi.macAddress = "permanent";
+    
+    # CRITICAL: Prevent NetworkManager from pulling garbage DNS servers 
+    # via DHCP from the Spectrum router. We dictate the DNS.
+    insertNameservers = [ "9.9.9.9" "1.1.1.1" ];
   };
+
+  # Tell the kernel we are managing DNS locally
+  networking.nameservers = [ "127.0.0.53" ];
   networking.firewall.checkReversePath = "loose";
-  networking.nameservers = [ "100.96.67.107" ];
 
   services.resolved = {
     enable = true;
-    settings.Resolve = {
-      Cache = "yes";
-      DNSOverTLS = "opportunistic";
-      FallbackDNS = [ "1.1.1.1#one.one.one.one" "9.9.9.9#dns.quad9.net" ];
+    
+    # The modern, strictly-typed systemd-resolved configuration
+    settings = {
+      Resolve = {
+        DNSSEC = "true";
+        Domains = "~.";
+        FallbackDNS = "9.9.9.9#dns.quad9.net 1.1.1.1#cloudflare-dns.com";
+        
+        # STRICT mode DoT configuration
+        DNSOverTLS = "yes";
+        Cache = "yes";
+        CacheFromLocalhost = "no";
+      };
     };
   };
-
-  services.tailscale = {
-    enable = true;
-    extraUpFlags = [ "--accept-dns=true" ];
-  };
-  
   # --- KERNEL NETWORK TUNING ---
   # TCP BBR requires the 'tcp_bbr' kernel module to be loaded BEFORE sysctl applies.
   # Without this, systemd-sysctl silently fails and defaults back to CUBIC.
@@ -71,7 +75,7 @@
   };
 
   # ---------------------------------------------------------------------------
-  # LOW-LATENCY AUDIO SUBSYSTEM (PipeWire 2.67ms Quantum)
+  # LOW-LATENCY AUDIO SUBSYSTEM (PipeWire 1.33ms Quantum)
   # ---------------------------------------------------------------------------
   security.rtkit.enable = true;
   services.pipewire = {
@@ -81,15 +85,15 @@
     pulse.enable = true;
     jack.enable = true;
 
-    # Enforce low-latency PipeWire quantum limits
+    # Enforce extreme low-latency PipeWire quantum limits
     extraConfig.pipewire = {
       "10-clock-quantum" = {
         "context.properties" = {
           "default.clock.rate" = 48000;
           "default.clock.allowed-rates" = [ 48000 96000 ];
-          "default.clock.quantum" = 128; # Force 128 samples (~2.67ms buffer latency)
-          "default.clock.min-quantum" = 128;
-          "default.clock.max-quantum" = 1024;
+          "default.clock.quantum" = 64; 
+          "default.clock.min-quantum" = 64;
+          "default.clock.max-quantum" = 1024; # Prevent fallback to high buffers
         };
       };
     };
@@ -101,27 +105,41 @@
           "server.address" = [ "unix:native" ];
         };
         "stream.properties" = {
-          "node.latency" = "128/48000"; # Requests 2.67ms latency from PulseAudio clients
+          # Request 1.33ms latency from PulseAudio wrapper clients (like older games)
+          "node.latency" = "64/48000"; 
         };
       };
     };
 
-    # WirePlumber Bluetooth Codec & A2DP Hardening
     wireplumber.extraConfig = {
-      "10-alsa-headroom" = {
+      # The ALSA Hardware Overrides for the Radeon GPU Sink
+      "11-alsa-gpu-tuning" = {
         "monitor.alsa.rules" = [
           {
             matches = [ { "node.name" = "~alsa_output.*"; } ];
             actions = {
               update-props = {
                 "node.pause-on-idle" = false;
-                "api.alsa.period-size" = 256;
-                "api.alsa.headroom" = 128;
+                
+                # Force pure 32-bit little-endian to match GPU DAC handling
+                "audio.format" = "S32LE";
+                "audio.rate" = 48000;
+                
+                # Lock hardware interrupt period to match the quantum
+                "api.alsa.period-size" = 64;
+                
+                # Zero headroom. No safety buffer.
+                "api.alsa.headroom" = 0;
+                
+                # Reduce CPU interrupt storms for tight buffers
+                "api.alsa.disable-batch" = false; 
               };
             };
           }
         ];
       };
+      
+      # Preserved your existing Bluetooth settings
       "10-bluetooth-policy" = {
         "wireplumber.settings" = {
           "bluetooth.autoswitch-to-headset-profile" = false;
@@ -166,7 +184,7 @@
   i18n.defaultLocale = "en_US.UTF-8";
   services.xserver.xkb = { layout = "us"; variant = ""; };
   services.gnome.gnome-keyring.enable = true;
-
+  programs.fish.enable = true;
   programs.thunar = {
     enable = true;
     plugins = with pkgs; [ thunar-archive-plugin thunar-volman ];
@@ -176,6 +194,6 @@
 
   environment.pathsToLink = [ "/share/xdg-desktop-portal" "/share/applications" ];
   environment.systemPackages = with pkgs; [
-    vim wget ethtool git bluetui wireplumber pulsemixer pciutils lm_sensors htop kitty pavucontrol
+    vim wget ethtool git bluetui wireplumber pulsemixer pciutils lm_sensors htop kitty pavucontrol shared-mime-info
   ];
 }

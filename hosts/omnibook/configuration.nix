@@ -20,13 +20,18 @@
     "reboot=pci"
     "amd_pstate=active" 
     "usbcore.autosuspend=-1" 
-    
-    # Forces hardware interrupts into kernel threads. 
-    # Crucial for preventing 8000Hz polling rates from locking the CPU pipeline.
+    "nowatchdog"
+    "nmi_watchdog=0"
+    "softlockup_panic=0"
+    "tsc=reliable"
+    "clocksource=tsc"
+    "split_lock_detect=off"
     "threadirqs"
   ];
 
   system.stateVersion = "25.11"; 
+
+  hardware.xone.enable = true;	
 
   # ---------------------------------------------------------------------------
   # LAPTOP-SPECIFIC HARDWARE GUARDS (fprintd + Lid Switch)
@@ -79,6 +84,7 @@
   services.udev.packages = [ pkgs.swayosd ];
 
   systemd.services.tailscaled.wantedBy = lib.mkForce [ ];
+
   networking.hostName = "nixos";
 
   # ---------------------------------------------------------------------------

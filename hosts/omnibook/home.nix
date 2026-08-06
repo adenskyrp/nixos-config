@@ -9,7 +9,6 @@
     enable = true;
     xwayland.enable = true;
     configType = "hyprlang";    
-
     settings = {
       # --- HARDWARE ENVIRONMENT VARIABLES ---
       env = [
@@ -25,6 +24,12 @@
       # --- COMPOSITOR DEBUG OVERRIDES ---
       debug = {
         vfr = false;
+      };
+      misc = {
+        disable_hyprland_logo = true;     # Disables the default anime mascot / logo background pass
+        disable_splash_rendering = true;  # Suppresses startup splash text rendering
+        force_default_wallpaper = 0;      # Disables forcing default fallback wallpapers
+        background_color = "0x000000";    # Sets compositor clear-color to solid pitch black
       };
       # --- SCHEDULING & SCANOUT OPTIMIZATIONS (CRITICAL FOR 8KHz) ---
       render = {
@@ -68,31 +73,34 @@
         shadow = { enabled = false; };
         blur = { enabled = false; };
       };
-      # --- UNIFIED HYPRLANG WINDOW RULES (Bleeding-Edge Syntax) ---
-      # Rules are explicitly split into props (match:class) and effects (tile 1)
+      # --- UNIFIED HYPRLANG WINDOW RULES ---
+      # Uses 'match:class' exclusively and 'fullscreen 2' for direct scanout presentation.
       windowrule = [
-        # Rocket League
+	# Rocket League
         "tile 1, match:class ^(steam_app_252950|rocketleague\\.exe)$"
         "immediate 1, match:class ^(steam_app_252950|rocketleague\\.exe)$"
-        "fullscreen 1, match:class ^(steam_app_252950|rocketleague\\.exe)$"
+        "fullscreen_state 2 2, match:class ^(steam_app_252950|rocketleague\\.exe)$"
         "workspace 5, match:class ^(steam_app_252950|rocketleague\\.exe)$"
 
         # osu!
         "tile 1, match:class ^(osu\\!\\.exe)$"
         "immediate 1, match:class ^(osu\\!\\.exe)$"
-        "fullscreen 1, match:class ^(osu\\!\\.exe)$"
+	"fullscreen_state 2 2, match:class ^(osu\\!\\.exe)$"
         "workspace 5, match:class ^(osu\\!\\.exe)$"
 
         # Aim Lab
         "tile 1, match:class ^(aimlab_tb\\.exe|steam_app_714010)$"
+	"fullscreen_state 2 2, match:class ^(aimlab_tb\\.exe|steam_app_714010)$"
         "immediate 1, match:class ^(aimlab_tb\\.exe|steam_app_714010)$"
         "workspace 5, match:class ^(aimlab_tb\\.exe|steam_app_714010)$"
 
         # Counter-Strike 2
-        "tile 1, match:class ^(steam_app_730|cs2\\.exe)$"
-        "immediate 1, match:class ^(steam_app_730|cs2\\.exe)$"
-        "workspace 5, match:class ^(steam_app_730|cs2\\.exe)$"
-      ];      # --- HARDWARE MEDIA KEYS & BINDINGS ---
+	"tile 1, match:class ^(cs2)$"
+	"fullscreen_state 2 2, match:class ^(cs2)$"
+        "immediate 1, match:class ^(cs2)$"
+        "workspace 5, match:class ^(cs2)$"
+      ];
+      # --- HARDWARE MEDIA KEYS & BINDINGS ---
       bindel = [
         ", XF86AudioRaiseVolume, exec, ${pkgs.swayosd}/bin/swayosd-client --output-volume +5"
         ", XF86AudioLowerVolume, exec, ${pkgs.swayosd}/bin/swayosd-client --output-volume -5"
@@ -113,7 +121,6 @@
       ];
 
       exec-once = [
-        "easyeffects --gapplication-service"
         "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"
       ];
       exec = [ "systemctl --user restart kanshi" ];
@@ -146,6 +153,49 @@
     };
   };
 
+  # ---------------------------------------------------------------------------
+  # INTERACTIVE SHELL ENVIRONMENT (Fish)
+  # ---------------------------------------------------------------------------
+  programs.fish = {
+    enable = true;
+    
+    # Declaratively define custom user-space functions
+    functions = {
+      sysdeploy = ''
+        # Store the current directory so we can return later
+        set -l current_dir $PWD
+        
+        # Navigate to the flake root
+        cd ~/nixos-config
+
+        # 1. Stage all changes. Flakes CANNOT see untracked files.
+        git add .
+
+        # 2. Rebuild the system BEFORE committing to prevent pushing broken builds
+        echo "--> Initiating declarative system rebuild..."
+        if sudo nixos-rebuild switch --flake .#omnibook --impure
+          
+          # 3. Handle the commit message from function arguments
+          set -l commit_msg $argv
+          if test -z "$commit_msg"
+            set commit_msg "chore: automated system state update"
+          end
+          
+          # 4. Commit and Push
+          git commit -m "$commit_msg"
+          echo "--> Pushing new generation to GitHub..."
+          git push origin main
+          
+          echo "--> System successfully deployed and tracked."
+        else
+          echo "--> Build failed. Git commit aborted. Fix your Nix syntax."
+        end
+
+        # Return to the original directory
+        cd $current_dir
+      '';
+    };
+  };
   # ---------------------------------------------------------------------------
   # APPLICATION LAUNCHER (Rofi Wayland Native with Nord Theme)
   # ---------------------------------------------------------------------------
@@ -242,12 +292,6 @@
       }
     '';
   };  
-  programs.yazi = {
-    enable = true;
-    shellWrapperName = "y";
-    # Fixed: Aligning shell integrations with your actual environment (Fish)
-    enableFishIntegration = true; 
-  };
 
   # ---------------------------------------------------------------------------
   # NEOVIM: EXTREME LOW-LATENCY EDITOR & NIX LSP
@@ -329,6 +373,20 @@
     '';
   };
 
+  programs.obs-studio = {
+    enable = true;
+
+    # Low-Latency Plugins Architecture:
+    # 1. obs-vkcapture: Vulkan/OpenGL direct DMA-BUF capture layer
+    # 2. obs-pipewire-audio-capture: Direct PipeWire graph node audio intercept
+    # 3. obs-vaapi: AMD VCN Hardware-accelerated video encoding pipeline
+    plugins = with pkgs.obs-studio-plugins; [
+      obs-vkcapture
+      obs-pipewire-audio-capture
+      obs-vaapi
+      obs-gstreamer
+    ];
+  };
   # ---------------------------------------------------------------------------
   # FIREFOX: EXTREME PERFORMANCE & DECLARATIVE POLICY ENGINE
   # ---------------------------------------------------------------------------
@@ -419,6 +477,7 @@
     nerd-fonts.fira-code pavucontrol deepfilternet lsp-plugins polkit_gnome
     docker-client playerctl overskride vesktop protonup-qt wineWow64Packages.staging
     winetricks protontricks grim slurp wl-clipboard satty adwaita-icon-theme hicolor-icon-theme
+    obs-studio-plugins.obs-vkcapture libva-utils
 
     (writeShellScriptBin "screenshot-region" ''
       FILENAME="/home/crazycat/Pictures/Screenshots/$(date +'%Y-%m-%d_%H-%M-%S').png"
@@ -431,29 +490,24 @@
     (writeShellScriptBin "osu-launcher" ''
       export WINEPREFIX="/home/crazycat/.wine-osu"
       export STAGING_AUDIO_DURATION="10000"
+      export STEAM_COMPAT_DATA_PATH="/home/crazycat/.wine-osu"
+      export PIPEWIRE_LATENCY="64/48000"
 
-      # -----------------------------------------------------------------------
-      # WAYLAND-NATIVE GUI PROMPT
-      # -----------------------------------------------------------------------
-      # Since this script is executed in the background without a TTY, we use 
-      # Rofi's dmenu mode to capture standard output. It will present a clean 
-      # input bar in the center of your screen.
+      export WAYLAND_DISPLAY="wayland-1"
+      export DISPLAY="" # Unset DISPLAY to ensure X11 fallback is strictly disabled      
+      export DXVK_HUD=0
+
       server_input=$(echo "" | ${pkgs.rofi}/bin/rofi -dmenu -p "osu! DevServer (Leave blank for Bancho):")
 
-      # -----------------------------------------------------------------------
-      # EXECUTION PIPELINE
-      # -----------------------------------------------------------------------
-      # If you press ESC, Rofi returns an exit code of 1, and server_input is null.
-      # If you hit ENTER with no text, it returns an empty string. 
+      # CRITICAL FIX: Appended "$@" so file arguments are actually passed to osu!.exe
       if [ -n "$server_input" ]; then
-        exec ${pkgs.wineWow64Packages.staging}/bin/wine "/home/crazycat/Games/osu/osu!.exe" -devserver "$server_input"
+        exec obs-gamecapture ${pkgs.util-linux}/bin/chrt -r 50 ${pkgs.wineWow64Packages.staging}/bin/wine "/home/crazycat/Games/osu/osu!.exe" -devserver "$server_input" "$@"
       else
-        exec ${pkgs.wineWow64Packages.staging}/bin/wine "/home/crazycat/Games/osu/osu!.exe"
+        exec obs-gamecapture ${pkgs.util-linux}/bin/chrt -r 50 ${pkgs.wineWow64Packages.staging}/bin/wine "/home/crazycat/Games/osu/osu!.exe" "$@"
       fi
     '')
   ];
 
-  services.easyeffects.enable = true;
   services.swayosd = { enable = true; stylePath = null; };
 
   services.kanshi = {
@@ -466,9 +520,39 @@
   };
 
   programs.ssh = { enable = true; enableDefaultConfig = false; settings = { "*" = { ServerAliveInterval = 30; ServerAliveCountMax = 3; TCPKeepAlive = "yes"; }; }; };
-
+  # ---------------------------------------------------------------------------
+  # XDG DESKTOP ENTRIES & MIME ROUTING
+  # ---------------------------------------------------------------------------
   xdg.desktopEntries = {
-    osu-stable = { name = "osu!stable"; exec = "osu-launcher"; icon = "osu!"; comment = "osu! stable"; terminal = false; categories = [ "Game" ]; };
+    osu-stable = { 
+      name = "osu!stable"; 
+      # THE FIX: %U tells the desktop environment to pass file paths to the script
+      exec = "osu-launcher %U"; 
+      icon = "osu!"; 
+      comment = "osu! stable"; 
+      terminal = false; 
+      categories = [ "Game" ]; 
+      mimeType = [
+        "application/x-osu-beatmap"
+        "application/x-osu-skin"
+        "application/x-osu-replay"
+        "application/x-extension-osz"
+        "application/x-extension-osk"
+        "application/x-extension-osr"
+      ];
+    };
+  };
+
+  xdg.mimeApps = {
+    enable = true;
+    defaultApplications = {
+      "application/x-osu-beatmap" = "osu-stable.desktop";
+      "application/x-osu-skin" = "osu-stable.desktop";
+      "application/x-osu-replay" = "osu-stable.desktop";
+      "application/x-extension-osz" = "osu-stable.desktop";
+      "application/x-extension-osk" = "osu-stable.desktop";
+      "application/x-extension-osr" = "osu-stable.desktop";
+    };
   };
   # ---------------------------------------------------------------------------
   # GTK & ICON THEME ARCHITECTURE
@@ -486,13 +570,17 @@
       package = pkgs.adwaita-icon-theme;
     };
   };
+
   # ---------------------------------------------------------------------------
   # WAYLAND SESSION VARIABLES
   # ---------------------------------------------------------------------------
   home.sessionVariables = {
-    # Strictly enforces XDG compliance. Without this, Firefox will ignore 
-    # your declarative profile in ~/.config and create a ghost profile in ~/.mozilla.
     MOZ_USE_XDG = "1";
+    MESA_VK_WSI_PRESENT_MODE = "immediate";
+    SDL_JOYSTICK_HIDAPI = "0";
+    SDL_GAMECONTROLLER_ALLOW_STEAM_VIRTUAL_PAD = "0";
+    STEAM_DISABLE_STEAM_INPUT = "1";
+    DXVK_FRAME_RATE = "0";
   };
   home.stateVersion = "24.05";
 }
