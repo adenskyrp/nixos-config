@@ -201,11 +201,18 @@
   security.pam.loginLimits = [
     { domain = "*"; item = "nofile"; type = "soft"; value = "1048576"; }
     { domain = "*"; item = "nofile"; type = "hard"; value = "1048576"; }
+    
+    # Audio Group Limits (PipeWire / WirePlumber)
     { domain = "@audio"; item = "rtprio"; type = "-"; value = "95"; }
     { domain = "@audio"; item = "memlock"; type = "-"; value = "unlimited"; }
     { domain = "@audio"; item = "nice"; type = "-"; value = "-19"; }
-  ];
 
+    # Administrative Group Limits (Hyprland / Real-time Game Engines)
+    # Allows administrative processes launched via chrt or gamemode to claim SCHED_FIFO
+    { domain = "@wheel"; item = "rtprio"; type = "-"; value = "99"; }
+    { domain = "@wheel"; item = "memlock"; type = "-"; value = "unlimited"; }
+    { domain = "@wheel"; item = "nice"; type = "-"; value = "-20"; }
+  ];
   # ---------------------------------------------------------------------------
   # LOCALIZATION & BASE UTILITIES
   # ---------------------------------------------------------------------------

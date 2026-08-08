@@ -10,6 +10,13 @@
     xwayland.enable = true;
     configType = "hyprlang";    
     settings = {
+      # --- UNIFIED STARTUP PROCESSES (EXEC-ONCE) ---
+      exec-once = [
+        # 1. Launch Hyprland with Real-Time SCHED_FIFO priority (Class 50)
+        "chrt -f 50 Hyprland"
+        # 2. Polkit authentication agent for privilege escalation dialogs
+        "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"
+      ];
       # --- HARDWARE ENVIRONMENT VARIABLES ---
       env = [
         # Forces AMD GPU to use Legacy KMS for Hyprland.
@@ -120,9 +127,6 @@
         "$mainMod, mouse:273, resizewindow"
       ];
 
-      exec-once = [
-        "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"
-      ];
       exec = [ "systemctl --user restart kanshi" ];
 
       "$mainMod" = "SUPER";

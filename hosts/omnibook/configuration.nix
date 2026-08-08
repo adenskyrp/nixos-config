@@ -27,11 +27,29 @@
     "clocksource=tsc"
     "split_lock_detect=off"
     "threadirqs"
+    "isolcpus=0-7"
+    "nohz_full=0-7" # Disables kernel tick interrupts on gaming cores during single-task execution
+    "rcu_nocbs=0-7"  # Offloads RCU callback processing off gaming cores
   ];
 
   system.stateVersion = "25.11"; 
 
   hardware.xone.enable = true;	
+
+  # ---------------------------------------------------------------------------
+  # AMDGPU HIGH-PERFORMANCE POWER STATE LOCK
+  # ---------------------------------------------------------------------------
+  systemd.services.amdgpu-performance-lock = {
+    description = "Force AMDGPU into constant high performance clock state";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "systemd-modules-load.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      # Forces power_dpm_force_performance_level to 'high', preventing GPU clock down-stepping
+      ExecStart = "${pkgs.bash}/bin/bash -c 'echo high > /sys/class/drm/card0/device/power_dpm_force_performance_level || true'";
+    };
+  };
 
   # ---------------------------------------------------------------------------
   # LAPTOP-SPECIFIC HARDWARE GUARDS (fprintd + Lid Switch)
