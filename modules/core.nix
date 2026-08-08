@@ -57,6 +57,17 @@
     ACTION=="add", SUBSYSTEM=="usb", ATTR{bInterfaceClass}=="03", ATTR{power/control}="on"
   '';
 
+  systemd.services.disable-usb-autosuspend = {
+    description = "Force all USB bus power nodes to active state (disable autosuspend)";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "systemd-udev-settle.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = "${pkgs.bash}/bin/bash -c 'for dev in /sys/bus/usb/devices/*/power/control; do [ -f \"$dev\" ] && echo on > \"$dev\"; done'";
+    };
+  };
+
   services.resolved = {
     enable = true;
     
