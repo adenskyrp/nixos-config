@@ -39,6 +39,19 @@
   
   networking.nameservers = [ "127.0.0.53" ];
   networking.firewall.checkReversePath = "loose";
+  
+  # ---------------------------------------------------------------------------
+  # THUNDERBOLT 4 / USB4 SYSTEM DAEMON & DMA PROTECTION
+  # ---------------------------------------------------------------------------
+  # Thunderbolt 4 tunnels raw PCIe lanes directly into your Strix Point SoC.
+  # Bolt handles device authorization, IOMMU DMA isolation, and secure pairing.
+  services.hardware.bolt.enable = true;
+
+  # Rule to automatically authorize Thunderbolt 4 devices when physically connected,
+  # bypassing manual CLI authorization while maintaining hardware safety.
+  services.udev.extraRules = ''
+    ACTION=="add", SUBSYSTEM=="thunderbolt", ATTR{authorized}=="0", ATTR{authorized}="1"
+  '';
   services.resolved = {
     enable = true;
     
