@@ -332,8 +332,7 @@
       telescope-nvim                  # Instantaneous fuzzy-finding
       plenary-nvim                    # Required async Lua library for Telescope
     ];
-
-    # --- LUA KERNEL CONFIGURATION ---
+   # --- LUA KERNEL CONFIGURATION ---
     initLua = ''
       -- 1. HARDWARE-ACCELERATED CLIPBOARD
       vim.opt.clipboard = "unnamedplus"
@@ -347,27 +346,19 @@
       vim.opt.expandtab = true      
       
       -- 3. THE EVENT LOOP (8000Hz Input Optimization)
-      -- By default, Neovim waits 4000ms after you stop typing to trigger Swap writes
-      -- and CursorHold events (like LSP hover diagnostics). We drop this to 50ms.
-      -- With an 8KHz keyboard, you want immediate diagnostic feedback the millisecond
-      -- your finger lifts off the switch.
       vim.opt.updatetime = 50 
 
-      -- NOTE ON LAZYREDRAW: 
-      -- Many internet configs recommend 'vim.opt.lazyredraw = true' for speed. 
-      -- DO NOT USE THIS. On a 600Hz panel using GPU-accelerated Kitty, lazyredraw 
-      -- batches render calls incorrectly and introduces micro-stutters. 
-      -- We leave it false to allow 1:1 frame pacing.
-
-      -- 4. LSP INITIALIZATION (The "No Black Box" Setup)
-      require('lspconfig').nixd.setup{
+      -- 4. LSP INITIALIZATION (Neovim 0.11+ Native API)
+      -- Native core config replacing deprecated require('lspconfig')
+      vim.lsp.config('nixd', {
         cmd = { "nixd" },
         settings = {
           nixd = {
             formatting = { command = { "alejandra" } },
           },
         },
-      }
+      })
+      vim.lsp.enable('nixd')
 
       -- 5. KINETIC FEEDBACK: AUTO-FORMAT ON SAVE
       vim.api.nvim_create_autocmd("BufWritePre", {
@@ -378,14 +369,11 @@
       })
 
       -- 6. TELESCOPE: INSTANT AST NAVIGATION
-      -- Binds Space + f to instantly search all files in your NixOS config.
-      -- Binds Space + g to live-grep text across your entire project in milliseconds.
       local builtin = require('telescope.builtin')
       vim.keymap.set('n', '<leader>f', builtin.find_files, {})
       vim.keymap.set('n', '<leader>g', builtin.live_grep, {})
-    '';
+    ''; # <-- CRITICAL: Must be two single quotes + semicolon
   };
-
   programs.obs-studio = {
     enable = true;
 

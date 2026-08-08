@@ -230,6 +230,6 @@
 
   environment.pathsToLink = [ "/share/xdg-desktop-portal" "/share/applications" ];
   environment.systemPackages = with pkgs; [
-    vim wget ethtool git bluetui wireplumber pulsemixer pciutils lm_sensors htop kitty pavucontrol shared-mime-info
+    vim wget ethtool git iw bluetui wireplumber pulsemixer pciutils lm_sensors htop kitty pavucontrol shared-mime-info
   ];
 }
