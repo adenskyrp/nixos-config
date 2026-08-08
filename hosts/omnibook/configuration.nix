@@ -45,9 +45,13 @@ in
   boot.kernelPackages = pkgs.linuxPackages_cachyos;
 
   boot.kernelParams = [
+    "ttm.pages_limit=4194304"
+    "amdttm.pages_limit=4194304"
     "reboot=pci"
     "amd_pstate=active" 
-    "usbcore.autosuspend=-1" 
+    "amdgpu.ppfeaturemask=0xffffffff"
+    "processor.max_cstate=4"
+    "usbcore.autosuspend=-1"
     "nowatchdog"
     "nmi_watchdog=0"
     "softlockup_panic=0"

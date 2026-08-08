@@ -101,6 +101,9 @@
     # Prevents dropped packets during violent network spikes on shared infrastructure
     "net.core.rmem_max" = 16777216;
     "net.core.wmem_max" = 16777216;
+    "vm.compaction_proactiveness" = 20; # Aggressively compact memory in background
+    "vm.watermark_boost_factor" = 1;     # Reduce allocation latency under high VRAM pressure
+    "vm.swappiness" = 10;                 # Prevent kernel from swapping active process memory
   };
 
   # ---------------------------------------------------------------------------
