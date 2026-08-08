@@ -51,7 +51,12 @@
   # bypassing manual CLI authorization while maintaining hardware safety.
   services.udev.extraRules = ''
     ACTION=="add", SUBSYSTEM=="thunderbolt", ATTR{authorized}=="0", ATTR{authorized}="1"
+    # Disable runtime power management for all USB Hubs (Class 09)
+    ACTION=="add", SUBSYSTEM=="usb", ATTR{bDeviceClass}=="09", ATTR{power/control}="on", ATTR{power/autosuspend}="-1"
+    # Force latency mode '0' for high-performance USB HID peripherals attached to hubs
+    ACTION=="add", SUBSYSTEM=="usb", ATTR{bInterfaceClass}=="03", ATTR{power/control}="on"
   '';
+
   services.resolved = {
     enable = true;
     
