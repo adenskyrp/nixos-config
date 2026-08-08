@@ -1,7 +1,35 @@
 # ~/nixos-config/hosts/omnibook/configuration.nix
 { config, pkgs, lib, ... }:
-
+let
+  # Define higher APU power targets for a 65W AC power contract
+  # Values are defined in milliwatts (mW)
+  sustainedPowerLimit = 54000; # 54W: Maximum effective sustained ceiling for a 14" chassis
+  slowPowerLimit      = 60000; # 60W: Sustained burst (tPPT) for sustained heavy workloads
+  fastPowerLimit      = 65000; # 65W: Peak short burst (fPPT) matching max charger input
+  temperatureLimit    = 90;    # Max allowed Tctl/Tjunc temperature in °C before throttling
+in
 {
+  environment.systemPackages = [ pkgs.ryzenadj ];
+
+  # Systemd service to enforce register writes to the AMD SMU (System Management Unit)
+  systemd.services.amd-power-boost = {
+    description = "Apply 65W performance profile to AMD Ryzen AI 9 365";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "systemd-modules-load.service" ];
+
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      # Write directly to hardware SMU mailboxes via ryzenadj
+      ExecStart = ''
+        ${pkgs.ryzenadj}/bin/ryzenadj \
+          --stapm-limit=${toString sustainedPowerLimit} \
+          --slow-limit=${toString slowPowerLimit} \
+          --fast-limit=${toString fastPowerLimit} \
+          --tctl-temp=${toString temperatureLimit}
+      '';
+    };
+  };
   imports = [ 
     ./hardware-configuration.nix 
     ../../modules/core.nix
