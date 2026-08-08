@@ -47,6 +47,7 @@ in
   boot.kernelParams = [
     "ttm.pages_limit=4194304"
     "amdttm.pages_limit=4194304"
+    "iomem=relaxed"
     "reboot=pci"
     "amd_pstate=active" 
     "amdgpu.ppfeaturemask=0xffffffff"

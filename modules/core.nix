@@ -104,7 +104,10 @@
     "vm.compaction_proactiveness" = 20; # Aggressively compact memory in background
     "vm.watermark_boost_factor" = 1;     # Reduce allocation latency under high VRAM pressure
     "vm.swappiness" = 10;                 # Prevent kernel from swapping active process memory
+    "kernel.sched_mitigation_cost_ns" = 500000;
   };
+
+  services.upower.enable = true;
 
   # ---------------------------------------------------------------------------
   # LOW-LATENCY AUDIO SUBSYSTEM (PipeWire 1.33ms Quantum)
