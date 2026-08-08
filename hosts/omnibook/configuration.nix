@@ -77,7 +77,7 @@
     enable = true;
     settings = {
       default_session = {
-        command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --cmd start-hyprland";
+        command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --cmd '${pkgs.util-linux}/bin/chrt -f 50 start-hyprland'";
         user = "crazycat";
       };
     };
@@ -100,8 +100,6 @@
 
   # Required for laptop media keys to communicate with SwayOSD
   services.udev.packages = [ pkgs.swayosd ];
-
-  systemd.services.tailscaled.wantedBy = lib.mkForce [ ];
 
   networking.hostName = "nixos";
 
