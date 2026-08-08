@@ -83,10 +83,10 @@
         "workspace 5, match:class ^(steam_app_252950|rocketleague\\.exe)$"
 
         # osu!
-        "tile 1, match:class ^(osu\\!\\.exe)$"
-        "immediate 1, match:class ^(osu\\!\\.exe)$"
-	"fullscreen_state 2 2, match:class ^(osu\\!\\.exe)$"
-        "workspace 5, match:class ^(osu\\!\\.exe)$"
+        "tile 1, match:class ^(osu\\!|osu\\!\\.exe)$"
+        "immediate 1, match:class ^(osu\\!|osu\\!\\.exe)$"
+	"fullscreen_state 2 2, match:class ^(osu\\!|osu\\!\\.exe)$"
+        "workspace 5, match:class ^(osu\\!|osu\\!\\.exe)$"
 
         # Aim Lab
         "tile 1, match:class ^(aimlab_tb\\.exe|steam_app_714010)$"
