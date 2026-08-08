@@ -486,7 +486,7 @@
     nerd-fonts.fira-code pavucontrol deepfilternet lsp-plugins polkit_gnome
     docker-client playerctl overskride vesktop protonup-qt wineWow64Packages.staging
     winetricks protontricks grim slurp wl-clipboard satty adwaita-icon-theme hicolor-icon-theme
-    obs-studio-plugins.obs-vkcapture libva-utils
+    obs-studio-plugins.obs-vkcapture libva-utils osu-lazer-bin
 
     (writeShellScriptBin "screenshot-region" ''
       FILENAME="/home/crazycat/Pictures/Screenshots/$(date +'%Y-%m-%d_%H-%M-%S').png"
