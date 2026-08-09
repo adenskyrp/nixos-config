@@ -60,9 +60,6 @@ in
     "clocksource=tsc"
     "split_lock_detect=off"
     "threadirqs"
-    "isolcpus=0-7"
-    "nohz_full=0-7" # Disables kernel tick interrupts on gaming cores during single-task execution
-    "rcu_nocbs=0-7"  # Offloads RCU callback processing off gaming cores
   ];
 
   system.stateVersion = "25.11"; 

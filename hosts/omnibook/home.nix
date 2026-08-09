@@ -486,7 +486,7 @@
     '')
     
     (writeShellScriptBin "osu-lazer-launcher" ''
-        exec ${pkgs.util-linux}/bin/taskset -c 0-7 ${pkgs.util-linux}/bin/chrt -f 50 ${pkgs.osu-lazer-bin}/bin/osu! "$@"
+        exec obs-gamecapture ${pkgs.util-linux}/bin/chrt -f 50 ${pkgs.osu-lazer-bin}/bin/osu! "$@"
     '')
 
     (writeShellScriptBin "osu-launcher" ''
@@ -503,9 +503,9 @@
 
       # CRITICAL FIX: Appended "$@" so file arguments are actually passed to osu!.exe
       if [ -n "$server_input" ]; then
-        exec obs-gamecapture ${pkgs.util-linux}/bin/taskset -c 0-7 ${pkgs.util-linux}/bin/chrt -f 50 ${pkgs.wineWow64Packages.staging}/bin/wine "/home/crazycat/Games/osu/osu!.exe" -devserver "$server_input" "$@"
+        exec obs-gamecapture ${pkgs.util-linux}/bin/chrt -f 50 ${pkgs.wineWow64Packages.staging}/bin/wine "/home/crazycat/Games/osu/osu!.exe" -devserver "$server_input" "$@"
       else
-        exec obs-gamecapture ${pkgs.util-linux}/bin/taskset -c 0-7 ${pkgs.util-linux}/bin/chrt -f 50 ${pkgs.wineWow64Packages.staging}/bin/wine "/home/crazycat/Games/osu/osu!.exe" "$@"
+        exec obs-gamecapture ${pkgs.util-linux}/bin/chrt -f 50 ${pkgs.wineWow64Packages.staging}/bin/wine "/home/crazycat/Games/osu/osu!.exe" "$@"
       fi
     '')
   ];
