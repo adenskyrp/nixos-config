@@ -39,7 +39,6 @@
   
   networking.nameservers = [ "127.0.0.53" ];
   networking.firewall.checkReversePath = "loose";
-  
   # ---------------------------------------------------------------------------
   # THUNDERBOLT 4 / USB4 SYSTEM DAEMON & DMA PROTECTION
   # ---------------------------------------------------------------------------
@@ -55,6 +54,8 @@
     ACTION=="add", SUBSYSTEM=="usb", ATTR{bDeviceClass}=="09", ATTR{power/control}="on", ATTR{power/autosuspend}="-1"
     # Force latency mode '0' for high-performance USB HID peripherals attached to hubs
     ACTION=="add", SUBSYSTEM=="usb", ATTR{bInterfaceClass}=="03", ATTR{power/control}="on"
+    SUBSYSTEM=="hidraw", ATTRS{idVendor}=="05a7", ATTRS{idProduct}=="40fe", TAG+="uaccess"
+    SUBSYSTEM=="hidraw", ATTRS{idVendor}=="05a7", ATTRS{idProduct}=="400d", TAG+="uaccess"
   '';
 
   systemd.services.disable-usb-autosuspend = {
