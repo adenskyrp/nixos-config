@@ -45,15 +45,15 @@
   # Thunderbolt 4 tunnels raw PCIe lanes directly into your Strix Point SoC.
   # Bolt handles device authorization, IOMMU DMA isolation, and secure pairing.
   services.hardware.bolt.enable = true;
-
   # Rule to automatically authorize Thunderbolt 4 devices when physically connected,
   # bypassing manual CLI authorization while maintaining hardware safety.
   services.udev.extraRules = ''
+    ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/scheduler}="none"
     ACTION=="add", SUBSYSTEM=="thunderbolt", ATTR{authorized}=="0", ATTR{authorized}="1"
-    # Disable runtime power management for all USB Hubs (Class 09)
     ACTION=="add", SUBSYSTEM=="usb", ATTR{bDeviceClass}=="09", ATTR{power/control}="on", ATTR{power/autosuspend}="-1"
-    # Force latency mode '0' for high-performance USB HID peripherals attached to hubs
     ACTION=="add", SUBSYSTEM=="usb", ATTR{bInterfaceClass}=="03", ATTR{power/control}="on"
+    SUBSYSTEM=="power_supply", ATTR{online}=="1", RUN+="${pkgs.power-profiles-daemon}/bin/powerprofilesctl set performance"
+    SUBSYSTEM=="power_supply", ATTR{online}=="0", RUN+="${pkgs.power-profiles-daemon}/bin/powerprofilesctl set balanced"
     SUBSYSTEM=="hidraw", ATTRS{idVendor}=="05a7", ATTRS{idProduct}=="40fe", TAG+="uaccess"
     SUBSYSTEM=="hidraw", ATTRS{idVendor}=="05a7", ATTRS{idProduct}=="400d", TAG+="uaccess"
   '';

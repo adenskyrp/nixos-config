@@ -484,6 +484,10 @@
         notify-send "Screenshot Captured" "Saved to ~/Pictures/Screenshots and copied to clipboard." --icon=camera
       fi
     '')
+    
+    (writeShellScriptBin "osu-lazer-launcher" ''
+        exec ${pkgs.util-linux}/bin/taskset -c 0-7 ${pkgs.util-linux}/bin/chrt -f 50 ${pkgs.osu-lazer-bin}/bin/osu! "$@"
+    '')
 
     (writeShellScriptBin "osu-launcher" ''
       export WINEPREFIX="/home/crazycat/.wine-osu"
@@ -499,9 +503,9 @@
 
       # CRITICAL FIX: Appended "$@" so file arguments are actually passed to osu!.exe
       if [ -n "$server_input" ]; then
-        exec obs-gamecapture ${pkgs.util-linux}/bin/chrt -r 50 ${pkgs.wineWow64Packages.staging}/bin/wine "/home/crazycat/Games/osu/osu!.exe" -devserver "$server_input" "$@"
+        exec obs-gamecapture ${pkgs.util-linux}/bin/taskset -c 0-7 ${pkgs.util-linux}/bin/chrt -f 50 ${pkgs.wineWow64Packages.staging}/bin/wine "/home/crazycat/Games/osu/osu!.exe" -devserver "$server_input" "$@"
       else
-        exec obs-gamecapture ${pkgs.util-linux}/bin/chrt -r 50 ${pkgs.wineWow64Packages.staging}/bin/wine "/home/crazycat/Games/osu/osu!.exe" "$@"
+        exec obs-gamecapture ${pkgs.util-linux}/bin/taskset -c 0-7 ${pkgs.util-linux}/bin/chrt -f 50 ${pkgs.wineWow64Packages.staging}/bin/wine "/home/crazycat/Games/osu/osu!.exe" "$@"
       fi
     '')
   ];
@@ -522,6 +526,14 @@
   # XDG DESKTOP ENTRIES & MIME ROUTING
   # ---------------------------------------------------------------------------
   xdg.desktopEntries = {
+    osu-lazer = {
+      name = "osu!lazer";
+      exec = "osu-lazer-launcher %U";
+      icon = "osu!";
+      comment = "osu! lazer";
+      terminal = false;
+      categories = [ "Game" ];
+    };
     osu-stable = { 
       name = "osu!stable"; 
       # THE FIX: %U tells the desktop environment to pass file paths to the script
