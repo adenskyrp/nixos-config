@@ -25,37 +25,40 @@
     algorithm = "zstd";
     memoryPercent = 50;
   };
+
   programs.dconf.enable = true;
 
+  networking.nameservers = [
+    "9.9.9.9"
+    "1.1.1.1"
+  ];
+
   # ---------------------------------------------------------------------------
-  # COMPETITIVE NETWORKING & EDGE DNS
+  # COMPETITIVE NETWORKING & STRICT DOT DNS ISOLATION
   # ---------------------------------------------------------------------------
   networking.networkmanager = {
+    # Line 36
     enable = true;
     wifi.powersave = false;
     wifi.macAddress = "permanent";
 
-    # THE SEVERANCE: Strip NetworkManager of all DNS authority.
-    # It will no longer pass Spectrum's DHCP/SLAAC servers to systemd-resolved.
+    # Strip NetworkManager of /etc/resolv.conf authority
     dns = lib.mkForce "none";
-    # STRUCTURED NETWORKMANAGER CONFIGURATION (NixOS 24.11+)
-    # Replaces raw extraConfig INI strings with typed, composable Nix attribute sets.
+
+    # STRUCTURED NETWORKMANAGER CONFIGURATION
     settings = {
       device = {
-        # Prevents MAC address re-randomization handshakes during active Wi-Fi sessions
         "wifi.scan-rand-mac-address" = "no";
       };
 
       connection = {
-        # DISABLE BACKGROUND SCANNING: Prevents NetworkManager from executing
-        # off-channel 802.11 probe scans while connected, eliminating 100ms-300ms
-        # latency spikes on MediaTek MT7925 hardware.
         "wifi.bgscan" = "ignore";
+        "ipv4.ignore-auto-dns" = "true";
+        "ipv6.ignore-auto-dns" = "true";
       };
     };
   };
 
-  networking.nameservers = ["127.0.0.53"];
   networking.firewall.checkReversePath = "loose";
   # ---------------------------------------------------------------------------
   # THUNDERBOLT 4 / USB4 SYSTEM DAEMON & DMA PROTECTION
@@ -90,16 +93,24 @@
   services.resolved = {
     enable = true;
 
-    # The modern, strictly-typed systemd-resolved configuration
     settings = {
       Resolve = {
+        # Primary upstream resolvers with explicit DoT SNI hostnames
         DNS = "9.9.9.9#dns.quad9.net 1.1.1.1#cloudflare-dns.com";
+
+        # Fallback resolvers if primary endpoints fail to respond
         FallbackDNS = "149.112.112.112#dns.quad9.net 1.0.0.1#cloudflare-dns.com";
+
+        # Force strict DNSSEC validation on all queries
         DNSSEC = "true";
+
+        # STRICT DoT MODE: Enforces TLS encryption on Port 853.
+        # Queries WILL FAIL rather than fallback to plain-text UDP/53.
+        DNSOverTLS = "yes";
+
+        # Route ALL Top-Level Domains (~.) through these DoT resolvers
         Domains = "~.";
 
-        # STRICT mode DoT configuration
-        DNSOverTLS = "yes";
         Cache = "yes";
         CacheFromLocalhost = "no";
       };
