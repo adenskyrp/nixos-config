@@ -1,11 +1,14 @@
 # ~/nixos-config/modules/core.nix
-{ config, pkgs, lib, ... }:
-
 {
+  config,
+  pkgs,
+  lib,
+  ...
+}: {
   # ---------------------------------------------------------------------------
   # REPOSITORY EVALUATION POLICIES
   # ---------------------------------------------------------------------------
-  # MUST BE AT THE ROOT LEVEL. Grants the evaluator permission to compile 
+  # MUST BE AT THE ROOT LEVEL. Grants the evaluator permission to compile
   # closed-source binaries (Steam, Proton, etc.) across the entire flake.
   nixpkgs.config.allowUnfree = true;
 
@@ -13,14 +16,14 @@
   # NIX ARCHITECTURE & STATE
   # ---------------------------------------------------------------------------
   nix.settings = {
-    experimental-features = [ "nix-command" "flakes" ];
+    experimental-features = ["nix-command" "flakes"];
     auto-optimise-store = true;
   };
-  
+
   zramSwap = {
     enable = true;
     algorithm = "zstd";
-    memoryPercent = 50; 
+    memoryPercent = 50;
   };
   programs.dconf.enable = true;
 
@@ -31,13 +34,28 @@
     enable = true;
     wifi.powersave = false;
     wifi.macAddress = "permanent";
-    
-    # THE SEVERANCE: Strip NetworkManager of all DNS authority. 
+
+    # THE SEVERANCE: Strip NetworkManager of all DNS authority.
     # It will no longer pass Spectrum's DHCP/SLAAC servers to systemd-resolved.
-    dns = lib.mkForce "none"; 
+    dns = lib.mkForce "none";
+    # STRUCTURED NETWORKMANAGER CONFIGURATION (NixOS 24.11+)
+    # Replaces raw extraConfig INI strings with typed, composable Nix attribute sets.
+    settings = {
+      device = {
+        # Prevents MAC address re-randomization handshakes during active Wi-Fi sessions
+        "wifi.scan-rand-mac-address" = "no";
+      };
+
+      connection = {
+        # DISABLE BACKGROUND SCANNING: Prevents NetworkManager from executing
+        # off-channel 802.11 probe scans while connected, eliminating 100ms-300ms
+        # latency spikes on MediaTek MT7925 hardware.
+        "wifi.bgscan" = "ignore";
+      };
+    };
   };
-  
-  networking.nameservers = [ "127.0.0.53" ];
+
+  networking.nameservers = ["127.0.0.53"];
   networking.firewall.checkReversePath = "loose";
   # ---------------------------------------------------------------------------
   # THUNDERBOLT 4 / USB4 SYSTEM DAEMON & DMA PROTECTION
@@ -60,8 +78,8 @@
 
   systemd.services.disable-usb-autosuspend = {
     description = "Force all USB bus power nodes to active state (disable autosuspend)";
-    wantedBy = [ "multi-user.target" ];
-    after = [ "systemd-udev-settle.service" ];
+    wantedBy = ["multi-user.target"];
+    after = ["systemd-udev-settle.service"];
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
@@ -71,16 +89,15 @@
 
   services.resolved = {
     enable = true;
-    
+
     # The modern, strictly-typed systemd-resolved configuration
     settings = {
       Resolve = {
-	DNS = "9.9.9.9#dns.quad9.net 1.1.1.1#cloudflare-dns.com";
+        DNS = "9.9.9.9#dns.quad9.net 1.1.1.1#cloudflare-dns.com";
         FallbackDNS = "149.112.112.112#dns.quad9.net 1.0.0.1#cloudflare-dns.com";
         DNSSEC = "true";
         Domains = "~.";
 
-        
         # STRICT mode DoT configuration
         DNSOverTLS = "yes";
         Cache = "yes";
@@ -91,20 +108,20 @@
   # --- KERNEL NETWORK TUNING ---
   # TCP BBR requires the 'tcp_bbr' kernel module to be loaded BEFORE sysctl applies.
   # Without this, systemd-sysctl silently fails and defaults back to CUBIC.
-  boot.kernelModules = [ "tcp_bbr" ];
+  boot.kernelModules = ["tcp_bbr" "sch_cake"];
   boot.kernel.sysctl = {
     # Forces Fair Queueing to prioritize UDP game packets over bulk TCP traffic
-    "net.core.default_qdisc" = "fq_codel";
+    "net.core.default_qdisc" = "cake";
     # Uses Google's BBR algorithm for TCP, reducing generic network latency
     "net.ipv4.tcp_congestion_control" = "bbr";
-    
+
     # Expands UDP buffer sizes to 16MB for high-tick-rate games (Rocket League/CS2)
     # Prevents dropped packets during violent network spikes on shared infrastructure
     "net.core.rmem_max" = 16777216;
     "net.core.wmem_max" = 16777216;
     "vm.compaction_proactiveness" = 20; # Aggressively compact memory in background
-    "vm.watermark_boost_factor" = 1;     # Reduce allocation latency under high VRAM pressure
-    "vm.swappiness" = 10;                 # Prevent kernel from swapping active process memory
+    "vm.watermark_boost_factor" = 1; # Reduce allocation latency under high VRAM pressure
+    "vm.swappiness" = 10; # Prevent kernel from swapping active process memory
     "kernel.sched_mitigation_cost_ns" = 500000;
   };
 
@@ -126,8 +143,8 @@
       "10-clock-quantum" = {
         "context.properties" = {
           "default.clock.rate" = 48000;
-          "default.clock.allowed-rates" = [ 48000 96000 ];
-          "default.clock.quantum" = 64; 
+          "default.clock.allowed-rates" = [48000 96000];
+          "default.clock.quantum" = 64;
           "default.clock.min-quantum" = 64;
           "default.clock.max-quantum" = 1024; # Prevent fallback to high buffers
         };
@@ -138,11 +155,11 @@
     extraConfig.pipewire-pulse = {
       "10-pulse-latency" = {
         "pulse.properties" = {
-          "server.address" = [ "unix:native" ];
+          "server.address" = ["unix:native"];
         };
         "stream.properties" = {
           # Request 1.33ms latency from PulseAudio wrapper clients (like older games)
-          "node.latency" = "64/48000"; 
+          "node.latency" = "64/48000";
         };
       };
     };
@@ -152,29 +169,29 @@
       "11-alsa-gpu-tuning" = {
         "monitor.alsa.rules" = [
           {
-            matches = [ { "node.name" = "~alsa_output.*"; } ];
+            matches = [{"node.name" = "~alsa_output.*";}];
             actions = {
               update-props = {
                 "node.pause-on-idle" = false;
-                
+
                 # Force pure 32-bit little-endian to match GPU DAC handling
                 "audio.format" = "S32LE";
                 "audio.rate" = 48000;
-                
+
                 # Lock hardware interrupt period to match the quantum
                 "api.alsa.period-size" = 64;
-                
+
                 # Zero headroom. No safety buffer.
                 "api.alsa.headroom" = 0;
-                
+
                 # Reduce CPU interrupt storms for tight buffers
-                "api.alsa.disable-batch" = false; 
+                "api.alsa.disable-batch" = false;
               };
             };
           }
         ];
       };
-      
+
       # Preserved your existing Bluetooth settings
       "10-bluetooth-policy" = {
         "wireplumber.settings" = {
@@ -184,8 +201,8 @@
           "bluez5.enable-sbc-xq" = true;
           "bluez5.enable-msbc" = true;
           "bluez5.enable-hw-volume" = true;
-          "bluez5.codecs" = [ "sbc_xq" "sbc" ];
-          "bluez5.roles" = [ "a2dp_sink" "a2dp_source" ];
+          "bluez5.codecs" = ["sbc_xq" "sbc"];
+          "bluez5.roles" = ["a2dp_sink" "a2dp_source"];
         };
       };
     };
@@ -198,46 +215,107 @@
     isNormalUser = true;
     description = "Aden Sky";
     # ADDED: "audio" group. Without this, the PAM limits below are utterly useless to you.
-    extraGroups = [ "networkmanager" "wheel" "video" "input" "audio" ];
-    
+    extraGroups = ["networkmanager" "wheel" "video" "input" "audio"];
+
     # Bind the Fish shell to your user profile natively.
     shell = pkgs.fish;
   };
 
   security.polkit.enable = true;
   security.pam.loginLimits = [
-    { domain = "*"; item = "nofile"; type = "soft"; value = "1048576"; }
-    { domain = "*"; item = "nofile"; type = "hard"; value = "1048576"; }
-    
+    {
+      domain = "*";
+      item = "nofile";
+      type = "soft";
+      value = "1048576";
+    }
+    {
+      domain = "*";
+      item = "nofile";
+      type = "hard";
+      value = "1048576";
+    }
+
     # Audio Group Limits (PipeWire / WirePlumber)
-    { domain = "@audio"; item = "rtprio"; type = "-"; value = "95"; }
-    { domain = "@audio"; item = "memlock"; type = "-"; value = "unlimited"; }
-    { domain = "@audio"; item = "nice"; type = "-"; value = "-19"; }
+    {
+      domain = "@audio";
+      item = "rtprio";
+      type = "-";
+      value = "95";
+    }
+    {
+      domain = "@audio";
+      item = "memlock";
+      type = "-";
+      value = "unlimited";
+    }
+    {
+      domain = "@audio";
+      item = "nice";
+      type = "-";
+      value = "-19";
+    }
 
     # Administrative Group Limits (Hyprland / Real-time Game Engines)
     # Allows administrative processes launched via chrt or gamemode to claim SCHED_FIFO
-    { domain = "@wheel"; item = "rtprio"; type = "-"; value = "99"; }
-    { domain = "@wheel"; item = "memlock"; type = "-"; value = "unlimited"; }
-    { domain = "@wheel"; item = "nice"; type = "-"; value = "-20"; }
+    {
+      domain = "@wheel";
+      item = "rtprio";
+      type = "-";
+      value = "99";
+    }
+    {
+      domain = "@wheel";
+      item = "memlock";
+      type = "-";
+      value = "unlimited";
+    }
+    {
+      domain = "@wheel";
+      item = "nice";
+      type = "-";
+      value = "-20";
+    }
   ];
   # ---------------------------------------------------------------------------
   # LOCALIZATION & BASE UTILITIES
   # ---------------------------------------------------------------------------
   time.timeZone = "America/New_York";
   i18n.defaultLocale = "en_US.UTF-8";
-  services.xserver.xkb = { layout = "us"; variant = ""; };
+  services.xserver.xkb = {
+    layout = "us";
+    variant = "";
+  };
   services.gnome.gnome-keyring.enable = true;
   programs.fish.enable = true;
   programs.thunar = {
     enable = true;
-    plugins = with pkgs; [ thunar-archive-plugin thunar-volman ];
+    plugins = with pkgs; [thunar-archive-plugin thunar-volman];
   };
-  services.gvfs.enable = true;    
-  services.tumbler.enable = true; 
+  services.gvfs.enable = true;
+  services.tumbler.enable = true;
 
-  environment.pathsToLink = [ "/share/xdg-desktop-portal" "/share/applications" ];
+  environment.pathsToLink = ["/share/xdg-desktop-portal" "/share/applications"];
   environment.systemPackages = with pkgs; [
-    vim wget ethtool git iw bluetui wireplumber pulsemixer pciutils lm_sensors htop kitty pavucontrol shared-mime-info
-    cargo rustc gcc pkg-config systemd.dev libusb1
+    vim
+    wget
+    ethtool
+    git
+    iw
+    bluetui
+    wireplumber
+    pulsemixer
+    pciutils
+    lm_sensors
+    htop
+    kitty
+    pavucontrol
+    shared-mime-info
+    cargo
+    rustc
+    gcc
+    pkg-config
+    systemd.dev
+    libusb1
   ];
 }
