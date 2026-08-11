@@ -303,8 +303,9 @@
     enable = true;
     plugins = with pkgs; [thunar-archive-plugin thunar-volman];
   };
-  services.gvfs.enable = true;
+  programs.xfconf.enable = true;
   services.tumbler.enable = true;
+  services.gvfs.enable = true;
 
   environment.pathsToLink = ["/share/xdg-desktop-portal" "/share/applications"];
   environment.systemPackages = with pkgs; [
@@ -328,5 +329,8 @@
     pkg-config
     systemd.dev
     libusb1
+    hyprpolkitagent
+    ffmpegthumbnailer
+    sshfs
   ];
 }
