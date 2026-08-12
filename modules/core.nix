@@ -29,6 +29,7 @@
   programs.dconf.enable = true;
 
   networking.nameservers = [
+    "10.10.20.2"
     "9.9.9.9"
     "1.1.1.1"
   ];
