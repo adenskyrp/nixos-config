@@ -29,7 +29,6 @@
   programs.dconf.enable = true;
 
   networking.nameservers = [
-    "10.10.20.2"
     "9.9.9.9"
     "1.1.1.1"
   ];
@@ -44,7 +43,7 @@
     wifi.macAddress = "permanent";
 
     # Strip NetworkManager of /etc/resolv.conf authority
-    dns = lib.mkForce "none";
+    dns =  "systemd-resolved";
 
     # STRUCTURED NETWORKMANAGER CONFIGURATION
     settings = {
@@ -60,6 +59,7 @@
     };
   };
 
+  networking.firewall.allowedUDPPorts = [ 41641 ];
   networking.firewall.checkReversePath = "loose";
   # ---------------------------------------------------------------------------
   # THUNDERBOLT 4 / USB4 SYSTEM DAEMON & DMA PROTECTION
@@ -69,6 +69,7 @@
   services.hardware.bolt.enable = true;
   # Rule to automatically authorize Thunderbolt 4 devices when physically connected,
   # bypassing manual CLI authorization while maintaining hardware safety.
+  services.tailscale.enable = true;
   services.udev.extraRules = ''
     ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/scheduler}="none"
     ACTION=="add", SUBSYSTEM=="thunderbolt", ATTR{authorized}=="0", ATTR{authorized}="1"
