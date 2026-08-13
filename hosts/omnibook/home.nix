@@ -525,9 +525,9 @@
 
       # CRITICAL FIX: Appended "$@" so file arguments are actually passed to osu!.exe
       if [ -n "$server_input" ]; then
-        exec obs-gamecapture ${pkgs.util-linux}/bin/chrt -f 50 ${pkgs.wineWow64Packages.staging}/bin/wine "/home/crazycat/Games/osu/osu!.exe" -devserver "$server_input" "$@"
+        exec obs-gamecapture ${pkgs.wineWow64Packages.staging}/bin/wine "/home/crazycat/Games/osu/osu!.exe" -devserver "$server_input" "$@"
       else
-        exec obs-gamecapture ${pkgs.util-linux}/bin/chrt -f 50 ${pkgs.wineWow64Packages.staging}/bin/wine "/home/crazycat/Games/osu/osu!.exe" "$@"
+        exec obs-gamecapture ${pkgs.wineWow64Packages.staging}/bin/wine "/home/crazycat/Games/osu/osu!.exe" "$@"
       fi
     '')
   ];
