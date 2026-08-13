@@ -51,7 +51,7 @@ in
     "reboot=pci"
     "amd_pstate=active" 
     "amdgpu.ppfeaturemask=0xffffffff"
-    "processor.max_cstate=4"
+    "processor.max_cstate=1"
     "usbcore.autosuspend=-1"
     "nowatchdog"
     "nmi_watchdog=0"
@@ -60,6 +60,7 @@ in
     "clocksource=tsc"
     "split_lock_detect=off"
     "threadirqs"
+    "idle=nomwait"
   ];
 
   system.stateVersion = "25.11"; 

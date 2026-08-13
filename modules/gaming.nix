@@ -32,7 +32,6 @@
     enable = true;
     remotePlay.openFirewall = true;
     dedicatedServer.openFirewall = true;
-    gamescopeSession.enable = false;
   };
 
   # ---------------------------------------------------------------------------
@@ -42,6 +41,8 @@
     # Forces Wine/Proton to map directly to Wayland surfaces.
     # Eliminates Xwayland translation and prevents Steam Input hooks.
     PROTON_ENABLE_WAYLAND = "1";
+    SDL_VIDEODRIVER = "wayland";
+    NIXOS_OZONE_WL = "1";
   };
 
   environment.systemPackages = with pkgs; [
