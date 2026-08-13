@@ -148,7 +148,7 @@
         "$mainMod SHIFT, 4, movetoworkspace, 4"
         "$mainMod SHIFT, 5, movetoworkspace, 5"
         "$mainMod SHIFT, S, exec, screenshot-region"
-        "$mainMod, SPACE, exec, rofi -show drun -show-icons"
+        "$mainMod, SPACE, exec, fuzzel"
         "$mainMod, D, exec, pkill -SIGUSR1 waybar"
       ];
     };
@@ -206,39 +206,37 @@
       '';
     };
   };
+
   # ---------------------------------------------------------------------------
-  # APPLICATION LAUNCHER (Rofi Wayland Native with Nord Theme)
+  # APPLICATION LAUNCHER (Fuzzel: Wayland-Native, GPU-Accelerated)
   # ---------------------------------------------------------------------------
-  programs.rofi = {
+  programs.fuzzel = {
     enable = true;
-    package = pkgs.rofi;
-    theme = let
-      inherit (config.lib.formats.rasi) mkLiteral;
-    in {
-      "*" = {
-        background-color = mkLiteral "#2E3440F2"; # Nord Dark background (95% opacity)
-        foreground-color = mkLiteral "#ECEFF4";   # Nord Snow Storm primary text
-        text-color       = mkLiteral "#ECEFF4";
-        border-color     = mkLiteral "#4C566A";   # Nord polar night border
-        font             = "FiraCode Nerd Font 13";
+    settings = {
+      main = {
+        font = "FiraCode Nerd Font:size=13";
+        # Points Fuzzel to your exact terminal for executing CLI apps
+        terminal = "${pkgs.kitty}/bin/kitty";
+        prompt = ''"❯ "'';       # Requires strict quoting in Nix for strings with spaces
+        layer = "top";           # Renders over fullscreen games if invoked
+        lines = 10;
+        width = 40;
+        horizontal-pad = 20;
+        vertical-pad = 20;
+        inner-pad = 10;
       };
-
-      "window" = {
-        background-color = mkLiteral "#2E3440F2";
-        border           = mkLiteral "2px";
-        border-radius    = mkLiteral "8px";       # Rounded corners
-        width            = mkLiteral "35%";
+      colors = {
+        # Translated Nord Theme (RRGGBBAA format for Fuzzel)
+        background = "2e3440f2";       # Nord Dark
+        text = "eceff4ff";             # Nord Snow Storm
+        match = "88c0d0ff";            # Nord Frost (Fuzzy match highlight)
+        selection = "4c566aff";        # Selection background
+        selection-text = "eceff4ff";   # Selection text
+        border = "4c566aff";           # Border color
       };
-
-      "element selected" = {
-        background-color = mkLiteral "#88C0D0";   # Nord Frost accent for selection
-        text-color       = mkLiteral "#2E3440";   # Dark text on bright accent
-      };
-
-      "inputbar" = {
-        children         = map mkLiteral [ "prompt" "entry" ];
-        background-color = mkLiteral "#3B4252";
-        padding          = mkLiteral "10px";
+      border = {
+        width = 2;
+        radius = 8;
       };
     };
   };
@@ -495,7 +493,7 @@
       export DISPLAY="" # Unset DISPLAY to ensure X11 fallback is strictly disabled      
       export DXVK_HUD=0
 
-      server_input=$(echo "" | ${pkgs.rofi}/bin/rofi -dmenu -p "osu! DevServer (Leave blank for Bancho):")
+      server_input=$(echo "" | ${pkgs.fuzzel}/bin/fuzzel -d -p "osu! DevServer (Leave blank for Bancho): ")
 
       # CRITICAL FIX: Appended "$@" so file arguments are actually passed to osu!.exe
       if [ -n "$server_input" ]; then
