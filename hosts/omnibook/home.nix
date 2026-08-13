@@ -525,14 +525,6 @@
   # XDG DESKTOP ENTRIES & MIME ROUTING
   # ---------------------------------------------------------------------------
   xdg.desktopEntries = {
-    osu-lazer = {
-      name = "osu!lazer";
-      exec = "osu-lazer-launcher %U";
-      icon = "osu!";
-      comment = "osu! lazer";
-      terminal = false;
-      categories = [ "Game" ];
-    };
     osu-stable = { 
       name = "osu!stable"; 
       # THE FIX: %U tells the desktop environment to pass file paths to the script
