@@ -13,6 +13,7 @@
       # --- UNIFIED STARTUP PROCESSES (EXEC-ONCE) ---
       exec-once = [
         "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"
+        "${pkgs.ironbar}/bin/ironbar" # Start Ironbar on boot
       ];
       # --- HARDWARE ENVIRONMENT VARIABLES ---
       env = [
@@ -149,7 +150,7 @@
         "$mainMod SHIFT, 5, movetoworkspace, 5"
         "$mainMod SHIFT, S, exec, screenshot-region"
         "$mainMod, SPACE, exec, fuzzel"
-        "$mainMod, D, exec, pkill -SIGUSR1 waybar"
+        "$mainMod, D, exec, pkill -SIGUSR1 ironbar"
       ];
     };
   };
@@ -241,65 +242,69 @@
     };
   };
 
-  # ---------------------------------------------------------------------------
-  # STATUS BAR (Waybar Layer-Shell Compositor Bar & CSS Stylesheet)
-  # ---------------------------------------------------------------------------
-  programs.waybar = {
-    enable = true;
-    systemd = {
-      enable = true;
-      targets = [ "hyprland-session.target" ];
-    };
-
-    settings = {
-      mainbar = {
-        layer = "top";
-        position = "top";
-        height = 30;
-        output = [ "DP-1" "*" ];
-        modules-left = [ "hyprland/workspaces" ];
-        modules-center = [ "hyprland/window" ];
-        modules-right = [ "pulseaudio" "cpu" "memory" "temperature" "battery" "clock" ];
-
-        "hyprland/workspaces" = {
-          format = "{name}";
-          disable-scroll = true;
+  # 2. Declaratively construct the JSON configuration
+  # We are omitting ALL polling modules (CPU/RAM/Temp). 
+  # This bar is 100% event-driven. It will never interrupt the BORE scheduler.
+  xdg.configFile."ironbar/config.json".text = builtins.toJSON {
+    position = "top";
+    height = 30;
+    
+    start = [
+      {
+        type = "workspaces";
+        # Ironbar natively supports Hyprland workspaces
+        name_map = {
+          "1" = "1"; "2" = "2"; "3" = "3"; "4" = "4"; "5" = "5";
         };
-        "pulseaudio" = {
-          format = "{volume}%";
-          on-click = "pavucontrol";
-        };
-        "clock" = {
-          format = "{:%H:%M}";
-          tooltip-format = "{:%Y-%m-%d}";
-        };
-      };
-    };
+      }
+    ];
+    
+    center = [
+      {
+        type = "clock";
+        format = "%H:%M";
+      }
+    ];
+    
+    end = [
+      {
+        type = "volume";
+        format = "{icon} {percentage}%";
+        max_volume = 100;
+      }
+      {
+        type = "tray";
+      }
+    ];
+  };
 
-    style = ''
-      * {
-        border: none;
-        border-radius: 0;
-        font-family: "FiraCode Nerd Font Propo", "FiraCode Nerd Font", sans-serif;
-        font-size: 13px;
-        min-height: 0;
-      }
-      window#waybar {
-        background-color: rgba(30, 30, 46, 0.9);
-        color: #cdd6f4;
-      }
-      #workspaces button {
-        padding: 0 5px;
-        color: #585b70;
-      }
-      #workspaces button.active {
-        color: #cba6f7;
-      }
-      #clock, #battery, #cpu, #memory, #temperature, #pulseaudio {
-        padding: 0 10px;
-      }
-    '';
-  };  
+  # 3. Inject the CSS Stylesheet (Translating your Nord aesthetics)
+  xdg.configFile."ironbar/style.css".text = ''
+    * {
+      font-family: "FiraCode Nerd Font Propo", "FiraCode Nerd Font", sans-serif;
+      font-size: 13px;
+      border: none;
+      border-radius: 0;
+    }
+    
+    window {
+      background-color: rgba(46, 52, 64, 0.9); /* Nord Dark */
+      color: #ECEFF4; /* Nord Snow Storm */
+    }
+    
+    .workspace {
+      padding: 0 5px;
+      color: #4C566A;
+    }
+    
+    .workspace.focused {
+      color: #88C0D0; /* Nord Frost */
+    }
+    
+    .clock, .volume {
+      padding: 0 10px;
+    }
+  '';
 
   # ---------------------------------------------------------------------------
   # NEOVIM: EXTREME LOW-LATENCY EDITOR & NIX LSP
@@ -473,7 +478,7 @@
     nerd-fonts.fira-code pavucontrol deepfilternet lsp-plugins polkit_gnome
     docker-client playerctl overskride vesktop protonup-qt wineWow64Packages.staging
     winetricks protontricks grim slurp wl-clipboard satty adwaita-icon-theme hicolor-icon-theme
-    obs-studio-plugins.obs-vkcapture libva-utils osu-lazer-bin
+    obs-studio-plugins.obs-vkcapture libva-utils osu-lazer-bin ironbar
 
     (writeShellScriptBin "screenshot-region" ''
       FILENAME="/home/crazycat/Pictures/Screenshots/$(date +'%Y-%m-%d_%H-%M-%S').png"
