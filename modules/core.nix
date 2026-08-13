@@ -17,7 +17,33 @@
   # ---------------------------------------------------------------------------
   nix.settings = {
     experimental-features = ["nix-command" "flakes"];
-    auto-optimise-store = true;
+  };
+
+  nix.gc = {
+    automatic = true;
+    # Run weekly. We don't want to run this daily; maintaining a 
+    # short history of recent generations is critical for your rollback safety net.
+    dates = "weekly";
+    
+    # We explicitly tell the collector to only wipe generations older than 7 days.
+    # If a CachyOS kernel patch breaks your Wayland session on a Tuesday, 
+    # you still have last week's working generation in the bootloader.
+    options = "--delete-older-than 7d";
+  };
+
+  nix.optimise = {
+    automatic = true;
+    # We schedule this for an obscure time (e.g., 4:00 AM) or let systemd 
+    # catch up when the laptop wakes. We do NOT use 'nix.settings.auto-optimise-store = true'
+    # on a gaming machine, because that triggers deduplication during every 
+    # rebuild, artificially slowing down your development loop.
+    dates = [ "04:00" ];
+  };
+
+  services.fstrim = {
+    enable = true;
+    # Runs weekly by default. This prevents write amplification and 
+    # keeps your disk latency at absolute minimums.
   };
 
   zramSwap = {
@@ -311,7 +337,10 @@
   programs.xfconf.enable = true;
   services.tumbler.enable = true;
   services.gvfs.enable = true;
-
+  services.journald.extraConfig = ''
+    SystemMaxUse=250M
+    MaxFileSec=1month
+  '';
   environment.pathsToLink = ["/share/xdg-desktop-portal" "/share/applications"];
   environment.systemPackages = with pkgs; [
     vim
@@ -337,5 +366,7 @@
     hyprpolkitagent
     ffmpegthumbnailer
     sshfs
+    fastfetch
+    (pkgs.callPackage ./pear.nix {})
   ];
 }

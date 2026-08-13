@@ -2,33 +2,6 @@
 { config, pkgs, lib, ... }:
 
 let
-  # ---------------------------------------------------------
-  # FHS SANDBOX FOR PEAR RUNTIME
-  # ---------------------------------------------------------
-  # We wrap Pear in an FHS environment so its dynamically downloaded 
-  # P2P payloads can find the standard Linux libraries they expect.
-  pear-fhs = pkgs.buildFHSUserEnv {
-    name = "pear-runtime";
-
-    # We declare exactly which libraries Pear is allowed to see.
-    # These are standard dependencies for Electron/Node-based P2P apps.
-    targetPkgs = pkgs: with pkgs; [
-      udev           # Required for hardware acceleration/input
-      alsa-lib       # Audio pipeline
-      gtk3           # UI toolkit
-      nss            # Security services
-      dbus           # Inter-process communication
-      glibc          # Standard C library
-      gcc-unwrapped  # Required if Pear compiles node-gyp payloads
-      bash
-      curl
-    ];
-
-    # This defines what happens when you type 'pear-runtime' in your terminal.
-    # We drop into a bash shell inside the FHS environment where you can 
-    # safely run their binary without tainting the Nix store.
-    runScript = "bash";
-  };
   # Define higher APU power targets for a 65W AC power contract
   # Values are defined in milliwatts (mW)
   sustainedPowerLimit = 54000; # 54W: Maximum effective sustained ceiling for a 14" chassis
