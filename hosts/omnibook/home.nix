@@ -485,10 +485,6 @@
       fi
     '')
     
-    (writeShellScriptBin "osu-lazer-launcher" ''
-        exec obs-gamecapture ${pkgs.util-linux}/bin/chrt -f 50 ${pkgs.osu-lazer-bin}/bin/osu! "$@"
-    '')
-
     (writeShellScriptBin "osu-launcher" ''
       export WINEPREFIX="/home/crazycat/.wine-osu"
       export STAGING_AUDIO_DURATION="10000"
