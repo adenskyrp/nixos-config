@@ -13,7 +13,6 @@
       # --- UNIFIED STARTUP PROCESSES (EXEC-ONCE) ---
       exec-once = [
         "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"
-        "${pkgs.ironbar}/bin/ironbar" # Start Ironbar on boot
       ];
       # --- HARDWARE ENVIRONMENT VARIABLES ---
       env = [
@@ -305,6 +304,30 @@
       padding: 0 10px;
     }
   '';
+
+  # ---------------------------------------------------------------------------
+  # STATUS BAR DAEMON (Systemd Integration)
+  # ---------------------------------------------------------------------------
+  systemd.user.services.ironbar = {
+    Unit = {
+      Description = "Ironbar custom Wayland bar";
+      # The core of the fix: We strictly instruct systemd to wait until 
+      # Hyprland confirms the graphical session target is active and DBus is populated.
+      After = [ "graphical-session.target" ];
+      PartOf = [ "graphical-session.target" ];
+    };
+    Service = {
+      # Execute the binary directly from the immutable Nix store
+      ExecStart = "${pkgs.ironbar}/bin/ironbar";
+      # If the bar crashes (or if you manually kill it), revive it within 1 second.
+      Restart = "on-failure";
+      RestartSec = "1sec";
+    };
+    Install = {
+      # Binds the daemon to Hyprland's specific session target
+      WantedBy = [ "hyprland-session.target" ];
+    };
+  };
 
   # ---------------------------------------------------------------------------
   # NEOVIM: EXTREME LOW-LATENCY EDITOR & NIX LSP
