@@ -504,6 +504,7 @@
     obs-studio-plugins.obs-vkcapture libva-utils osu-lazer-bin ironbar
     (discord.override {
       withVencord = true;
+      withOpenASAR = true;
     })
 
     (writeShellScriptBin "screenshot-region" ''
