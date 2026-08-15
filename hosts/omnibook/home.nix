@@ -499,7 +499,7 @@
 
   home.packages = with pkgs; [
     nerd-fonts.fira-code pavucontrol deepfilternet lsp-plugins polkit_gnome
-    docker-client playerctl overskride vesktop protonup-qt wineWow64Packages.staging
+    docker-client playerctl overskride discord protonup-qt wineWow64Packages.staging
     winetricks protontricks grim slurp wl-clipboard satty adwaita-icon-theme hicolor-icon-theme
     obs-studio-plugins.obs-vkcapture libva-utils osu-lazer-bin ironbar
 
