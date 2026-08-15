@@ -604,7 +604,6 @@
     SDL_JOYSTICK_HIDAPI = "0";
     SDL_GAMECONTROLLER_ALLOW_STEAM_VIRTUAL_PAD = "0";
     STEAM_DISABLE_STEAM_INPUT = "1";
-    DXVK_FRAME_RATE = "0";
   };
   home.stateVersion = "24.05";
 }
