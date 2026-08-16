@@ -119,50 +119,15 @@
       -- ======================================================================
       -- 5. KEYBINDINGS & MEDIA INTEGRATION
       -- ======================================================================
-      local mainMod = "SUPER"
-      local terminal = "kitty"
-
-      hl.bind("SUPER", "Q", "exec", "kitty")
-      hl.bind("SUPER", "C", "killactive")
-      hl.bind("SUPER", "M", "exit")
-      hl.bind("SUPER", "V", "togglefloating")
-      hl.bind("SUPER", "F", "fullscreen")
-      hl.bind("SUPER", "SPACE", "exec", "fuzzel")
-      hl.bind("SUPER", "D", "exec", "pkill -SIGUSR1 ironbar")
-      hl.bind("SUPERSHIFT", "S", "exec", "screenshot-region")
-
-      hl.bind("SUPER", "1", "workspace", "1")
-      hl.bind("SUPER", "2", "workspace", "2")
-      hl.bind("SUPER", "3", "workspace", "3")
-      hl.bind("SUPER", "4", "workspace", "4")
-      hl.bind("SUPER", "5", "workspace", "5")
-
-      hl.bind("SUPERSHIFT", "1", "movetoworkspace", "1")
-      hl.bind("SUPERSHIFT", "2", "movetoworkspace", "2")
-      hl.bind("SUPERSHIFT", "3", "movetoworkspace", "3")
-      hl.bind("SUPERSHIFT", "4", "movetoworkspace", "4")
-      hl.bind("SUPERSHIFT", "5", "movetoworkspace", "5")
-
-      hl.bind("SUPER", "mouse_down", "workspace", "e+1")
-      hl.bind("SUPER", "mouse_up", "workspace", "e-1")
-
-      hl.bindm("SUPER", "mouse:272", "movewindow")
-      hl.bindm("SUPER", "mouse:273", "resizewindow")
-
-      hl.bindm(mainMod, "mouse:272", "movewindow")
-      hl.bindm(mainMod, "mouse:273", "resizewindow")
-
-      hl.bindel("", "XF86AudioRaiseVolume", "exec", "${pkgs.swayosd}/bin/swayosd-client --output-volume +5")
-      hl.bindel("", "XF86AudioLowerVolume", "exec", "${pkgs.swayosd}/bin/swayosd-client --output-volume -5")
-      hl.bindel("", "XF86MonBrightnessUp", "exec", "${pkgs.swayosd}/bin/swayosd-client --brightness raise")
-      hl.bindel("", "XF86MonBrightnessDown", "exec", "${pkgs.swayosd}/bin/swayosd-client --brightness lower")
-
-      hl.bindl("", "XF86AudioMute", "exec", "${pkgs.swayosd}/bin/swayosd-client --output-volume mute-toggle")
-      hl.bindl("", "XF86AudioMicMute", "exec", "${pkgs.swayosd}/bin/swayosd-client --input-volume mute-toggle")
-      hl.bindl("", "XF86AudioPlay", "exec", "${pkgs.playerctl}/bin/playerctl play-pause")
-      hl.bindl("", "XF86AudioPause", "exec", "${pkgs.playerctl}/bin/playerctl play-pause")
-      hl.bindl("", "XF86AudioNext", "exec", "${pkgs.playerctl}/bin/playerctl next")
-      hl.bindl("", "XF86AudioPrev", "exec", "${pkgs.playerctl}/bin/playerctl previous")
+      hl.config({
+        bind = {
+          -- Core Window Management
+          "SUPER, Q, exec, kitty",
+          "SUPER, C, killactive",
+          "SUPER, M, exit",
+          "SUPER, SPACE, exec, fuzzel"
+        }
+      })
     '';
   };
   # ---------------------------------------------------------------------------
