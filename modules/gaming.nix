@@ -32,6 +32,9 @@
     enable = true;
     remotePlay.openFirewall = true;
     dedicatedServer.openFirewall = true;
+    extraCompatPackages = with pkgs; [
+      proton-ge-bin
+    ];
   };
 
   # ---------------------------------------------------------------------------
@@ -43,11 +46,29 @@
     PROTON_ENABLE_WAYLAND = "1";
     SDL_VIDEODRIVER = "wayland";
     NIXOS_OZONE_WL = "1";
+    WINE_FSYNC = "1";
+    PROTON_NO_ESYNC = "1";
+    PROTON_ENABLE_HIDRAW = "1";
+    SDL_JOYSTICK_HIDAPI = "0";
+    SDL_GAMECONTROLLER_IGNORE_DEVICES = "0x28de/0x11ff";
+    DXVK_HUD = "0";
+    DXVK_CONFIG_FILE = "/etc/dxvk.conf";
   };
+
+  environment.etc."dxvk.conf".text = ''
+    # --- PRESENTATION LATENCY ---
+    dxvk.syncInterval = 0
+    dxvk.tearFree = False
+
+    # --- CPU WORKER SCHEDULING ---
+    dxvk.numCompilerThreads = 8
+
+    # --- RDNA 3.5 GPU DISPATCH ---
+    dxvk.useRawSsbo = True
+  '';
 
   environment.systemPackages = with pkgs; [
     mangohud      # Vulkan overlay for empirical frame-time analysis
-    protonup-qt   # Proton-GE manager
     evhz
   ];
 }

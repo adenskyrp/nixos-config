@@ -604,10 +604,6 @@
   # ---------------------------------------------------------------------------
   home.sessionVariables = {
     MOZ_USE_XDG = "1";
-    MESA_VK_WSI_PRESENT_MODE = "immediate";
-    SDL_JOYSTICK_HIDAPI = "0";
-    SDL_GAMECONTROLLER_ALLOW_STEAM_VIRTUAL_PAD = "0";
-    STEAM_DISABLE_STEAM_INPUT = "1";
   };
   home.stateVersion = "24.05";
 }

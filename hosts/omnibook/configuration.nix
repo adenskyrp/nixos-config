@@ -7,11 +7,14 @@ let
   sustainedPowerLimit = 54000; # 54W: Maximum effective sustained ceiling for a 14" chassis
   slowPowerLimit      = 60000; # 60W: Sustained burst (tPPT) for sustained heavy workloads
   fastPowerLimit      = 65000; # 65W: Peak short burst (fPPT) matching max charger input
-  temperatureLimit    = 95;    # Max allowed Tctl/Tjunc temperature in °C before throttling
+  temperatureLimit    = 90;    # Max allowed Tctl/Tjunc temperature in °C before throttling
 in
 {
   environment.systemPackages = [ pkgs.ryzenadj ];
-
+  powerManagement = {
+    enable = true;
+    cpuFreqGovernor = "performance";
+  };
   # Systemd service to enforce register writes to the AMD SMU (System Management Unit)
   systemd.services.amd-power-boost = {
     description = "Apply 65W performance profile to AMD Ryzen AI 9 365";
@@ -28,6 +31,19 @@ in
           --slow-limit=${toString slowPowerLimit} \
           --fast-limit=${toString fastPowerLimit} \
           --tctl-temp=${toString temperatureLimit}
+	# Set AMD Energy Performance Preference (EPP) to raw performance across all cores
+        for cpu in /sys/devices/system/cpu/cpu*/cpufreq/energy_performance_preference; do
+          if [ -f "$cpu" ]; then
+            echo "performance" > "$cpu"
+          fi
+        done
+
+        # Force Radeon GPU DPM to maximum sustained clocks
+        for card in /sys/class/drm/card*/device/power_dpm_force_performance_level; do
+          if [ -f "$card" ]; then
+            echo "high" > "$card"
+          fi
+        done
       '';
     };
   };
@@ -59,6 +75,7 @@ in
     "softlockup_panic=0"
     "tsc=reliable"
     "clocksource=tsc"
+    "split_lock_mitigate=0"
     "split_lock_detect=off"
     "threadirqs"
     "idle=nomwait"

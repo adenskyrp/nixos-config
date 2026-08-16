@@ -321,6 +321,18 @@
       type = "-";
       value = "-20";
     }
+    {
+      domain = "@users";
+      item = "nofile";
+      type = "-";
+      value = "1048576";
+    }
+    {
+      domain = "@users";
+      item = "memlock";
+      type = "-";
+      value = "unlimited";
+    }
   ];
   # ---------------------------------------------------------------------------
   # LOCALIZATION & BASE UTILITIES
