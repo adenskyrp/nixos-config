@@ -92,24 +92,28 @@
       hl.window_rule({
         match = { class = "rocketleague.exe" },
         immediate = true,
+        fullscreen_state = "2 2",
         tile = true,
         workspace = 5,
       })
       hl.window_rule({
         match = { class = "steam_app_252950" },
         immediate = true,
+        fullscreen_state = "2 2",
         tile = true,
         workspace = 5,
       })
       hl.window_rule({
         match = { class = "osu!.exe" },
         immediate = true,
+        fullscreen_state = "2 2",
         tile = true,
         workspace = 5,
       })
       hl.window_rule({
-        match = { class = "aimlab_tb.exe" },
+        match = { class = "osu!" },
         immediate = true,
+        fullscreen_state = "2 2",
         tile = true,
         workspace = 5,
       })
