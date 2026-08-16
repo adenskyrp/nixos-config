@@ -1,57 +1,27 @@
-# ~/nixos-config/hosts/omnibook/configuration.nix
-{ config, pkgs, lib, ... }:
+{ config, pkgs, lib, inputs, ... }:
 
 let
-  # Define higher APU power targets for a 65W AC power contract
-  # Values are defined in milliwatts (mW)
-  sustainedPowerLimit = 54000; # 54W: Maximum effective sustained ceiling for a 14" chassis
-  slowPowerLimit      = 60000; # 60W: Sustained burst (tPPT) for sustained heavy workloads
-  fastPowerLimit      = 65000; # 65W: Peak short burst (fPPT) matching max charger input
-  temperatureLimit    = 90;    # Max allowed Tctl/Tjunc temperature in °C before throttling
+  # ---------------------------------------------------------------------------
+  # STRIX POINT APU SMU POWER TARGETS (65W AC CONTRACT)
+  # ---------------------------------------------------------------------------
+  # Defined in milliwatts (mW) for direct register injection via ryzenadj.
+  sustainedPowerLimit = 54000; # 54W: Maximum sustained thermal envelope for 14" chassis
+  slowPowerLimit      = 60000; # 60W: Short sustained burst (tPPT) for intensive compute
+  fastPowerLimit      = 65000; # 65W: Peak immediate burst (fPPT) matching 65W AC charger
+  temperatureLimit    = 90;    # 90°C: Maximum allowed junction temperature (Tctl)
 in
 {
-  environment.systemPackages = [ pkgs.ryzenadj ];
-  powerManagement = {
-    enable = true;
-    cpuFreqGovernor = "performance";
-  };
-  # Systemd service to enforce register writes to the AMD SMU (System Management Unit)
-  systemd.services.amd-power-boost = {
-    description = "Apply 65W performance profile to AMD Ryzen AI 9 365";
-    wantedBy = [ "multi-user.target" ];
-    after = [ "systemd-modules-load.service" ];
-
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-      # Write directly to hardware SMU mailboxes via ryzenadj
-      ExecStart = ''
-        ${pkgs.ryzenadj}/bin/ryzenadj \
-          --stapm-limit=${toString sustainedPowerLimit} \
-          --slow-limit=${toString slowPowerLimit} \
-          --fast-limit=${toString fastPowerLimit} \
-          --tctl-temp=${toString temperatureLimit}
-	# Set AMD Energy Performance Preference (EPP) to raw performance across all cores
-        for cpu in /sys/devices/system/cpu/cpu*/cpufreq/energy_performance_preference; do
-          if [ -f "$cpu" ]; then
-            echo "performance" > "$cpu"
-          fi
-        done
-
-        # Force Radeon GPU DPM to maximum sustained clocks
-        for card in /sys/class/drm/card*/device/power_dpm_force_performance_level; do
-          if [ -f "$card" ]; then
-            echo "high" > "$card"
-          fi
-        done
-      '';
-    };
-  };
+  # ---------------------------------------------------------------------------
+  # MODULAR ARCHITECTURE IMPORTS
+  # ---------------------------------------------------------------------------
   imports = [ 
     ./hardware-configuration.nix 
     ../../modules/core.nix
     ../../modules/gaming.nix
   ];
+
+  # Synchronize hostname with flake output schema
+  networking.hostName = "omnibook";
 
   # ---------------------------------------------------------------------------
   # BOOTLOADER & CACHYOS BORE KERNEL
@@ -59,50 +29,95 @@ in
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
   
+  # CachyOS kernel with BORE (Burst-Oriented Response Enhancer) scheduler
   boot.kernelPackages = pkgs.linuxPackages_cachyos;
 
+  # Low-latency kernel parameters mapped to Zen 5 & RDNA 3.5 APU silicon
   boot.kernelParams = [
+    # APU Dynamic VRAM: Expand Translation Table Maps buffer for unified LPDDR5X
     "ttm.pages_limit=4194304"
     "amdttm.pages_limit=4194304"
-    "iomem=relaxed"
-    "reboot=pci"
+
+    # CPU Latency & C-State Pinning: Prevent deep CPU sleep wake-up penalties
+    "processor.max_cstate=1"
+    "idle=nomwait"
+
+    # Driver Performance: Active autonomous CPPC power scaling
     "amd_pstate=active" 
     "amdgpu.ppfeaturemask=0xffffffff"
-    "processor.max_cstate=1"
-    "usbcore.autosuspend=-1"
-    "nowatchdog"
-    "nmi_watchdog=0"
-    "softlockup_panic=0"
-    "tsc=reliable"
-    "clocksource=tsc"
+
+    # Interrupt & Clock Optimization: Eliminate scheduler jitter and polling latency
     "split_lock_mitigate=0"
     "split_lock_detect=off"
     "threadirqs"
-    "idle=nomwait"
+    "nowatchdog"
+    "nmi_watchdog=0"
+    "tsc=reliable"
+    "clocksource=tsc"
+    "usbcore.autosuspend=-1"
+    "iomem=relaxed"
+    "reboot=pci"
   ];
 
-  system.stateVersion = "25.11"; 
-
-  hardware.xone.enable = true;	
+  # ---------------------------------------------------------------------------
+  # CPU & GPU POWER STATE GOVERNOR
+  # ---------------------------------------------------------------------------
+  powerManagement = {
+    enable = true;
+    cpuFreqGovernor = "performance";
+  };
 
   # ---------------------------------------------------------------------------
-  # AMDGPU HIGH-PERFORMANCE POWER STATE LOCK
+  # DECLARATIVE SYSFS REGISTER INJECTION (tmpfiles.rules)
   # ---------------------------------------------------------------------------
-  systemd.services.amdgpu-performance-lock = {
-    description = "Force AMDGPU into constant high performance clock state";
+  # Writes register values to sysfs during early boot before services launch.
+  # Replaces multiple conflicting bash services.
+  systemd.tmpfiles.rules = [
+    # Set AMD Energy-Performance Preference (EPP) to raw performance across all 10 cores
+    "w /sys/devices/system/cpu/cpu*/cpufreq/energy_performance_preference - - - - performance"
+    
+    # Force GPU DPM to maximum clock state across all detected DRM card nodes
+    "w /sys/class/drm/card*/device/power_dpm_force_performance_level - - - - high"
+  ];
+
+  # ---------------------------------------------------------------------------
+  # SMU MAILBOX REGISTER OVERRIDES (ryzenadj)
+  # ---------------------------------------------------------------------------
+  # Writes sustained wattage envelopes directly to the AMD System Management Unit.
+  systemd.services.amd-power-boost = {
+    description = "Apply 65W SMU power envelope to AMD Ryzen AI 9 365";
     wantedBy = [ "multi-user.target" ];
     after = [ "systemd-modules-load.service" ];
+
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
-      # Forces power_dpm_force_performance_level to 'high', preventing GPU clock down-stepping
-      ExecStart = "${pkgs.bash}/bin/bash -c 'echo high > /sys/class/drm/card0/device/power_dpm_force_performance_level || true'";
+      ExecStart = pkgs.writeShellScript "set-smu-limits" ''
+        ${pkgs.ryzenadj}/bin/ryzenadj \
+          --stapm-limit=${toString sustainedPowerLimit} \
+          --slow-limit=${toString slowPowerLimit} \
+          --fast-limit=${toString fastPowerLimit} \
+          --tctl-temp=${toString temperatureLimit}
+      '';
     };
   };
 
   # ---------------------------------------------------------------------------
-  # LAPTOP-SPECIFIC HARDWARE GUARDS (fprintd + Lid Switch)
+  # GRAPHICS & BLEEDING-EDGE MESA STACK
   # ---------------------------------------------------------------------------
+  chaotic.mesa-git.enable = true;
+  hardware.graphics = {
+    enable = true;
+    enable32Bit = true;
+  };
+
+  # ---------------------------------------------------------------------------
+  # PERIPHERALS & LAPTOP HARDWARE GUARDS
+  # ---------------------------------------------------------------------------
+  services.udev.packages = [ pkgs.swayosd ];
+  environment.systemPackages = [ pkgs.ryzenadj ];
+
+  # Fingerprint reader daemon with lid-safety check
   services.fprintd.enable = true;
   systemd.services.fprintd = {
     serviceConfig = {
@@ -120,44 +135,25 @@ in
   };
 
   # ---------------------------------------------------------------------------
-  # DISPLAY MANAGER & BLUETOOTH
+  # GREETD / TUIGREET COMPOSITOR LAUNCHER
   # ---------------------------------------------------------------------------
   services.greetd = {
     enable = true;
     settings = {
       default_session = {
-        command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --cmd 'start-hyprland'";
+        command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --cmd '${pkgs.hyprland}/bin/Hyprland --config ~/.config/hypr/hyprland.lua'";
         user = "crazycat";
       };
     };
   };
-
   hardware.bluetooth = {
     enable = true;
     powerOnBoot = true;
-    settings.General = { Experimental = true; FastConnectable = true; };
+    settings.General = { 
+      Experimental = true; 
+      FastConnectable = true; 
+    };
   };
 
-  # ---------------------------------------------------------------------------
-  # GRAPHICS PIPELINE & HARDWARE DAEMONS
-  # ---------------------------------------------------------------------------
-  chaotic.mesa-git.enable = true;
-  hardware.graphics = {
-    enable = true;
-    enable32Bit = true;
-  };
-
-  # Required for laptop media keys to communicate with SwayOSD
-  services.udev.packages = [ pkgs.swayosd ];
-
-  networking.hostName = "nixos";
-
-  # ---------------------------------------------------------------------------
-  # DECLARATIVE KERNEL VIRTUAL FILE SYSTEM (sysfs) INJECTION
-  # ---------------------------------------------------------------------------
-  # Replaces your imperative bash script. This natively instructs systemd 
-  # to write "performance" to every CPU core's EPP file during early boot.
-  systemd.tmpfiles.rules = [
-    "w /sys/devices/system/cpu/cpu*/cpufreq/energy_performance_preference - - - - performance"
-  ];
+  system.stateVersion = "25.11";
 }

@@ -1,4 +1,3 @@
-# ~/nixos-config/hosts/omnibook/home.nix
 { config, pkgs, ... }:
 
 {
@@ -8,217 +7,219 @@
   wayland.windowManager.hyprland = {
     enable = true;
     xwayland.enable = true;
-    configType = "hyprlang";    
-    settings = {
-      # --- UNIFIED STARTUP PROCESSES (EXEC-ONCE) ---
-      exec-once = [
-        "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"
-      ];
-      # --- HARDWARE ENVIRONMENT VARIABLES ---
-      env = [
-        # Forces AMD GPU to use Legacy KMS for Hyprland.
-        # This is strictly required on Radeon hardware to allow asynchronous 
-        # page flips (screen tearing) for zero-latency fullscreen rendering.
-        "WLR_DRM_NO_ATOMIC,1"
-      ];    
-      # Binds to the BenQ Zowie at maximum refresh rate (600Hz)
-      monitor = [
-        ",highrr,auto,1"
-      ];
-      # --- COMPOSITOR DEBUG OVERRIDES ---
-      debug = {
-        vfr = false;
-      };
-      misc = {
-        disable_hyprland_logo = true;     # Disables the default anime mascot / logo background pass
-        disable_splash_rendering = true;  # Suppresses startup splash text rendering
-        force_default_wallpaper = 0;      # Disables forcing default fallback wallpapers
-        background_color = "0x000000";    # Sets compositor clear-color to solid pitch black
-      };
-      # --- SCHEDULING & SCANOUT OPTIMIZATIONS (CRITICAL FOR 8KHz) ---
-      render = {
-        # Manages direct presentation. Leaving this to its optimized default 
-        # or explicitly setting it ensures zero-copy rendering paths for fullscreen games.
-        direct_scanout = true; 
-      };
-      # --- RAW INPUT SUBSYSTEM ---
-      input = {
-        # 'flat' ensures a 1:1 mapping of your ATK sensor to the screen 
-        # with zero software acceleration curves.
-        sensitivity = 0.0;
-        accel_profile = "flat";
-        
-        touchpad = {
-          disable_while_typing = true;
-          natural_scroll = false;
-        };
-      };
-
-      # --- 8000Hz MOUSE HARDWARE ISOLATION ---
-      device = [
-        {
-          name = "compx-wireless-mouse-8k-dongle-l-mouse";
-          sensitivity = 0.0;
-          accel_profile = "flat";
-        }
-      ];
-
-      # --- RENDERER OPTIMIZATIONS ---
-      general = {
-        # Allows async page flips (tearing) for uncapped frame rates in games
-        allow_tearing = true;
-        border_size = 2;
-        gaps_in = 4;
-        gaps_out = 8;
-      };
-
-      decoration = {
-        rounding = 0;
-        shadow = { enabled = false; };
-        blur = { enabled = false; };
-      };
-      # --- UNIFIED HYPRLANG WINDOW RULES ---
-      # Uses 'match:class' exclusively and 'fullscreen 2' for direct scanout presentation.
-      windowrule = [
-	# Rocket League
-        "tile 1, match:class ^(steam_app_252950|rocketleague\\.exe)$"
-        "immediate 1, match:class ^(steam_app_252950|rocketleague\\.exe)$"
-        "fullscreen_state 2 2, match:class ^(steam_app_252950|rocketleague\\.exe)$"
-        "workspace 5, match:class ^(steam_app_252950|rocketleague\\.exe)$"
-
-        # osu!
-        "tile 1, match:class ^(osu\\!|osu\\!\\.exe)$"
-        "immediate 1, match:class ^(osu\\!|osu\\!\\.exe)$"
-	"fullscreen_state 2 2, match:class ^(osu\\!|osu\\!\\.exe)$"
-        "workspace 5, match:class ^(osu\\!|osu\\!\\.exe)$"
-
-        # Aim Lab
-        "tile 1, match:class ^(aimlab_tb\\.exe|steam_app_714010)$"
-	"fullscreen_state 2 2, match:class ^(aimlab_tb\\.exe|steam_app_714010)$"
-        "immediate 1, match:class ^(aimlab_tb\\.exe|steam_app_714010)$"
-        "workspace 5, match:class ^(aimlab_tb\\.exe|steam_app_714010)$"
-
-        # Counter-Strike 2
-	"tile 1, match:class ^(cs2)$"
-	"fullscreen_state 2 2, match:class ^(cs2)$"
-        "immediate 1, match:class ^(cs2)$"
-        "workspace 5, match:class ^(cs2)$"
-      ];
-      # --- HARDWARE MEDIA KEYS & BINDINGS ---
-      bindel = [
-        ", XF86AudioRaiseVolume, exec, ${pkgs.swayosd}/bin/swayosd-client --output-volume +5"
-        ", XF86AudioLowerVolume, exec, ${pkgs.swayosd}/bin/swayosd-client --output-volume -5"
-        ", XF86MonBrightnessUp, exec, ${pkgs.swayosd}/bin/swayosd-client --brightness raise"
-        ", XF86MonBrightnessDown, exec, ${pkgs.swayosd}/bin/swayosd-client --brightness lower"
-      ];
-      bindl = [
-        ", XF86AudioMute, exec, ${pkgs.swayosd}/bin/swayosd-client --output-volume mute-toggle"
-        ", XF86AudioMicMute, exec, ${pkgs.swayosd}/bin/swayosd-client --input-volume mute-toggle"
-        ", XF86AudioPlay, exec, ${pkgs.playerctl}/bin/playerctl play-pause"
-        ", XF86AudioPause, exec, ${pkgs.playerctl}/bin/playerctl play-pause"
-        ", XF86AudioNext, exec, ${pkgs.playerctl}/bin/playerctl next"
-        ", XF86AudioPrev, exec, ${pkgs.playerctl}/bin/playerctl previous"
-      ];
-      bindm = [
-        "$mainMod, mouse:272, movewindow"
-        "$mainMod, mouse:273, resizewindow"
-      ];
-
-      exec = [ "systemctl --user restart kanshi" ];
-
-      "$mainMod" = "SUPER";
-      "$terminal" = "kitty";
-
-      bind = [
-        "$mainMod, Q, exec, $terminal"
-        "$mainMod, C, killactive,"
-        "$mainMod, M, exit,"
-        "$mainMod, V, togglefloating,"
-        "$mainMod, F, fullscreen,"
-        "$mainMod, 1, workspace, 1"
-        "$mainMod, 2, workspace, 2"
-        "$mainMod, 3, workspace, 3"
-        "$mainMod, 4, workspace, 4"
-        "$mainMod, 5, workspace, 5"
-        "$mainMod, mouse_down, workspace, e+1"
-        "$mainMod, mouse_up, workspace, e-1"
-        "$mainMod SHIFT, 1, movetoworkspace, 1"
-        "$mainMod SHIFT, 2, movetoworkspace, 2"
-        "$mainMod SHIFT, 3, movetoworkspace, 3"
-        "$mainMod SHIFT, 4, movetoworkspace, 4"
-        "$mainMod SHIFT, 5, movetoworkspace, 5"
-        "$mainMod SHIFT, S, exec, screenshot-region"
-        "$mainMod, SPACE, exec, fuzzel"
-        "$mainMod, D, exec, pkill -SIGUSR1 ironbar"
-      ];
-    };
   };
 
+# ---------------------------------------------------------------------------
+  # DECLARATIVE HYPRLAND LUA CONFIGURATION (~/.config/hypr/hyprland.lua)
+  # ---------------------------------------------------------------------------
+  # This block compiles your complete compositor configuration into an immutable
+  # Nix store derivation symlinked directly to your XDG user profile.
+  xdg.configFile."hypr/hyprland.lua".text = ''
+    -- ========================================================================
+    -- 1. DISPLAY TOPOLOGY & SCANOUT ENGINE (540Hz BenQ ZOWIE)
+    -- ========================================================================
+    hl.config({
+      -- Bind to external high-refresh panel over DP-Alt / USB4
+      monitor = {
+        ",highrr,auto,1",
+      },
+
+      -- Zero-copy direct presentation to DRM KMS plane
+      render = {
+        direct_scanout = true, -- Bypasses compositor rendering passes on fullscreen
+      },
+
+      -- Master capability switch for wp_tearing_control_v1 protocol negotiation
+      general = {
+        allow_tearing = true,
+        border_size = 2,
+        gaps_in = 4,
+        gaps_out = 8,
+      },
+
+      -- Desktop thermal optimization: Idle compositor when screen is static
+      debug = {
+        vfr = true,
+      },
+
+      misc = {
+        disable_hyprland_logo = true,
+        disable_splash_rendering = true,
+        force_default_wallpaper = 0,
+        background_color = 0x000000,
+      },
+
+      -- Zero cosmetic overhead
+      decoration = {
+        rounding = 0,
+        shadow = { enabled = false },
+        blur = { enabled = false },
+      },
+    })
+
+    -- ========================================================================
+    -- 2. HARDWARE SENSOR & 8000Hz POLLING INPUT PIPELINE
+    -- ========================================================================
+    hl.config({
+      input = {
+        sensitivity = 0.0,
+        accel_profile = "flat", -- 1:1 hardware bypass (eliminates libinput curves)
+        touchpad = {
+          disable_while_typing = true,
+          natural_scroll = false,
+        },
+      },
+    })
+
+    -- Isolate high-polling USB receiver to prevent event drops
+    hl.device_config("compx-wireless-mouse-8k-dongle-l-mouse", {
+      sensitivity = 0.0,
+      accel_profile = "flat",
+    })
+
+    -- ========================================================================
+    -- 3. ASYNCHRONOUS TEARING WINDOW RULES (LUA API)
+    -- ========================================================================
+    -- Each rule evaluates directly against the internal compositor surface table.
+
+    -- Rocket League (Steam / DX11 Native Scanout)
+    hl.window_rule({
+      match = { class = "rocketleague.exe" },
+      immediate = true,
+      tile = true,
+      workspace = 5,
+    })
+    hl.window_rule({
+      match = { class = "steam_app_252950" },
+      immediate = true,
+      tile = true,
+      workspace = 5,
+    })
+
+    -- osu! (Wine Staging / Low-Latency PipeWire Audio)
+    hl.window_rule({
+      match = { class = "osu!.exe" },
+      immediate = true,
+      tile = true,
+      workspace = 5,
+    })
+
+    -- Aim Lab
+    hl.window_rule({
+      match = { class = "aimlab_tb.exe" },
+      immediate = true,
+      tile = true,
+      workspace = 5,
+    })
+
+    -- Counter-Strike 2 (Native Vulkan Direct Scanout)
+    hl.window_rule({
+      match = { class = "cs2" },
+      immediate = true,
+      tile = true,
+      workspace = 5,
+    })
+
+    -- ========================================================================
+    -- 4. STARTUP PROCESSES & ENVIRONMENT (EXEC-ONCE)
+    -- ========================================================================
+    hl.exec_once("${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1")
+    hl.exec("systemctl --user restart kanshi")
+
+    -- ========================================================================
+    -- 5. KEYBINDINGS & MEDIA INTEGRATION
+    -- ========================================================================
+    local mainMod = "SUPER"
+    local terminal = "kitty"
+
+    -- Core Window Management
+    hl.bind(mainMod, "Q", "exec", terminal)
+    hl.bind(mainMod, "C", "killactive")
+    hl.bind(mainMod, "M", "exit")
+    hl.bind(mainMod, "V", "togglefloating")
+    hl.bind(mainMod, "F", "fullscreen")
+    hl.bind(mainMod, "SPACE", "exec", "fuzzel")
+    hl.bind(mainMod, "D", "exec", "pkill -SIGUSR1 ironbar")
+    hl.bind(mainMod .. " SHIFT", "S", "exec", "screenshot-region")
+
+    -- Workspaces 1-5
+    for i = 1, 5 do
+      hl.bind(mainMod, tostring(i), "workspace", tostring(i))
+      hl.bind(mainMod .. " SHIFT", tostring(i), "movetoworkspace", tostring(i))
+    end
+
+    -- Scroll Wheel Workspace Switching
+    hl.bind(mainMod, "mouse_down", "workspace", "e+1")
+    hl.bind(mainMod, "mouse_up", "workspace", "e-1")
+
+    -- Mouse Window Operations
+    hl.bindm(mainMod, "mouse:272", "movewindow")
+    hl.bindm(mainMod, "mouse:273", "resizewindow")
+
+    -- SwayOSD Audio & Brightness Integration
+    hl.bindel("", "XF86AudioRaiseVolume", "exec", "${pkgs.swayosd}/bin/swayosd-client --output-volume +5")
+    hl.bindel("", "XF86AudioLowerVolume", "exec", "${pkgs.swayosd}/bin/swayosd-client --output-volume -5")
+    hl.bindel("", "XF86MonBrightnessUp", "exec", "${pkgs.swayosd}/bin/swayosd-client --brightness raise")
+    hl.bindel("", "XF86MonBrightnessDown", "exec", "${pkgs.swayosd}/bin/swayosd-client --brightness lower")
+
+    -- Playerctl Media Controls
+    hl.bindl("", "XF86AudioMute", "exec", "${pkgs.swayosd}/bin/swayosd-client --output-volume mute-toggle")
+    hl.bindl("", "XF86AudioMicMute", "exec", "${pkgs.swayosd}/bin/swayosd-client --input-volume mute-toggle")
+    hl.bindl("", "XF86AudioPlay", "exec", "${pkgs.playerctl}/bin/playerctl play-pause")
+    hl.bindl("", "XF86AudioPause", "exec", "${pkgs.playerctl}/bin/playerctl play-pause")
+    hl.bindl("", "XF86AudioNext", "exec", "${pkgs.playerctl}/bin/playerctl next")
+    hl.bindl("", "XF86AudioPrev", "exec", "${pkgs.playerctl}/bin/playerctl previous")
+  '';
+
+  # ---------------------------------------------------------------------------
+  # INTERACTIVE SHELL & REBUILD PIPELINE
+  # ---------------------------------------------------------------------------
   programs.git = {
     enable = true;
-    settings = {
-      user = {
-        name = "adenskyrp";
-        email = "36445815+adenskyrp@users.noreply.github.com";
-      };
+    settings.user = {
+      name = "adenskyrp";
+      email = "36445815+adenskyrp@users.noreply.github.com";
     };
   };
-  # ---------------------------------------------------------------------------
-  # INTERACTIVE SHELL ENVIRONMENT (Fish)
-  # ---------------------------------------------------------------------------
+
   programs.fish = {
     enable = true;
-    
-    # Declaratively define custom user-space functions
     functions = {
       sysdeploy = ''
-        # Store the current directory so we can return later
         set -l current_dir $PWD
-        
-        # Navigate to the flake root
         cd ~/nixos-config
 
-        # 1. Stage all changes. Flakes CANNOT see untracked files.
         git add .
-
-        # 2. Rebuild the system BEFORE committing to prevent pushing broken builds
         echo "--> Initiating declarative system rebuild..."
         if sudo nixos-rebuild switch --flake .#omnibook --impure
-          
-          # 3. Handle the commit message from function arguments
           set -l commit_msg $argv
           if test -z "$commit_msg"
             set commit_msg "chore: automated system state update"
           end
-          
-          # 4. Commit and Push
           git commit -m "$commit_msg"
           echo "--> Pushing new generation to GitHub..."
           git push origin main
-          
           echo "--> System successfully deployed and tracked."
         else
           echo "--> Build failed. Git commit aborted. Fix your Nix syntax."
         end
 
-        # Return to the original directory
         cd $current_dir
       '';
     };
   };
 
   # ---------------------------------------------------------------------------
-  # APPLICATION LAUNCHER (Fuzzel: Wayland-Native, GPU-Accelerated)
+  # WAYLAND APPLICATION LAUNCHER (Fuzzel)
   # ---------------------------------------------------------------------------
   programs.fuzzel = {
     enable = true;
     settings = {
       main = {
         font = "FiraCode Nerd Font:size=13";
-        # Points Fuzzel to your exact terminal for executing CLI apps
         terminal = "${pkgs.kitty}/bin/kitty";
-        prompt = ''"❯ "'';       # Requires strict quoting in Nix for strings with spaces
-        layer = "top";           # Renders over fullscreen games if invoked
+        prompt = ''"❯ "'';
+        layer = "top";
         lines = 10;
         width = 40;
         horizontal-pad = 20;
@@ -226,13 +227,12 @@
         inner-pad = 10;
       };
       colors = {
-        # Translated Nord Theme (RRGGBBAA format for Fuzzel)
-        background = "2e3440f2";       # Nord Dark
-        text = "eceff4ff";             # Nord Snow Storm
-        match = "88c0d0ff";            # Nord Frost (Fuzzy match highlight)
-        selection = "4c566aff";        # Selection background
-        selection-text = "eceff4ff";   # Selection text
-        border = "4c566aff";           # Border color
+        background = "2e3440f2";
+        text = "eceff4ff";
+        match = "88c0d0ff";
+        selection = "4c566aff";
+        selection-text = "eceff4ff";
+        border = "4c566aff";
       };
       border = {
         width = 2;
@@ -241,30 +241,24 @@
     };
   };
 
-  # 2. Declaratively construct the JSON configuration
-  # We are omitting ALL polling modules (CPU/RAM/Temp). 
-  # This bar is 100% event-driven. It will never interrupt the BORE scheduler.
+  # ---------------------------------------------------------------------------
+  # EVENT-DRIVEN STATUS BAR (Ironbar)
+  # ---------------------------------------------------------------------------
   xdg.configFile."ironbar/config.json".text = builtins.toJSON {
     position = "top";
     height = 30;
-    
     start = [
       {
         type = "workspaces";
-        # Ironbar natively supports Hyprland workspaces
-        name_map = {
-          "1" = "1"; "2" = "2"; "3" = "3"; "4" = "4"; "5" = "5";
-        };
+        name_map = { "1" = "1"; "2" = "2"; "3" = "3"; "4" = "4"; "5" = "5"; };
       }
     ];
-    
     center = [
       {
         type = "clock";
         format = "%H:%M";
       }
     ];
-    
     end = [
       {
         type = "volume";
@@ -277,7 +271,6 @@
     ];
   };
 
-  # 3. Inject the CSS Stylesheet (Translating your Nord aesthetics)
   xdg.configFile."ironbar/style.css".text = ''
     * {
       font-family: "FiraCode Nerd Font Propo", "FiraCode Nerd Font", sans-serif;
@@ -285,94 +278,73 @@
       border: none;
       border-radius: 0;
     }
-    
     window {
-      background-color: rgba(46, 52, 64, 0.9); /* Nord Dark */
-      color: #ECEFF4; /* Nord Snow Storm */
+      background-color: rgba(46, 52, 64, 0.9);
+      color: #ECEFF4;
     }
-    
     .workspace {
       padding: 0 5px;
-      color: #4C566A;
+      color = #4C566A;
     }
-    
     .workspace.focused {
-      color: #88C0D0; /* Nord Frost */
+      color: #88C0D0;
     }
-    
     .clock, .volume {
       padding: 0 10px;
     }
   '';
 
-  # ---------------------------------------------------------------------------
-  # STATUS BAR DAEMON (Systemd Integration)
-  # ---------------------------------------------------------------------------
   systemd.user.services.ironbar = {
     Unit = {
       Description = "Ironbar custom Wayland bar";
-      # The core of the fix: We strictly instruct systemd to wait until 
-      # Hyprland confirms the graphical session target is active and DBus is populated.
       After = [ "graphical-session.target" ];
       PartOf = [ "graphical-session.target" ];
     };
     Service = {
-      # Execute the binary directly from the immutable Nix store
       ExecStart = "${pkgs.ironbar}/bin/ironbar";
-      # If the bar crashes (or if you manually kill it), revive it within 1 second.
       Restart = "on-failure";
       RestartSec = "1sec";
     };
     Install = {
-      # Binds the daemon to Hyprland's specific session target
       WantedBy = [ "hyprland-session.target" ];
     };
   };
 
   # ---------------------------------------------------------------------------
-  # NEOVIM: EXTREME LOW-LATENCY EDITOR & NIX LSP
+  # LOW-LATENCY EDITOR (Neovim)
   # ---------------------------------------------------------------------------
   programs.neovim = {
     enable = true;
     defaultEditor = true;
     viAlias = true;
     vimAlias = true;
-    # Explicitly disable bloated, legacy language providers
-    withPython3 = false; 
+    withPython3 = false;
     withRuby = false;
-    # --- DEPENDENCY INJECTION (Sterile Sandbox) ---
+
     extraPackages = with pkgs; [
-      nixd        # Bleeding-edge Nix LSP
-      alejandra   # Uncompromising Nix code formatter
-      ripgrep     # C-based, multithreaded regex searcher (for Telescope)
-      fd          # Rust-based, hardware-accelerated file finder (for Telescope)
+      nixd
+      alejandra
+      ripgrep
+      fd
     ];
 
-    # --- DECLARATIVE PLUGIN REGISTRY ---
     plugins = with pkgs.vimPlugins; [
-      nvim-treesitter.withAllGrammars 
-      nvim-lspconfig                  
-      telescope-nvim                  # Instantaneous fuzzy-finding
-      plenary-nvim                    # Required async Lua library for Telescope
+      nvim-treesitter.withAllGrammars
+      nvim-lspconfig
+      telescope-nvim
+      plenary-nvim
     ];
-   # --- LUA KERNEL CONFIGURATION ---
+
     initLua = ''
-      -- 1. HARDWARE-ACCELERATED CLIPBOARD
       vim.opt.clipboard = "unnamedplus"
-
-      -- 2. ERGONOMICS & PACING
-      vim.g.mapleader = " "         -- Sets spacebar as the master key for shortcuts
+      vim.g.mapleader = " "
       vim.opt.number = true
-      vim.opt.relativenumber = true 
-      vim.opt.shiftwidth = 2        
+      vim.opt.relativenumber = true
+      vim.opt.shiftwidth = 2
       vim.opt.tabstop = 2
-      vim.opt.expandtab = true      
-      
-      -- 3. THE EVENT LOOP (8000Hz Input Optimization)
-      vim.opt.updatetime = 50 
+      vim.opt.expandtab = true
+      vim.opt.updatetime = 50
 
-      -- 4. LSP INITIALIZATION (Neovim 0.11+ Native API)
-      -- Native core config replacing deprecated require('lspconfig')
       vim.lsp.config('nixd', {
         cmd = { "nixd" },
         settings = {
@@ -383,7 +355,6 @@
       })
       vim.lsp.enable('nixd')
 
-      -- 5. KINETIC FEEDBACK: AUTO-FORMAT ON SAVE
       vim.api.nvim_create_autocmd("BufWritePre", {
         pattern = "*.nix",
         callback = function()
@@ -391,19 +362,17 @@
         end,
       })
 
-      -- 6. TELESCOPE: INSTANT AST NAVIGATION
       local builtin = require('telescope.builtin')
       vim.keymap.set('n', '<leader>f', builtin.find_files, {})
       vim.keymap.set('n', '<leader>g', builtin.live_grep, {})
-    ''; # <-- CRITICAL: Must be two single quotes + semicolon
+    '';
   };
+
+  # ---------------------------------------------------------------------------
+  # BROADCAST & CAPTURE PIPELINE (OBS Studio)
+  # ---------------------------------------------------------------------------
   programs.obs-studio = {
     enable = true;
-
-    # Low-Latency Plugins Architecture:
-    # 1. obs-vkcapture: Vulkan/OpenGL direct DMA-BUF capture layer
-    # 2. obs-pipewire-audio-capture: Direct PipeWire graph node audio intercept
-    # 3. obs-vaapi: AMD VCN Hardware-accelerated video encoding pipeline
     plugins = with pkgs.obs-studio-plugins; [
       obs-vkcapture
       obs-pipewire-audio-capture
@@ -411,14 +380,14 @@
       obs-gstreamer
     ];
   };
+
   # ---------------------------------------------------------------------------
-  # FIREFOX: EXTREME PERFORMANCE & DECLARATIVE POLICY ENGINE
+  # DECLARATIVE BROWSER (Firefox)
   # ---------------------------------------------------------------------------
   programs.firefox = {
     enable = true;
     configPath = "${config.xdg.configHome}/mozilla/firefox";
 
-    # --- ENTERPRISE POLICIES ---
     policies = {
       DisableTelemetry = true;
       DisableFirefoxStudies = true;
@@ -430,8 +399,6 @@
         Value = true;
         Locked = true;
         Cryptomining = true;
-        # REMOVED: Fingerprinting = true. We must disable this to allow 
-        # persistent DOM storage (cookies and logins) to function properly.
       };
 
       ExtensionSettings = {
@@ -447,13 +414,11 @@
       };
     };
 
-    # --- USER PROFILE PREFERENCES ---
     profiles.crazycat = {
-      id = 0;           # CRITICAL: Mathematically locks this as the Master Profile
+      id = 0;
       isDefault = true;
 
       settings = {
-        # 1. WAYLAND ZERO-COPY & HARDWARE DECODING
         "gfx.webrender.all" = true;
         "gfx.webrender.compositor" = true;
         "gfx.webrender.compositor.force-enabled" = true;
@@ -464,22 +429,16 @@
         "media.av1.enabled" = true;
         "layers.acceleration.force-enabled" = true;
 
-        # 2. HIGH-REFRESH RATE FRAME PACING & INPUT
-        "layout.frame_rate" = 600;
+        "layout.frame_rate" = 0;
         "apz.overscroll.enabled" = true;
         "nglayout.initialpaint.delay" = 0;
         "browser.preferences.defaultPerformanceSettings.enabled" = false;
         "image.mem.shared" = true;
-        
-        # 3. DOM STORAGE & CACHING
-        # We re-enable the disk cache so places.sqlite (History) and IndexedDB 
-        # can write to the NVMe, but we strictly cap the capacity to 1GB to 
-        # prevent I/O bloat, letting your ZRAM handle the heavy lifting.
+
         "browser.cache.disk.enable" = true;
         "browser.cache.disk.capacity" = 1048576;
         "browser.cache.memory.enable" = true;
 
-        # 4. TELEMETRY & UI DENSITY
         "extensions.pocket.enabled" = false;
         "browser.newtabpage.activity-stream.showSponsored" = false;
         "browser.newtabpage.activity-stream.showSponsoredTopSites" = false;
@@ -487,21 +446,42 @@
         "toolkit.telemetry.enabled" = false;
         "browser.ping-centre.telemetry" = false;
         "browser.compactmode.show" = true;
-        "browser.uidensity" = 1;            
-        "browser.tabs.firefox-view" = false; 
+        "browser.uidensity" = 1;
+        "browser.tabs.firefox-view" = false;
       };
     };
   };
+
   # ---------------------------------------------------------------------------
-  # SYSTEM PACKAGES & RUNTIMES
+  # USER-SPACE PACKAGES
   # ---------------------------------------------------------------------------
   fonts.fontconfig.enable = true;
 
   home.packages = with pkgs; [
-    nerd-fonts.fira-code pavucontrol deepfilternet lsp-plugins polkit_gnome
-    docker-client playerctl overskride protonup-qt wineWow64Packages.staging
-    winetricks protontricks grim slurp wl-clipboard satty adwaita-icon-theme hicolor-icon-theme
-    obs-studio-plugins.obs-vkcapture libva-utils osu-lazer-bin ironbar celluloid
+    nerd-fonts.fira-code
+    pavucontrol
+    deepfilternet
+    lsp-plugins
+    polkit_gnome
+    docker-client
+    playerctl
+    overskride
+    # PURGED: protonup-qt (Managed via programs.steam.extraCompatPackages)
+    wineWow64Packages.staging
+    winetricks
+    protontricks
+    grim
+    slurp
+    wl-clipboard
+    satty
+    adwaita-icon-theme
+    hicolor-icon-theme
+    obs-studio-plugins.obs-vkcapture
+    libva-utils
+    osu-lazer-bin
+    ironbar
+    celluloid
+    
     (discord.override {
       withVencord = true;
       withOpenASAR = true;
@@ -520,14 +500,10 @@
       export STAGING_AUDIO_DURATION="10000"
       export STEAM_COMPAT_DATA_PATH="/home/crazycat/.wine-osu"
       export PIPEWIRE_LATENCY="64/48000"
-
-      export WAYLAND_DISPLAY="wayland-1"
-      export DISPLAY="" # Unset DISPLAY to ensure X11 fallback is strictly disabled      
       export DXVK_HUD=0
 
       server_input=$(echo "" | ${pkgs.fuzzel}/bin/fuzzel -d -p "osu! DevServer (Leave blank for Bancho): ")
 
-      # CRITICAL FIX: Appended "$@" so file arguments are actually passed to osu!.exe
       if [ -n "$server_input" ]; then
         exec obs-gamecapture ${pkgs.wineWow64Packages.staging}/bin/wine "/home/crazycat/Games/osu/osu!.exe" -devserver "$server_input" "$@"
       else
@@ -547,14 +523,24 @@
     ];
   };
 
-  programs.ssh = { enable = true; enableDefaultConfig = false; settings = { "*" = { ServerAliveInterval = 30; ServerAliveCountMax = 3; TCPKeepAlive = "yes"; }; }; };
+  programs.ssh = { 
+    enable = true; 
+    enableDefaultConfig = false; 
+    settings = { 
+      "*" = { 
+        ServerAliveInterval = 30; 
+        ServerAliveCountMax = 3; 
+        TCPKeepAlive = "yes"; 
+      }; 
+    }; 
+  };
+
   # ---------------------------------------------------------------------------
-  # XDG DESKTOP ENTRIES & MIME ROUTING
+  # XDG MIME ROUTING & THEMES
   # ---------------------------------------------------------------------------
   xdg.desktopEntries = {
     osu-stable = { 
       name = "osu!stable"; 
-      # THE FIX: %U tells the desktop environment to pass file paths to the script
       exec = "osu-launcher %U"; 
       icon = "osu!"; 
       comment = "osu! stable"; 
@@ -582,13 +568,9 @@
       "application/x-extension-osr" = "osu-stable.desktop";
     };
   };
-  # ---------------------------------------------------------------------------
-  # GTK & ICON THEME ARCHITECTURE
-  # ---------------------------------------------------------------------------
-  # Forces GTK/Libadwaita applications to locate system icons correctly.
+
   gtk = {
     enable = true;
-    gtk4.theme.name = "Adwaita-dark"; # Or set to null per the warning spec
     theme = {
       name = "Adwaita-dark";
       package = pkgs.gnome-themes-extra;
@@ -599,11 +581,9 @@
     };
   };
 
-  # ---------------------------------------------------------------------------
-  # WAYLAND SESSION VARIABLES
-  # ---------------------------------------------------------------------------
   home.sessionVariables = {
     MOZ_USE_XDG = "1";
   };
-  home.stateVersion = "24.05";
+
+  home.stateVersion = "25.11";
 }
