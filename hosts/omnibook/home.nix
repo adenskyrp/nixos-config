@@ -107,8 +107,14 @@
       -- ======================================================================
       -- 4. STARTUP PROCESSES & SYSTEM HOOKS (EXEC-ONCE)
       -- ======================================================================
-      hl.exec_once("${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1")
-      hl.exec("systemctl --user restart kanshi")
+      hl.config({
+        exec_once = {
+          "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1",
+        },
+        exec = {
+          "systemctl --user restart kanshi",
+        }
+      })
 
       -- ======================================================================
       -- 5. KEYBINDINGS & MEDIA INTEGRATION

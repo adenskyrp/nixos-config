@@ -1,21 +1,24 @@
-{ config, pkgs, lib, inputs, ... }:
-
-let
+{
+  config,
+  pkgs,
+  lib,
+  inputs,
+  ...
+}: let
   # ---------------------------------------------------------------------------
   # STRIX POINT APU SMU POWER TARGETS (65W AC CONTRACT)
   # ---------------------------------------------------------------------------
   # Defined in milliwatts (mW) for direct register injection via ryzenadj.
   sustainedPowerLimit = 54000; # 54W: Maximum sustained thermal envelope for 14" chassis
-  slowPowerLimit      = 60000; # 60W: Short sustained burst (tPPT) for intensive compute
-  fastPowerLimit      = 65000; # 65W: Peak immediate burst (fPPT) matching 65W AC charger
-  temperatureLimit    = 90;    # 90°C: Maximum allowed junction temperature (Tctl)
-in
-{
+  slowPowerLimit = 60000; # 60W: Short sustained burst (tPPT) for intensive compute
+  fastPowerLimit = 65000; # 65W: Peak immediate burst (fPPT) matching 65W AC charger
+  temperatureLimit = 90; # 90°C: Maximum allowed junction temperature (Tctl)
+in {
   # ---------------------------------------------------------------------------
   # MODULAR ARCHITECTURE IMPORTS
   # ---------------------------------------------------------------------------
-  imports = [ 
-    ./hardware-configuration.nix 
+  imports = [
+    ./hardware-configuration.nix
     ../../modules/core.nix
     ../../modules/gaming.nix
   ];
@@ -28,7 +31,7 @@ in
   # ---------------------------------------------------------------------------
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
-  
+
   # CachyOS kernel with BORE (Burst-Oriented Response Enhancer) scheduler
   boot.kernelPackages = pkgs.linuxPackages_cachyos;
 
@@ -43,7 +46,7 @@ in
     "idle=nomwait"
 
     # Driver Performance: Active autonomous CPPC power scaling
-    "amd_pstate=active" 
+    "amd_pstate=active"
     "amdgpu.ppfeaturemask=0xffffffff"
 
     # Interrupt & Clock Optimization: Eliminate scheduler jitter and polling latency
@@ -75,7 +78,7 @@ in
   systemd.tmpfiles.rules = [
     # Set AMD Energy-Performance Preference (EPP) to raw performance across all 10 cores
     "w /sys/devices/system/cpu/cpu*/cpufreq/energy_performance_preference - - - - performance"
-    
+
     # Force GPU DPM to maximum clock state across all detected DRM card nodes
     "w /sys/class/drm/card*/device/power_dpm_force_performance_level - - - - high"
   ];
@@ -86,8 +89,8 @@ in
   # Writes sustained wattage envelopes directly to the AMD System Management Unit.
   systemd.services.amd-power-boost = {
     description = "Apply 65W SMU power envelope to AMD Ryzen AI 9 365";
-    wantedBy = [ "multi-user.target" ];
-    after = [ "systemd-modules-load.service" ];
+    wantedBy = ["multi-user.target"];
+    after = ["systemd-modules-load.service"];
 
     serviceConfig = {
       Type = "oneshot";
@@ -114,8 +117,8 @@ in
   # ---------------------------------------------------------------------------
   # PERIPHERALS & LAPTOP HARDWARE GUARDS
   # ---------------------------------------------------------------------------
-  services.udev.packages = [ pkgs.swayosd ];
-  environment.systemPackages = [ pkgs.ryzenadj ];
+  services.udev.packages = [pkgs.swayosd];
+  environment.systemPackages = [pkgs.ryzenadj];
 
   # Fingerprint reader daemon with lid-safety check
   services.fprintd.enable = true;
@@ -141,7 +144,7 @@ in
     enable = true;
     settings = {
       default_session = {
-        command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --cmd '${pkgs.hyprland}/bin/Hyprland --config ~/.config/hypr/hyprland.lua'";
+        command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --cmd 'start-hyprland'";
         user = "crazycat";
       };
     };
@@ -149,9 +152,9 @@ in
   hardware.bluetooth = {
     enable = true;
     powerOnBoot = true;
-    settings.General = { 
-      Experimental = true; 
-      FastConnectable = true; 
+    settings.General = {
+      Experimental = true;
+      FastConnectable = true;
     };
   };
 
