@@ -119,22 +119,32 @@
       local mainMod = "SUPER"
       local terminal = "kitty"
 
-      hl.bind(mainMod, "Q", "exec", terminal)
-      hl.bind(mainMod, "C", "killactive")
-      hl.bind(mainMod, "M", "exit")
-      hl.bind(mainMod, "V", "togglefloating")
-      hl.bind(mainMod, "F", "fullscreen")
-      hl.bind(mainMod, "SPACE", "exec", "fuzzel")
-      hl.bind(mainMod, "D", "exec", "pkill -SIGUSR1 ironbar")
-      hl.bind(mainMod .. " SHIFT", "S", "exec", "screenshot-region")
+      hl.bind("SUPER", "Q", "exec", "kitty")
+      hl.bind("SUPER", "C", "killactive")
+      hl.bind("SUPER", "M", "exit")
+      hl.bind("SUPER", "V", "togglefloating")
+      hl.bind("SUPER", "F", "fullscreen")
+      hl.bind("SUPER", "SPACE", "exec", "fuzzel")
+      hl.bind("SUPER", "D", "exec", "pkill -SIGUSR1 ironbar")
+      hl.bind("SUPERSHIFT", "S", "exec", "screenshot-region")
 
-      for i = 1, 5 do
-        hl.bind(mainMod, tostring(i), "workspace", tostring(i))
-        hl.bind(mainMod .. " SHIFT", tostring(i), "movetoworkspace", tostring(i))
-      end
+      hl.bind("SUPER", "1", "workspace", "1")
+      hl.bind("SUPER", "2", "workspace", "2")
+      hl.bind("SUPER", "3", "workspace", "3")
+      hl.bind("SUPER", "4", "workspace", "4")
+      hl.bind("SUPER", "5", "workspace", "5")
 
-      hl.bind(mainMod, "mouse_down", "workspace", "e+1")
-      hl.bind(mainMod, "mouse_up", "workspace", "e-1")
+      hl.bind("SUPERSHIFT", "1", "movetoworkspace", "1")
+      hl.bind("SUPERSHIFT", "2", "movetoworkspace", "2")
+      hl.bind("SUPERSHIFT", "3", "movetoworkspace", "3")
+      hl.bind("SUPERSHIFT", "4", "movetoworkspace", "4")
+      hl.bind("SUPERSHIFT", "5", "movetoworkspace", "5")
+
+      hl.bind("SUPER", "mouse_down", "workspace", "e+1")
+      hl.bind("SUPER", "mouse_up", "workspace", "e-1")
+
+      hl.bindm("SUPER", "mouse:272", "movewindow")
+      hl.bindm("SUPER", "mouse:273", "resizewindow")
 
       hl.bindm(mainMod, "mouse:272", "movewindow")
       hl.bindm(mainMod, "mouse:273", "resizewindow")
