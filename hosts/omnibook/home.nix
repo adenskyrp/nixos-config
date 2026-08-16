@@ -9,7 +9,7 @@
   wayland.windowManager.hyprland = {
     enable = true;
     xwayland.enable = true;
-    configType = "lua";
+    configType = "hyprlang";
 
     # ---------------------------------------------------------------------------
     # DECLARATIVE HYPRLAND LUA CONFIGURATION (~/.config/hypr/hyprland.lua)
@@ -17,117 +17,8 @@
     # This block compiles your complete compositor configuration into an immutable
     # Nix store derivation symlinked directly to your XDG user profile.
     extraConfig = ''
-      -- ======================================================================
-      -- 1. DISPLAY TOPOLOGY & SCANOUT ENGINE (540Hz BenQ ZOWIE)
-      -- ======================================================================
-      hl.config({
-        monitor = {
-          ",highrr,auto,1",
-        },
-
-        -- Direct scanout bypasses compositor rendering passes on fullscreen
-        render = {
-          direct_scanout = true,
-        },
-
-        -- Master switch for wp_tearing_control_v1 protocol negotiation
-        general = {
-          allow_tearing = true,
-          border_size = 2,
-          gaps_in = 4,
-          gaps_out = 8,
-        },
-
-        debug = {
-          vfr = false,
-        },
-
-        misc = {
-          disable_hyprland_logo = true,
-          disable_splash_rendering = true,
-          force_default_wallpaper = 0,
-          background_color = 0x000000,
-        },
-
-        decoration = {
-          rounding = 0,
-          shadow = { enabled = false },
-          blur = { enabled = false },
-        },
-      })
-
-      -- ======================================================================
-      -- 2. HARDWARE SENSOR & 8000Hz POLLING INPUT PIPELINE
-      -- ======================================================================
-      hl.config({
-        input = {
-          sensitivity = 0.0,
-          accel_profile = "flat",
-          touchpad = {
-            disable_while_typing = true,
-            natural_scroll = false,
-          },
-        },
-      })
-
-      -- ======================================================================
-      -- 3. ASYNCHRONOUS TEARING WINDOW RULES (LUA API)
-      -- ======================================================================
-      hl.window_rule({
-        match = { class = "rocketleague.exe" },
-        immediate = true,
-        tile = true,
-        workspace = 5,
-      })
-      hl.window_rule({
-        match = { class = "steam_app_252950" },
-        immediate = true,
-        tile = true,
-        workspace = 5,
-      })
-      hl.window_rule({
-        match = { class = "osu!.exe" },
-        immediate = true,
-        tile = true,
-        workspace = 5,
-      })
-      hl.window_rule({
-        match = { class = "aimlab_tb.exe" },
-        immediate = true,
-        tile = true,
-        workspace = 5,
-      })
-      hl.window_rule({
-        match = { class = "cs2" },
-        immediate = true,
-        tile = true,
-        workspace = 5,
-      })
-
-      -- ======================================================================
-      -- 4. STARTUP PROCESSES & SYSTEM HOOKS (EXEC-ONCE)
-      -- ======================================================================
-      hl.config({
-        exec_once = {
-          "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1",
-        },
-        exec = {
-          "systemctl --user restart kanshi",
-        }
-      })
-
-      -- ======================================================================
-      -- 5. KEYBINDINGS & MEDIA INTEGRATION
-      -- ======================================================================
-      local mainMod = "SUPER"
-      hl.config({
-        bind = {
-          "SUPER, Q, exec, kitty",
-          "SUPER, C, killactive",
-          "SUPER, M, exit",
-          "SUPER, SPACE, exec, fuzzel"
-        }
-      })
+      bind = SUPER, Q, exec, kitty
+      bind = SUPER, SPACE, exec, fuzzel
     '';
   };
   # ---------------------------------------------------------------------------
