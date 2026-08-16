@@ -7,170 +7,151 @@
   wayland.windowManager.hyprland = {
     enable = true;
     xwayland.enable = true;
-  };
+    configType = "lua";
 
-# ---------------------------------------------------------------------------
+  # ---------------------------------------------------------------------------
   # DECLARATIVE HYPRLAND LUA CONFIGURATION (~/.config/hypr/hyprland.lua)
   # ---------------------------------------------------------------------------
   # This block compiles your complete compositor configuration into an immutable
   # Nix store derivation symlinked directly to your XDG user profile.
-  xdg.configFile."hypr/hyprland.lua".text = ''
-    -- ========================================================================
-    -- 1. DISPLAY TOPOLOGY & SCANOUT ENGINE (540Hz BenQ ZOWIE)
-    -- ========================================================================
-    hl.config({
-      -- Bind to external high-refresh panel over DP-Alt / USB4
-      monitor = {
-        ",highrr,auto,1",
-      },
-
-      -- Zero-copy direct presentation to DRM KMS plane
-      render = {
-        direct_scanout = true, -- Bypasses compositor rendering passes on fullscreen
-      },
-
-      -- Master capability switch for wp_tearing_control_v1 protocol negotiation
-      general = {
-        allow_tearing = true,
-        border_size = 2,
-        gaps_in = 4,
-        gaps_out = 8,
-      },
-
-      -- Desktop thermal optimization: Idle compositor when screen is static
-      debug = {
-        vfr = true,
-      },
-
-      misc = {
-        disable_hyprland_logo = true,
-        disable_splash_rendering = true,
-        force_default_wallpaper = 0,
-        background_color = 0x000000,
-      },
-
-      -- Zero cosmetic overhead
-      decoration = {
-        rounding = 0,
-        shadow = { enabled = false },
-        blur = { enabled = false },
-      },
-    })
-
-    -- ========================================================================
-    -- 2. HARDWARE SENSOR & 8000Hz POLLING INPUT PIPELINE
-    -- ========================================================================
-    hl.config({
-      input = {
-        sensitivity = 0.0,
-        accel_profile = "flat", -- 1:1 hardware bypass (eliminates libinput curves)
-        touchpad = {
-          disable_while_typing = true,
-          natural_scroll = false,
+    extraConfig = ''
+      -- ======================================================================
+      -- 1. DISPLAY TOPOLOGY & SCANOUT ENGINE (540Hz BenQ ZOWIE)
+      -- ======================================================================
+      hl.config({
+        monitor = {
+          ",highrr,auto,1",
         },
-      },
-    })
 
-    -- Isolate high-polling USB receiver to prevent event drops
-    hl.device_config("compx-wireless-mouse-8k-dongle-l-mouse", {
-      sensitivity = 0.0,
-      accel_profile = "flat",
-    })
+        -- Direct scanout bypasses compositor rendering passes on fullscreen
+        render = {
+          direct_scanout = true,
+        },
 
-    -- ========================================================================
-    -- 3. ASYNCHRONOUS TEARING WINDOW RULES (LUA API)
-    -- ========================================================================
-    -- Each rule evaluates directly against the internal compositor surface table.
+        -- Master switch for wp_tearing_control_v1 protocol negotiation
+        general = {
+          allow_tearing = true,
+          border_size = 2,
+          gaps_in = 4,
+          gaps_out = 8,
+        },
 
-    -- Rocket League (Steam / DX11 Native Scanout)
-    hl.window_rule({
-      match = { class = "rocketleague.exe" },
-      immediate = true,
-      tile = true,
-      workspace = 5,
-    })
-    hl.window_rule({
-      match = { class = "steam_app_252950" },
-      immediate = true,
-      tile = true,
-      workspace = 5,
-    })
+        debug = {
+          vfr = true,
+        },
 
-    -- osu! (Wine Staging / Low-Latency PipeWire Audio)
-    hl.window_rule({
-      match = { class = "osu!.exe" },
-      immediate = true,
-      tile = true,
-      workspace = 5,
-    })
+        misc = {
+          disable_hyprland_logo = true,
+          disable_splash_rendering = true,
+          force_default_wallpaper = 0,
+          background_color = 0x000000,
+        },
 
-    -- Aim Lab
-    hl.window_rule({
-      match = { class = "aimlab_tb.exe" },
-      immediate = true,
-      tile = true,
-      workspace = 5,
-    })
+        decoration = {
+          rounding = 0,
+          shadow = { enabled = false },
+          blur = { enabled = false },
+        },
+      })
 
-    -- Counter-Strike 2 (Native Vulkan Direct Scanout)
-    hl.window_rule({
-      match = { class = "cs2" },
-      immediate = true,
-      tile = true,
-      workspace = 5,
-    })
+      -- ======================================================================
+      -- 2. HARDWARE SENSOR & 8000Hz POLLING INPUT PIPELINE
+      -- ======================================================================
+      hl.config({
+        input = {
+          sensitivity = 0.0,
+          accel_profile = "flat",
+          touchpad = {
+            disable_while_typing = true,
+            natural_scroll = false,
+          },
+        },
+      })
 
-    -- ========================================================================
-    -- 4. STARTUP PROCESSES & ENVIRONMENT (EXEC-ONCE)
-    -- ========================================================================
-    hl.exec_once("${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1")
-    hl.exec("systemctl --user restart kanshi")
+      hl.device_config("compx-wireless-mouse-8k-dongle-l-mouse", {
+        sensitivity = 0.0,
+        accel_profile = "flat",
+      })
 
-    -- ========================================================================
-    -- 5. KEYBINDINGS & MEDIA INTEGRATION
-    -- ========================================================================
-    local mainMod = "SUPER"
-    local terminal = "kitty"
+      -- ======================================================================
+      -- 3. ASYNCHRONOUS TEARING WINDOW RULES (LUA API)
+      -- ======================================================================
+      hl.window_rule({
+        match = { class = "rocketleague.exe" },
+        immediate = true,
+        tile = true,
+        workspace = 5,
+      })
+      hl.window_rule({
+        match = { class = "steam_app_252950" },
+        immediate = true,
+        tile = true,
+        workspace = 5,
+      })
+      hl.window_rule({
+        match = { class = "osu!.exe" },
+        immediate = true,
+        tile = true,
+        workspace = 5,
+      })
+      hl.window_rule({
+        match = { class = "aimlab_tb.exe" },
+        immediate = true,
+        tile = true,
+        workspace = 5,
+      })
+      hl.window_rule({
+        match = { class = "cs2" },
+        immediate = true,
+        tile = true,
+        workspace = 5,
+      })
 
-    -- Core Window Management
-    hl.bind(mainMod, "Q", "exec", terminal)
-    hl.bind(mainMod, "C", "killactive")
-    hl.bind(mainMod, "M", "exit")
-    hl.bind(mainMod, "V", "togglefloating")
-    hl.bind(mainMod, "F", "fullscreen")
-    hl.bind(mainMod, "SPACE", "exec", "fuzzel")
-    hl.bind(mainMod, "D", "exec", "pkill -SIGUSR1 ironbar")
-    hl.bind(mainMod .. " SHIFT", "S", "exec", "screenshot-region")
+      -- ======================================================================
+      -- 4. STARTUP PROCESSES & SYSTEM HOOKS (EXEC-ONCE)
+      -- ======================================================================
+      hl.exec_once("${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1")
+      hl.exec("systemctl --user restart kanshi")
 
-    -- Workspaces 1-5
-    for i = 1, 5 do
-      hl.bind(mainMod, tostring(i), "workspace", tostring(i))
-      hl.bind(mainMod .. " SHIFT", tostring(i), "movetoworkspace", tostring(i))
-    end
+      -- ======================================================================
+      -- 5. KEYBINDINGS & MEDIA INTEGRATION
+      -- ======================================================================
+      local mainMod = "SUPER"
+      local terminal = "kitty"
 
-    -- Scroll Wheel Workspace Switching
-    hl.bind(mainMod, "mouse_down", "workspace", "e+1")
-    hl.bind(mainMod, "mouse_up", "workspace", "e-1")
+      hl.bind(mainMod, "Q", "exec", terminal)
+      hl.bind(mainMod, "C", "killactive")
+      hl.bind(mainMod, "M", "exit")
+      hl.bind(mainMod, "V", "togglefloating")
+      hl.bind(mainMod, "F", "fullscreen")
+      hl.bind(mainMod, "SPACE", "exec", "fuzzel")
+      hl.bind(mainMod, "D", "exec", "pkill -SIGUSR1 ironbar")
+      hl.bind(mainMod .. " SHIFT", "S", "exec", "screenshot-region")
 
-    -- Mouse Window Operations
-    hl.bindm(mainMod, "mouse:272", "movewindow")
-    hl.bindm(mainMod, "mouse:273", "resizewindow")
+      for i = 1, 5 do
+        hl.bind(mainMod, tostring(i), "workspace", tostring(i))
+        hl.bind(mainMod .. " SHIFT", tostring(i), "movetoworkspace", tostring(i))
+      end
 
-    -- SwayOSD Audio & Brightness Integration
-    hl.bindel("", "XF86AudioRaiseVolume", "exec", "${pkgs.swayosd}/bin/swayosd-client --output-volume +5")
-    hl.bindel("", "XF86AudioLowerVolume", "exec", "${pkgs.swayosd}/bin/swayosd-client --output-volume -5")
-    hl.bindel("", "XF86MonBrightnessUp", "exec", "${pkgs.swayosd}/bin/swayosd-client --brightness raise")
-    hl.bindel("", "XF86MonBrightnessDown", "exec", "${pkgs.swayosd}/bin/swayosd-client --brightness lower")
+      hl.bind(mainMod, "mouse_down", "workspace", "e+1")
+      hl.bind(mainMod, "mouse_up", "workspace", "e-1")
 
-    -- Playerctl Media Controls
-    hl.bindl("", "XF86AudioMute", "exec", "${pkgs.swayosd}/bin/swayosd-client --output-volume mute-toggle")
-    hl.bindl("", "XF86AudioMicMute", "exec", "${pkgs.swayosd}/bin/swayosd-client --input-volume mute-toggle")
-    hl.bindl("", "XF86AudioPlay", "exec", "${pkgs.playerctl}/bin/playerctl play-pause")
-    hl.bindl("", "XF86AudioPause", "exec", "${pkgs.playerctl}/bin/playerctl play-pause")
-    hl.bindl("", "XF86AudioNext", "exec", "${pkgs.playerctl}/bin/playerctl next")
-    hl.bindl("", "XF86AudioPrev", "exec", "${pkgs.playerctl}/bin/playerctl previous")
-  '';
+      hl.bindm(mainMod, "mouse:272", "movewindow")
+      hl.bindm(mainMod, "mouse:273", "resizewindow")
 
+      hl.bindel("", "XF86AudioRaiseVolume", "exec", "${pkgs.swayosd}/bin/swayosd-client --output-volume +5")
+      hl.bindel("", "XF86AudioLowerVolume", "exec", "${pkgs.swayosd}/bin/swayosd-client --output-volume -5")
+      hl.bindel("", "XF86MonBrightnessUp", "exec", "${pkgs.swayosd}/bin/swayosd-client --brightness raise")
+      hl.bindel("", "XF86MonBrightnessDown", "exec", "${pkgs.swayosd}/bin/swayosd-client --brightness lower")
+
+      hl.bindl("", "XF86AudioMute", "exec", "${pkgs.swayosd}/bin/swayosd-client --output-volume mute-toggle")
+      hl.bindl("", "XF86AudioMicMute", "exec", "${pkgs.swayosd}/bin/swayosd-client --input-volume mute-toggle")
+      hl.bindl("", "XF86AudioPlay", "exec", "${pkgs.playerctl}/bin/playerctl play-pause")
+      hl.bindl("", "XF86AudioPause", "exec", "${pkgs.playerctl}/bin/playerctl play-pause")
+      hl.bindl("", "XF86AudioNext", "exec", "${pkgs.playerctl}/bin/playerctl next")
+      hl.bindl("", "XF86AudioPrev", "exec", "${pkgs.playerctl}/bin/playerctl previous")
+    '';
+  };
   # ---------------------------------------------------------------------------
   # INTERACTIVE SHELL & REBUILD PIPELINE
   # ---------------------------------------------------------------------------
@@ -571,6 +552,7 @@
 
   gtk = {
     enable = true;
+    gtk4.theme = null;
     theme = {
       name = "Adwaita-dark";
       package = pkgs.gnome-themes-extra;
