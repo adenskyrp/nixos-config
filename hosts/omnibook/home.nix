@@ -1,6 +1,8 @@
-{ config, pkgs, ... }:
-
 {
+  config,
+  pkgs,
+  ...
+}: {
   # ---------------------------------------------------------------------------
   # HYPRLAND: EXTREME LOW-LATENCY COMPOSITOR PIPELINE
   # ---------------------------------------------------------------------------
@@ -9,11 +11,11 @@
     xwayland.enable = true;
     configType = "lua";
 
-  # ---------------------------------------------------------------------------
-  # DECLARATIVE HYPRLAND LUA CONFIGURATION (~/.config/hypr/hyprland.lua)
-  # ---------------------------------------------------------------------------
-  # This block compiles your complete compositor configuration into an immutable
-  # Nix store derivation symlinked directly to your XDG user profile.
+    # ---------------------------------------------------------------------------
+    # DECLARATIVE HYPRLAND LUA CONFIGURATION (~/.config/hypr/hyprland.lua)
+    # ---------------------------------------------------------------------------
+    # This block compiles your complete compositor configuration into an immutable
+    # Nix store derivation symlinked directly to your XDG user profile.
     extraConfig = ''
       -- ======================================================================
       -- 1. DISPLAY TOPOLOGY & SCANOUT ENGINE (540Hz BenQ ZOWIE)
@@ -37,7 +39,7 @@
         },
 
         debug = {
-          vfr = true,
+          vfr = false,
         },
 
         misc = {
@@ -66,11 +68,6 @@
             natural_scroll = false,
           },
         },
-      })
-
-      hl.device_config("compx-wireless-mouse-8k-dongle-l-mouse", {
-        sensitivity = 0.0,
-        accel_profile = "flat",
       })
 
       -- ======================================================================
@@ -241,7 +238,13 @@
     start = [
       {
         type = "workspaces";
-        name_map = { "1" = "1"; "2" = "2"; "3" = "3"; "4" = "4"; "5" = "5"; };
+        name_map = {
+          "1" = "1";
+          "2" = "2";
+          "3" = "3";
+          "4" = "4";
+          "5" = "5";
+        };
       }
     ];
     center = [
@@ -288,8 +291,8 @@
   systemd.user.services.ironbar = {
     Unit = {
       Description = "Ironbar custom Wayland bar";
-      After = [ "graphical-session.target" ];
-      PartOf = [ "graphical-session.target" ];
+      After = ["graphical-session.target"];
+      PartOf = ["graphical-session.target"];
     };
     Service = {
       ExecStart = "${pkgs.ironbar}/bin/ironbar";
@@ -297,7 +300,7 @@
       RestartSec = "1sec";
     };
     Install = {
-      WantedBy = [ "hyprland-session.target" ];
+      WantedBy = ["hyprland-session.target"];
     };
   };
 
@@ -385,7 +388,7 @@
       DisablePocket = true;
       OverrideFirstRunPage = "";
       OverridePostUpdatePage = "";
-      
+
       EnableTrackingProtection = {
         Value = true;
         Locked = true;
@@ -393,7 +396,7 @@
       };
 
       ExtensionSettings = {
-        "*" = { installation_mode = "allowed"; };
+        "*" = {installation_mode = "allowed";};
         "uBlock0@raymondhill.net" = {
           install_url = "https://addons.mozilla.org/firefox/downloads/latest/ublock-origin/latest.xpi";
           installation_mode = "force_installed";
@@ -472,7 +475,7 @@
     osu-lazer-bin
     ironbar
     celluloid
-    
+
     (discord.override {
       withVencord = true;
       withOpenASAR = true;
@@ -485,7 +488,7 @@
         notify-send "Screenshot Captured" "Saved to ~/Pictures/Screenshots and copied to clipboard." --icon=camera
       fi
     '')
-    
+
     (writeShellScriptBin "osu-launcher" ''
       export WINEPREFIX="/home/crazycat/.wine-osu"
       export STAGING_AUDIO_DURATION="10000"
@@ -503,40 +506,67 @@
     '')
   ];
 
-  services.swayosd = { enable = true; stylePath = null; };
+  services.swayosd = {
+    enable = true;
+    stylePath = null;
+  };
 
   services.kanshi = {
     enable = true;
     systemdTarget = "hyprland-session.target";
     settings = [
-      { profile = { name = "docked"; outputs = [ { criteria = "eDP-1"; status = "disable"; } { criteria = "*"; status = "enable"; } ]; }; }
-      { profile = { name = "undocked"; outputs = [ { criteria = "eDP-1"; status = "enable"; } ]; }; }
+      {
+        profile = {
+          name = "docked";
+          outputs = [
+            {
+              criteria = "eDP-1";
+              status = "disable";
+            }
+            {
+              criteria = "*";
+              status = "enable";
+            }
+          ];
+        };
+      }
+      {
+        profile = {
+          name = "undocked";
+          outputs = [
+            {
+              criteria = "eDP-1";
+              status = "enable";
+            }
+          ];
+        };
+      }
     ];
   };
 
-  programs.ssh = { 
-    enable = true; 
-    enableDefaultConfig = false; 
-    settings = { 
-      "*" = { 
-        ServerAliveInterval = 30; 
-        ServerAliveCountMax = 3; 
-        TCPKeepAlive = "yes"; 
-      }; 
-    }; 
+  programs.ssh = {
+    enable = true;
+    enableDefaultConfig = false;
+    settings = {
+      "*" = {
+        ServerAliveInterval = 30;
+        ServerAliveCountMax = 3;
+        TCPKeepAlive = "yes";
+      };
+    };
   };
 
   # ---------------------------------------------------------------------------
   # XDG MIME ROUTING & THEMES
   # ---------------------------------------------------------------------------
   xdg.desktopEntries = {
-    osu-stable = { 
-      name = "osu!stable"; 
-      exec = "osu-launcher %U"; 
-      icon = "osu!"; 
-      comment = "osu! stable"; 
-      terminal = false; 
-      categories = [ "Game" ]; 
+    osu-stable = {
+      name = "osu!stable";
+      exec = "osu-launcher %U";
+      icon = "osu!";
+      comment = "osu! stable";
+      terminal = false;
+      categories = ["Game"];
       mimeType = [
         "application/x-osu-beatmap"
         "application/x-osu-skin"
