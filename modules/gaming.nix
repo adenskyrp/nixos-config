@@ -1,6 +1,9 @@
-{ config, pkgs, lib, ... }:
-
 {
+  config,
+  pkgs,
+  lib,
+  ...
+}: {
   # ---------------------------------------------------------------------------
   # VIRTUAL MEMORY & SCHEDULER TUNING
   # ---------------------------------------------------------------------------
@@ -31,11 +34,6 @@
   # LOW-LATENCY PROTON & DRIVER ENVIRONMENT
   # ---------------------------------------------------------------------------
   environment.sessionVariables = {
-    # STRIX POINT TOPOLOGY LOCK:
-    # Restricts Wine/Proton to the 4 Zen 5 Performance cores (Cores 0-3, Threads 0-7).
-    # Completely prevents thread migration onto the lower-clock Zen 5c dense cores.
-    WINE_CPU_TOPOLOGY = "4:0,1,2,3";
-
     # SYNCHRONIZATION PIPELINE:
     # Enforces Linux futex_waitv synchronization via Fsync; disables Esync
     WINE_FSYNC = "1";
@@ -69,11 +67,6 @@
     dxvk.syncInterval = 0
     # Disables internal swapchain tear-free buffering to enable immediate scanout
     dxvk.tearFree = False
-
-    # --- CPU WORKER SCHEDULING ---
-    # Clamped strictly to 8 threads to match the Zen 5 Performance cluster
-    dxvk.numCompilerThreads = 8
-
     # --- RDNA 3.5 GPU DISPATCH ---
     # Enables direct Shader Storage Buffer Object (SSBO) access on Radeon 880M
     dxvk.useRawSsbo = True
@@ -83,7 +76,7 @@
   # SYSTEM PACKAGES & TELEMETRY
   # ---------------------------------------------------------------------------
   environment.systemPackages = with pkgs; [
-    mangohud          # Frame-time and latency analysis overlay
-    evhz              # USB polling rate verification
+    mangohud # Frame-time and latency analysis overlay
+    evhz # USB polling rate verification
   ];
 }
