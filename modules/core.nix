@@ -382,6 +382,5 @@
     ffmpegthumbnailer
     sshfs
     fastfetch
-    (pkgs.callPackage ./pear.nix {})
   ];
 }

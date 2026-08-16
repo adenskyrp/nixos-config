@@ -41,10 +41,6 @@
   # WAYLAND DIRECT-PRESENTATION ENVIRONMENT
   # ---------------------------------------------------------------------------
   environment.sessionVariables = {
-    # Forces Wine/Proton to map directly to Wayland surfaces.
-    # Eliminates Xwayland translation and prevents Steam Input hooks.
-    PROTON_ENABLE_WAYLAND = "1";
-    SDL_VIDEODRIVER = "wayland";
     NIXOS_OZONE_WL = "1";
     WINE_FSYNC = "1";
     PROTON_NO_ESYNC = "1";
@@ -62,7 +58,7 @@
     dxvk.tearFree = False
 
     # --- CPU WORKER SCHEDULING ---
-    dxvk.numCompilerThreads = 10
+    dxvk.numCompilerThreads = 20
 
     # --- RDNA 3.5 GPU DISPATCH ---
     dxvk.useRawSsbo = True
