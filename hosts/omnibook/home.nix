@@ -4,23 +4,185 @@
   ...
 }: {
   # ---------------------------------------------------------------------------
-  # HYPRLAND: EXTREME LOW-LATENCY COMPOSITOR PIPELINE
+  # HYPRLAND: NATIVE LUA COMPOSITOR CONFIGURATION
   # ---------------------------------------------------------------------------
   wayland.windowManager.hyprland = {
     enable = true;
     xwayland.enable = true;
-    configType = "hyprlang";
 
-    # ---------------------------------------------------------------------------
-    # DECLARATIVE HYPRLAND LUA CONFIGURATION (~/.config/hypr/hyprland.lua)
-    # ---------------------------------------------------------------------------
-    # This block compiles your complete compositor configuration into an immutable
-    # Nix store derivation symlinked directly to your XDG user profile.
+    # Declares the native Lua configuration pipeline. Home Manager will compile
+    # extraConfig directly into ~/.config/hypr/hyprland.lua in the Nix store.
+    configType = "lua";
+
     extraConfig = ''
-      bind = SUPER, Q, exec, kitty
-      bind = SUPER, SPACE, exec, fuzzel
+      -- ======================================================================
+      -- 1. DISPLAY ENGINE & SCANOUT PIPELINE
+      -- ======================================================================
+      hl.config({
+        -- Monitor topology: DP-Alt over USB4 / eDP discovery
+        monitor = {
+          ",highrr,auto,1",
+        },
+
+        -- Direct Scanout: Bypasses compositor composite passes on fullscreen
+        -- surfaces, granting zero-copy unbuffered access to KMS CRTC plane 1.
+        render = {
+          direct_scanout = true,
+        },
+
+        -- Master switch for the wp_tearing_control_v1 protocol interface
+        general = {
+          allow_tearing = true,
+          border_size = 2,
+          gaps_in = 4,
+          gaps_out = 8,
+        },
+
+        -- VFR Override: Explicitly disabled per hardware profile.
+        -- Forces continuous 540Hz compositor tick polling to eliminate display
+        -- engine wake-up latency when transitioning from static to dynamic motion.
+        debug = {
+          vfr = false,
+        },
+
+        -- Suppress cosmetic render passes and fallback assets
+        misc = {
+          disable_hyprland_logo = true,
+          disable_splash_rendering = true,
+          force_default_wallpaper = 0,
+          background_color = 0x000000,
+        },
+
+        decoration = {
+          rounding = 0,
+          shadow = { enabled = false },
+          blur = { enabled = false },
+        },
+      })
+
+      -- ======================================================================
+      -- 2. HARDWARE SENSOR & 8000Hz POLLING INPUT PIPELINE
+      -- ======================================================================
+      hl.config({
+        input = {
+          sensitivity = 0.0,
+          accel_profile = "flat", -- 1:1 raw bypass; eliminates libinput software curves
+          touchpad = {
+            disable_while_typing = true,
+            natural_scroll = false,
+          },
+        },
+
+        -- Array-of-tables declaration for device-specific hardware isolation
+        device = {
+          {
+            name = "compx-wireless-mouse-8k-dongle-l-mouse",
+            sensitivity = 0.0,
+            accel_profile = "flat",
+          },
+        },
+      })
+
+      -- ======================================================================
+      -- 3. ASYNCHRONOUS TEARING WINDOW RULES (NATIVE LUA API)
+      -- ======================================================================
+      -- Each table binds directly to the internal surface hash table in the C++ backend.
+
+      -- Rocket League (DX11 / Proton WSI scanout)
+      hl.window_rule({
+        match = { class = "rocketleague.exe" },
+        immediate = true,
+        tile = true,
+        workspace = 5,
+      })
+      hl.window_rule({
+        match = { class = "steam_app_252950" },
+        immediate = true,
+        tile = true,
+        workspace = 5,
+      })
+
+      -- osu! (Wine Staging / Low-Latency PipeWire Audio)
+      hl.window_rule({
+        match = { class = "osu!.exe" },
+        immediate = true,
+        tile = true,
+        workspace = 5,
+      })
+
+      -- Aim Lab
+      hl.window_rule({
+        match = { class = "aimlab_tb.exe" },
+        immediate = true,
+        tile = true,
+        workspace = 5,
+      })
+
+      -- Counter-Strike 2 (Native Vulkan Direct Scanout)
+      hl.window_rule({
+        match = { class = "cs2" },
+        immediate = true,
+        tile = true,
+        workspace = 5,
+      })
+
+      -- ======================================================================
+      -- 4. STARTUP PROCESSES & SYSTEM HOOKS (EXEC-ONCE)
+      -- ======================================================================
+      hl.config({
+        exec_once = {
+          "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1",
+        },
+        exec = {
+          "systemctl --user restart kanshi",
+        },
+      })
+
+      -- ======================================================================
+      -- 5. NATIVE LUA KEYBINDINGS (C++ DISPATCHER INTERFACE)
+      -- ======================================================================
+      local mainMod = "SUPER"
+
+      -- Core Window Management Dispatchers
+      hl.bind(mainMod .. " + Q", hl.dsp.exec_cmd("${pkgs.kitty}/bin/kitty"))
+      hl.bind(mainMod .. " + C", hl.dsp.window.close())
+      hl.bind(mainMod .. " + M", hl.dsp.exit())
+      hl.bind(mainMod .. " + V", hl.dsp.window.float({ action = "toggle" }))
+      hl.bind(mainMod .. " + F", hl.dsp.window.fullscreen())
+      hl.bind(mainMod .. " + SPACE", hl.dsp.exec_cmd("${pkgs.fuzzel}/bin/fuzzel"))
+      hl.bind(mainMod .. " + D", hl.dsp.exec_cmd("pkill -SIGUSR1 ironbar"))
+      hl.bind(mainMod .. " + SHIFT + S", hl.dsp.exec_cmd("screenshot-region"))
+
+      -- Workspaces 1-5 Dispatcher Mapping
+      for i = 1, 5 do
+        hl.bind(mainMod .. " + " .. tostring(i), hl.dsp.focus({ workspace = tostring(i) }))
+        hl.bind(mainMod .. " + SHIFT + " .. tostring(i), hl.dsp.window.move({ workspace = tostring(i) }))
+      end
+
+      -- Scroll Wheel Workspace Switching
+      hl.bind(mainMod .. " + mouse_down", hl.dsp.focus({ workspace = "e+1" }))
+      hl.bind(mainMod .. " + mouse_up", hl.dsp.focus({ workspace = "e-1" }))
+
+      -- Mouse Window Dragging & Resizing
+      hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true })
+      hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
+
+      -- Hardware Media Integration (SwayOSD Client Dispatch)
+      hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("${pkgs.swayosd}/bin/swayosd-client --output-volume +5"))
+      hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("${pkgs.swayosd}/bin/swayosd-client --output-volume -5"))
+      hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd("${pkgs.swayosd}/bin/swayosd-client --brightness raise"))
+      hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("${pkgs.swayosd}/bin/swayosd-client --brightness lower"))
+
+      -- Hardware Media Integration (Playerctl MPRIS Dispatch)
+      hl.bind("XF86AudioMute", hl.dsp.exec_cmd("${pkgs.swayosd}/bin/swayosd-client --output-volume mute-toggle"))
+      hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd("${pkgs.swayosd}/bin/swayosd-client --input-volume mute-toggle"))
+      hl.bind("XF86AudioPlay", hl.dsp.exec_cmd("${pkgs.playerctl}/bin/playerctl play-pause"))
+      hl.bind("XF86AudioPause", hl.dsp.exec_cmd("${pkgs.playerctl}/bin/playerctl play-pause"))
+      hl.bind("XF86AudioNext", hl.dsp.exec_cmd("${pkgs.playerctl}/bin/playerctl next"))
+      hl.bind("XF86AudioPrev", hl.dsp.exec_cmd("${pkgs.playerctl}/bin/playerctl previous"))
     '';
   };
+
   # ---------------------------------------------------------------------------
   # INTERACTIVE SHELL & REBUILD PIPELINE
   # ---------------------------------------------------------------------------
