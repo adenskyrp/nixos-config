@@ -23,7 +23,7 @@
   # ---------------------------------------------------------------------------
   # Ensures proper mapping, deadzones, and rumble translation for Xbox-protocol 
   # controllers in Proton.
-  hardware.xpadneo.enable = true;
+  # hardware.xpadneo.enable = true;
 
   # ---------------------------------------------------------------------------
   # STEAM & PROTON PIPELINE
@@ -62,7 +62,7 @@
     dxvk.tearFree = False
 
     # --- CPU WORKER SCHEDULING ---
-    dxvk.numCompilerThreads = 20
+    dxvk.numCompilerThreads = 10
 
     # --- RDNA 3.5 GPU DISPATCH ---
     dxvk.useRawSsbo = True
