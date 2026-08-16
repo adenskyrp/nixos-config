@@ -119,9 +119,9 @@
       -- ======================================================================
       -- 5. KEYBINDINGS & MEDIA INTEGRATION
       -- ======================================================================
+      local mainMod = "SUPER"
       hl.config({
         bind = {
-          -- Core Window Management
           "SUPER, Q, exec, kitty",
           "SUPER, C, killactive",
           "SUPER, M, exit",
