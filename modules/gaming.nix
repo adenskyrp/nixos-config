@@ -53,6 +53,7 @@
     SDL_GAMECONTROLLER_IGNORE_DEVICES = "0x28de/0x11ff";
     DXVK_HUD = "0";
     DXVK_CONFIG_FILE = "/etc/dxvk.conf";
+    MESA_VK_WSI_PRESENT_MODE = "immediate";
   };
 
   environment.etc."dxvk.conf".text = ''
@@ -61,7 +62,7 @@
     dxvk.tearFree = False
 
     # --- CPU WORKER SCHEDULING ---
-    dxvk.numCompilerThreads = 8
+    dxvk.numCompilerThreads = 20
 
     # --- RDNA 3.5 GPU DISPATCH ---
     dxvk.useRawSsbo = True

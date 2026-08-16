@@ -39,7 +39,7 @@
       render = {
         # Manages direct presentation. Leaving this to its optimized default 
         # or explicitly setting it ensures zero-copy rendering paths for fullscreen games.
-        direct_scanout = false; 
+        direct_scanout = true; 
       };
       # --- RAW INPUT SUBSYSTEM ---
       input = {
