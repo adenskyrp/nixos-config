@@ -24,6 +24,14 @@
           ",highrr,auto,1",
         },
 
+        -- Deterministic Hardware Binding:
+        -- DP-2 locked to 1920x1080 @ 599.94Hz (0x0 coordinate offset, 1.0x scaling)
+        -- eDP-1 is explicitly disabled when docked to free APU display engine bandwidth
+        monitor = {
+          "DP-2, 1920x1080@599.94, 0x0, 1",
+          "eDP-1, disable",
+        },
+
         -- Direct scanout bypasses composition passes on fullscreen surfaces
         render = {
           direct_scanout = true,
@@ -533,7 +541,11 @@
               status = "disable";
             }
             {
-              criteria = "*";
+              # Pin the exact EDID string and 599.94Hz modeline
+              criteria = "BNQ XL2586X+ EB3CR02979SL0";
+              mode = "1920x1080@599.94Hz";
+              position = "0,0";
+              scale = 1.0;
               status = "enable";
             }
           ];
@@ -545,6 +557,9 @@
           outputs = [
             {
               criteria = "eDP-1";
+              mode = "2240x1400@60.00Hz";
+              position = "0,0";
+              scale = 1.4583334;
               status = "enable";
             }
           ];
