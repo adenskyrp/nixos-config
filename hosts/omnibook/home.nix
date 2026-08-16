@@ -501,7 +501,7 @@
     nerd-fonts.fira-code pavucontrol deepfilternet lsp-plugins polkit_gnome
     docker-client playerctl overskride protonup-qt wineWow64Packages.staging
     winetricks protontricks grim slurp wl-clipboard satty adwaita-icon-theme hicolor-icon-theme
-    obs-studio-plugins.obs-vkcapture libva-utils osu-lazer-bin ironbar
+    obs-studio-plugins.obs-vkcapture libva-utils osu-lazer-bin ironbar celluloid
     (discord.override {
       withVencord = true;
       withOpenASAR = true;
