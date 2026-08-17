@@ -21,6 +21,7 @@ in {
     ./hardware-configuration.nix
     ../../modules/core.nix
     ../../modules/gaming.nix
+    ../../modules/minecraft.nix
   ];
 
   # Synchronize hostname with flake output schema
