@@ -309,23 +309,23 @@
       min-height: 0;
     }
 
-    /* Target all root window variants to eliminate GTK theme white fallback */
+    /* Root bar surface */
     window,
     window.background,
     .bar,
     #bar {
-      background-color: rgba(40, 44, 52, 0.95); /* Deep slate matching workspace container */
+      background-color: rgba(40, 44, 52, 0.95);
       color: #abb2bf;
       border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 8px;
       padding: 2px 6px;
     }
 
-    .start, .center, .end {
+    .start, .center {
       margin: 2px 0px;
     }
 
-    /* Workspace Module Container */
+    /* Left-Side Container: Workspaces */
     .workspaces {
       background-color: rgba(30, 34, 42, 0.7);
       border: 1px solid rgba(255, 255, 255, 0.05);
@@ -353,7 +353,7 @@
       cursor: pointer;
     }
 
-    /* Active / Focused Workspace */
+    /* Active / Focused Workspace (High-Contrast White Highlight) */
     .workspaces .item.focused,
     .workspaces .item.active,
     .workspaces .item.current {
@@ -362,25 +362,47 @@
       font-weight: 700;
     }
 
-    /* Urgent Workspace Flag */
+    /* Urgent Workspace Notification Flag */
     .workspaces .item.urgent {
       background-color: #e06c75;
       color: #1e222a;
       font-weight: bold;
     }
 
-    /* Right-Side Status Modules: High-contrast text on dark slate pills */
-    .volume, .clock, .tray {
+    /* Right-Side Container: Audio, Clock & Tray (Mirrors .workspaces) */
+    .end {
       background-color: rgba(30, 34, 42, 0.7);
       border: 1px solid rgba(255, 255, 255, 0.05);
       border-radius: 6px;
-      padding: 2px 10px;
-      margin-left: 6px;
+      padding: 2px 4px;
+      margin: 2px 0px;
+    }
+
+    /* Nested Status Widgets */
+    .end .volume,
+    .end .clock,
+    .end .tray,
+    .volume,
+    .clock,
+    .tray {
+      background: transparent;
+      background-color: transparent;
+      color: #ffffff;
+      padding: 2px 8px;
+    }
+
+    /* Force text and icon inheritance across all GTK children */
+    .end label,
+    .end image,
+    .volume *,
+    .clock *,
+    .tray * {
+      background: transparent;
       color: #ffffff;
     }
 
     .tray {
-      padding: 2px 6px;
+      padding: 2px 4px;
     }
   '';
 
