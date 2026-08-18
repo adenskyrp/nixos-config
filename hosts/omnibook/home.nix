@@ -148,9 +148,15 @@
       hl.bind(mainMod .. " + mouse_down", hl.dsp.focus({ workspace = "e+1" }))
       hl.bind(mainMod .. " + mouse_up", hl.dsp.focus({ workspace = "e-1" }))
 
-      -- Mouse Window Operations
-      hl.bindm(mainMod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true })
-      hl.bindm(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
+      -- ======================================================================
+      -- MOUSE WINDOW OPERATIONS (NATIVE C++ ARRAY ENGINE)
+      -- ======================================================================
+      hl.config({
+        bindm = {
+          "SUPER, mouse:272, movewindow",
+          "SUPER, mouse:273, resizewindow",
+        }
+      })
 
       -- SwayOSD Audio & Brightness Integration
       hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("${pkgs.swayosd}/bin/swayosd-client --output-volume +5"))

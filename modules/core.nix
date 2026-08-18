@@ -140,6 +140,21 @@
           "default.clock.max-quantum" = 1024;
         };
       };
+      # Explicitly bind the Real-Time module to claim the priority granted by PAM/RTKit
+      "99-realtime" = {
+        "context.modules" = [
+          {
+            name = "libpipewire-module-rt";
+            args = {
+              "nice.level" = -15;
+              "rt.prio" = 88;
+              "rt.time.soft" = -1;
+              "rt.time.hard" = -1;
+            };
+            flags = [ "ifexists" "nofail" ];
+          }
+        ];
+      };
     };
 
     extraConfig.pipewire-pulse = {
@@ -164,8 +179,10 @@
                 "audio.format" = "S32LE";
                 "audio.rate" = 48000;
                 "api.alsa.period-size" = 64;
-                "api.alsa.headroom" = 0;
-                "api.alsa.disable-batch" = false;
+                # Provide a 1-period (1.33ms) safety net for the DMA pointer
+                "api.alsa.headroom" = 64;
+                # Force high-resolution IRQ timers instead of grouped batch wakeups
+                "api.alsa.disable-batch" = true; 
               };
             };
           }
@@ -201,7 +218,6 @@
       };
     };
   };
-
   # ---------------------------------------------------------------------------
   # USER PRIVILEGES & REALTIME PAM LIMITS
   # ---------------------------------------------------------------------------
