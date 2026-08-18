@@ -6,15 +6,23 @@
 }: {
 
   # ---------------------------------------------------------------------------
-  # eBPF EXTENSIBLE SCHEDULER (sched-ext)
+  # eBPF EXTENSIBLE SCHEDULER (sched-ext / scx_lavd)
   # ---------------------------------------------------------------------------
-  # Dynamically loads the BORE scheduler into the CachyOS kernel via eBPF.
-  # The NixOS module automatically resolves the correct package derivation
-  # when given the scheduler identifier string.
+  # scx_lavd (Latency-critical Architecture-aware Virtual Deadline) is built
+  # specifically for asymmetric CPU topologies (Zen 5 + Zen 5c). It maps
+  # latency-sensitive threads (Hyprland, Proton, PipeWire) to the high-clocked
+  # Zen 5 cores while shifting low-priority workloads to the dense Zen 5c cores.
   services.scx = {
     enable = true;
-    scheduler = "scx_rusty";
+    scheduler = "scx_lavd";
+    
+    # Pass latency-oriented flags directly to the eBPF binary
+    # --performance: Biases energy-aware scheduling strictly toward latency reduction
+    extraArgs = [
+      "--performance"
+    ];
   };
+
   # ---------------------------------------------------------------------------
   # REPOSITORY EVALUATION POLICIES & FLAKE STATE
   # ---------------------------------------------------------------------------
