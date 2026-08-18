@@ -247,9 +247,6 @@
   # ---------------------------------------------------------------------------
   # STATUS BAR & GTK3 LAYER-SHELL (Ironbar - Native XDG/Systemd Implementation)
   # ---------------------------------------------------------------------------
-  # Bypassing the external programs.ironbar module to maintain flake purity
-  # while generating the exact same read-only configuration in the Nix store.
-
   xdg.configFile."ironbar/config.json".text = builtins.toJSON {
     anchor = {
       top = true;
@@ -270,7 +267,6 @@
       {
         type = "workspaces";
         all_monitors = false;
-        # Dispatches native 'hyprctl dispatch workspace <ID>' events over IPC
         name_map = {
           "1" = "1";
           "2" = "2";
@@ -300,8 +296,9 @@
     ];
   };
 
-  # Compiles the GTK3 CSS directly into ~/.config/ironbar/style.css
+  # Compiles GTK3 CSS into ~/.config/ironbar/style.css
   xdg.configFile."ironbar/style.css".text = ''
+    /* Universal GTK Reset */
     * {
       font-family: "FiraCode Nerd Font", monospace;
       font-size: 13px;
@@ -312,11 +309,15 @@
       min-height: 0;
     }
 
-    window#ironbar {
-      background-color: rgba(30, 34, 42, 0.92);
+    /* Target all root window variants to eliminate GTK theme white fallback */
+    window,
+    window.background,
+    .bar,
+    #bar {
+      background-color: rgba(40, 44, 52, 0.95); /* Deep slate matching workspace container */
+      color: #abb2bf;
       border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 8px;
-      color: #abb2bf;
       padding: 2px 6px;
     }
 
@@ -324,14 +325,16 @@
       margin: 2px 0px;
     }
 
+    /* Workspace Module Container */
     .workspaces {
-      background-color: rgba(40, 44, 52, 0.7);
+      background-color: rgba(30, 34, 42, 0.7);
       border: 1px solid rgba(255, 255, 255, 0.05);
       border-radius: 6px;
       padding: 2px;
       margin-right: 8px;
     }
 
+    /* Inactive Workspaces */
     .workspaces button,
     .workspaces .item {
       background: transparent;
@@ -342,6 +345,7 @@
       font-weight: 500;
     }
 
+    /* Interactive Hover State */
     .workspaces button:hover,
     .workspaces .item:hover {
       background-color: rgba(255, 255, 255, 0.12);
@@ -349,6 +353,7 @@
       cursor: pointer;
     }
 
+    /* Active / Focused Workspace */
     .workspaces .item.focused,
     .workspaces .item.active,
     .workspaces .item.current {
@@ -357,14 +362,16 @@
       font-weight: 700;
     }
 
+    /* Urgent Workspace Flag */
     .workspaces .item.urgent {
       background-color: #e06c75;
       color: #1e222a;
       font-weight: bold;
     }
 
+    /* Right-Side Status Modules: High-contrast text on dark slate pills */
     .volume, .clock, .tray {
-      background-color: rgba(40, 44, 52, 0.7);
+      background-color: rgba(30, 34, 42, 0.7);
       border: 1px solid rgba(255, 255, 255, 0.05);
       border-radius: 6px;
       padding: 2px 10px;
@@ -377,7 +384,6 @@
     }
   '';
 
-  # Directly declares the Wayland graphical session dependency
   systemd.user.services.ironbar = {
     Unit = {
       Description = "Ironbar custom Wayland bar";
