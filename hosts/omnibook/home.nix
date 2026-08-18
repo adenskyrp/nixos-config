@@ -83,34 +83,56 @@
       })
 
       -- ======================================================================
-      -- 3. ASYNCHRONOUS TEARING WINDOW RULES (C++ ARRAY ENGINE)
+      -- 3. ASYNCHRONOUS TEARING & WORKSPACE RULES (NATIVE LUA TABLE API)
       -- ======================================================================
-      hl.config({
-        windowrulev2 = {
-          -- Rocket League (DX11 / Proton Swapchain)
-          "immediate, class:^(rocketleague\\.exe)$",
-          "immediate, class:^(steam_app_252950)$",
-          "fullscreen_state 2 2, class:^(rocketleague\\.exe)$",
-          "fullscreen_state 2 2, class:^(steam_app_252950)$",
-          "workspace 5, class:^(rocketleague\\.exe)$",
-          "workspace 5, class:^(steam_app_252950)$",
+      -- Bypasses deprecated windowrulev2 string parsers. Tables are compiled
+      -- directly into internal CWindowRule structs by the Hyprland Lua engine.
 
-          -- osu! (Wine Staging / Low-Latency Audio Pipeline)
-          "immediate, class:^(osu\\!\\.exe)$",
-          "immediate, class:^(osu\\!)$",
-          "fullscreen_state 2 2, class:^(osu\\!\\.exe)$",
-          "fullscreen_state 2 2, class:^(osu\\!)$",
-          "workspace 5, class:^(osu\\!\\.exe)$",
-          "workspace 5, class:^(osu\\!)$",
-
-          -- Counter-Strike 2 & Aim Lab
-          "immediate, class:^(aimlab_tb\\.exe)$",
-          "immediate, class:^(cs2)$",
-          "workspace 5, class:^(aimlab_tb\\.exe)$",
-          "workspace 5, class:^(cs2)$",
-        },
+      -- Rocket League (DX11 / Proton Swapchain)
+      hl.window_rule({
+        match = { class = "rocketleague.exe" },
+        immediate = true,          -- Triggers wp_tearing_control_v1 async scanout
+        fullscreen_state = "2 2",  -- Forces client + compositor exclusive fullscreen
+        tile = true,
+        workspace = 5,
+      })
+      hl.window_rule({
+        match = { class = "steam_app_252950" },
+        immediate = true,
+        fullscreen_state = "2 2",
+        tile = true,
+        workspace = 5,
       })
 
+      -- osu! (Wine Staging / Direct Latency Pipeline)
+      hl.window_rule({
+        match = { class = "osu!.exe" },
+        immediate = true,
+        fullscreen_state = "2 2",
+        tile = true,
+        workspace = 5,
+      })
+      hl.window_rule({
+        match = { class = "osu!" },
+        immediate = true,
+        fullscreen_state = "2 2",
+        tile = true,
+        workspace = 5,
+      })
+
+      -- Counter-Strike 2 & Aim Lab
+      hl.window_rule({
+        match = { class = "aimlab_tb.exe" },
+        immediate = true,
+        tile = true,
+        workspace = 5,
+      })
+      hl.window_rule({
+        match = { class = "cs2" },
+        immediate = true,
+        tile = true,
+        workspace = 5,
+      })
       -- ======================================================================
       -- 4. STARTUP PROCESSES & SYSTEM HOOKS (EXEC-ONCE)
       -- ======================================================================
