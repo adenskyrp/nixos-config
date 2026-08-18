@@ -4,6 +4,17 @@
   lib,
   ...
 }: {
+
+  # ---------------------------------------------------------------------------
+  # eBPF EXTENSIBLE SCHEDULER (sched-ext)
+  # ---------------------------------------------------------------------------
+  # Dynamically loads the BORE scheduler into the CachyOS kernel via eBPF.
+  # The NixOS module automatically resolves the correct package derivation
+  # when given the scheduler identifier string.
+  services.scx = {
+    enable = true;
+    scheduler = "scx_rusty";
+  };
   # ---------------------------------------------------------------------------
   # REPOSITORY EVALUATION POLICIES & FLAKE STATE
   # ---------------------------------------------------------------------------
