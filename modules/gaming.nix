@@ -59,17 +59,41 @@
   };
 
   # ---------------------------------------------------------------------------
-  # DECLARATIVE DXVK CONFIGURATION (/etc/dxvk.conf)
+  # DECLARATIVE DXVK ENGINE CONFIGURATION (/etc/dxvk.conf)
   # ---------------------------------------------------------------------------
+  # Globally applied to all DX9/DX11 titles running through Proton / Wine DXVK.
   environment.etc."dxvk.conf".text = ''
-    # --- PRESENTATION LATENCY ---
-    # 0 disables DXVK internal vsync pacing (presentation handled by compositor)
+    # --- PRESENTATION & FRAME QUEUE LATENCY ---
+    # Disables internal swapchain tear-free buffering and VSync
     dxvk.syncInterval = 0
-    # Disables internal swapchain tear-free buffering to enable immediate scanout
     dxvk.tearFree = False
-    # --- RDNA 3.5 GPU DISPATCH ---
+    dxgi.syncInterval = 0
+    d3d9.presentInterval = 0
+
+    # Strict 1-frame queue depth: eliminates CPU buffer queuing lag
+    dxgi.maxFrameLatency = 1
+    d3d9.maxFrameLatency = 1
+
+    # Prevents software thread sleep throttling in DXVK's swapchain loop
+    dxgi.maxFrameRate = 0
+    d3d9.maxFrameRate = 0
+
+    # --- RDNA 3.5 / RADV HARDWARE PIPELINE ---
     # Enables direct Shader Storage Buffer Object (SSBO) access on Radeon 880M
     dxvk.useRawSsbo = True
+
+    # Allows relaxed Vulkan memory barriers to eliminate pipeline stall bubbles
+    d3d11.relaxedBarriers = True
+
+    # Disables Nvidia GPU spoofing to prevent redundant NVAPI/DLSS wrapper checks
+    dxgi.nvapiHack = False
+
+    # Disables pipeline lifetime tracking to reduce internal hashmap lookups
+    dxvk.trackPipelineLifetime = False
+
+    # Optimizes D3D9 sampler state setup for titles like osu! stable
+    d3d9.samplerAnisotropy = 0
+    d3d9.deferSurfaceCreation = True
   '';
 
   # ---------------------------------------------------------------------------
