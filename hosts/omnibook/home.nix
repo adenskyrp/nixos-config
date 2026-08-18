@@ -36,9 +36,9 @@
         -- Master switch for wp_tearing_control_v1 protocol negotiation
         general = {
           allow_tearing = true,
-          border_size = 2,
-          gaps_in = 4,
-          gaps_out = 8,
+          border_size = 1,
+          gaps_in = 0,
+          gaps_out = 0,
         },
 
         -- VFR Disabled: Continuous 600Hz polling eliminates display-wake latency
@@ -106,7 +106,7 @@
 
       -- osu! (Wine Staging / Direct Latency Pipeline)
       hl.window_rule({
-        match = { class = "osu!.exe" },
+        match = { class = "osu!\\.exe" },
         immediate = true,
         fullscreen_state = "2 2",
         tile = true,
