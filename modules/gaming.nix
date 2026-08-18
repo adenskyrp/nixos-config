@@ -34,27 +34,17 @@
   # LOW-LATENCY PROTON & DRIVER ENVIRONMENT
   # ---------------------------------------------------------------------------
   environment.sessionVariables = {
-    # SYNCHRONIZATION PIPELINE:
-    # Enforces Linux futex_waitv synchronization via Fsync; disables Esync
+    AMD_VULKAN_ICD = "RADV";
+    RADV_PERFTEST = "sam,dccmsaa";
+    MESA_SHADER_CACHE_MAX_SIZE = "16G";
     WINE_FSYNC = "1";
     PROTON_NO_ESYNC = "1";
-
-    # DIRECT HARDWARE INPUT:
-    # Exposes raw /dev/hidraw nodes directly to game engines
     PROTON_ENABLE_HIDRAW = "1";
     SDL_JOYSTICK_HIDAPI = "0";
-
-    # STEAM INPUT BYPASS:
-    # Ignores Valve's virtual Steam Controller emulation device
     SDL_GAMECONTROLLER_IGNORE_DEVICES = "0x28de/0x11ff";
-
-    # VULKAN PRESENTATION:
     DXVK_HUD = "0";
     DXVK_CONFIG_FILE = "/etc/dxvk.conf";
-    # Enforces non-blocking immediate page flipping at the Vulkan WSI layer
     MESA_VK_WSI_PRESENT_MODE = "immediate";
-
-    # Wayland native runtime for Electron/Chromium shims
     NIXOS_OZONE_WL = "1";
   };
 
