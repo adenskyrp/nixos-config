@@ -17,6 +17,24 @@
   };
 
   # ---------------------------------------------------------------------------
+  # GAMEMODE (per-process priority, opt-in via `gamemoderun %command%`)
+  # ---------------------------------------------------------------------------
+  # The governor is already pinned to "performance" system-wide, so gamemode is
+  # not needed for clocks. Its value here is per-process: renice + ioprio for the
+  # foreground game, and inhibiting idle/screensaver mid-match. Nothing is
+  # applied unless a launch option actually invokes gamemoderun.
+  programs.gamemode = {
+    enable = true;
+    enableRenice = true;
+    settings.general = {
+      # Lift the game above desktop tasks without entering realtime priority,
+      # which would risk starving the compositor and PipeWire's RT threads.
+      renice = 10;
+      inhibit_screensaver = 1;
+    };
+  };
+
+  # ---------------------------------------------------------------------------
   # STEAM & PROTON RUNTIME PIPELINE
   # ---------------------------------------------------------------------------
   programs.steam = {
@@ -35,7 +53,10 @@
   # ---------------------------------------------------------------------------
   environment.sessionVariables = {
     AMD_VULKAN_ICD = "RADV";
-    RADV_PERFTEST = "sam,dccmsaa";
+    # RADV_PERFTEST intentionally unset: "sam" targets resizable-BAR access to a
+    # discrete GPU's dedicated VRAM (the 880M is an iGPU sharing system RAM, so
+    # there is no BAR window to widen), and "dccmsaa" only optimizes MSAA color
+    # compression, which competitive settings disable outright.
     MESA_SHADER_CACHE_MAX_SIZE = "16G";
     WINE_FSYNC = "1";
     PROTON_NO_ESYNC = "1";

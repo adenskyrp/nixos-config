@@ -115,7 +115,6 @@
     "vm.compaction_proactiveness" = 20;
     "vm.watermark_boost_factor" = 1;
     "vm.swappiness" = 10;
-    "kernel.sched_mitigation_cost_ns" = 500000;
   };
 
   # ---------------------------------------------------------------------------

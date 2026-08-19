@@ -41,10 +41,11 @@
           gaps_out = 0,
         },
 
-        -- VFR Disabled: Continuous 600Hz polling eliminates display-wake latency
-        debug = {
-          vfr = false,
-        },
+        -- VFR left at its default (enabled). It governs whether Hyprland skips
+        -- redrawing an idle *desktop*, not how the game's frames reach the
+        -- display -- once direct scanout takes over the fullscreen surface,
+        -- in-game latency comes from the tearing/immediate/scanout trio above.
+        -- Forcing it off only burned shared-TDP headroom redrawing the bar.
 
         misc = {
           disable_hyprland_logo = true,
@@ -92,6 +93,7 @@
       hl.window_rule({
         match = { class = "rocketleague.exe" },
         immediate = true,          -- Triggers wp_tearing_control_v1 async scanout
+        no_anim = true,           -- snake_case per Hyprland Lua API (not "noanim")
         fullscreen_state = "2 2",  -- Forces client + compositor exclusive fullscreen
         tile = true,
         workspace = 5,
@@ -99,6 +101,7 @@
       hl.window_rule({
         match = { class = "steam_app_252950" },
         immediate = true,
+        no_anim = true,
         fullscreen_state = "2 2",
         tile = true,
         workspace = 5,
@@ -108,6 +111,7 @@
       hl.window_rule({
         match = { class = "osu!\\.exe" },
         immediate = true,
+        no_anim = true,
         fullscreen_state = "2 2",
         tile = true,
         workspace = 5,
@@ -115,6 +119,7 @@
       hl.window_rule({
         match = { class = "osu!" },
         immediate = true,
+        no_anim = true,
         fullscreen_state = "2 2",
         tile = true,
         workspace = 5,
@@ -124,12 +129,14 @@
       hl.window_rule({
         match = { class = "aimlab_tb.exe" },
         immediate = true,
+        no_anim = true,
         tile = true,
         workspace = 5,
       })
       hl.window_rule({
         match = { class = "cs2" },
         immediate = true,
+        no_anim = true,
         tile = true,
         workspace = 5,
       })

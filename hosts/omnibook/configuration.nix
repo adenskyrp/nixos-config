@@ -13,6 +13,22 @@
   slowPowerLimit = 60000; # 60W: Short sustained burst (tPPT) for intensive compute
   fastPowerLimit = 65000; # 65W: Peak immediate burst (fPPT) matching 65W AC charger
   temperatureLimit = 90; # 90°C: Maximum allowed junction temperature (Tctl)
+
+  # GPU DPM level, applied at boot and re-applied on resume.
+  # "auto" lets the SMU shift the shared 54-65W envelope toward the CPU when the
+  # iGPU is not the bottleneck (Rocket League at 1080p is CPU/netcode-bound).
+  # "high" pins maximum GPU clocks instead, at the cost of CPU thermal headroom.
+  gpuDpmLevel = "auto";
+
+  # Shared by the boot-time oneshot and the resume hook so both paths inject an
+  # identical envelope rather than drifting apart.
+  applySmuLimits = pkgs.writeShellScript "set-smu-limits" ''
+    ${pkgs.ryzenadj}/bin/ryzenadj \
+      --stapm-limit=${toString sustainedPowerLimit} \
+      --slow-limit=${toString slowPowerLimit} \
+      --fast-limit=${toString fastPowerLimit} \
+      --tctl-temp=${toString temperatureLimit}
+  '';
 in {
   # ---------------------------------------------------------------------------
   # MODULAR ARCHITECTURE IMPORTS
@@ -80,8 +96,8 @@ in {
     # Set AMD Energy-Performance Preference (EPP) to raw performance across all 10 cores
     "w /sys/devices/system/cpu/cpu*/cpufreq/energy_performance_preference - - - - performance"
 
-    # Force GPU DPM to maximum clock state across all detected DRM card nodes
-    "w /sys/class/drm/card*/device/power_dpm_force_performance_level - - - - high"
+    # Apply the chosen GPU DPM level across all detected DRM card nodes
+    "w /sys/class/drm/card*/device/power_dpm_force_performance_level - - - - ${gpuDpmLevel}"
   ];
 
   # ---------------------------------------------------------------------------
@@ -96,15 +112,27 @@ in {
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
-      ExecStart = pkgs.writeShellScript "set-smu-limits" ''
-        ${pkgs.ryzenadj}/bin/ryzenadj \
-          --stapm-limit=${toString sustainedPowerLimit} \
-          --slow-limit=${toString slowPowerLimit} \
-          --fast-limit=${toString fastPowerLimit} \
-          --tctl-temp=${toString temperatureLimit}
-      '';
+      ExecStart = applySmuLimits;
     };
   };
+
+  # ---------------------------------------------------------------------------
+  # SUSPEND/RESUME POWER STATE RE-APPLICATION
+  # ---------------------------------------------------------------------------
+  # tmpfiles.rules and the oneshot above only run at boot. On a laptop, amdgpu
+  # resets power_dpm_force_performance_level and the SMU can fall back to stock
+  # wattage envelopes across an s2idle cycle -- so closing the lid between
+  # matches would silently drop the machine to default power limits with no
+  # visible indication. Re-inject the same registers after every resume.
+  powerManagement.resumeCommands = ''
+    for f in /sys/devices/system/cpu/cpu*/cpufreq/energy_performance_preference; do
+      echo performance > "$f" || true
+    done
+    for f in /sys/class/drm/card*/device/power_dpm_force_performance_level; do
+      echo ${gpuDpmLevel} > "$f" || true
+    done
+    ${applySmuLimits} || true
+  '';
 
   # ---------------------------------------------------------------------------
   # GRAPHICS & BLEEDING-EDGE MESA STACK
