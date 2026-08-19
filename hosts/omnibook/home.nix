@@ -613,6 +613,7 @@
     libva-utils
     osu-lazer-bin
     celluloid
+    claude-code
 
     (discord.override {
       withVencord = true;
