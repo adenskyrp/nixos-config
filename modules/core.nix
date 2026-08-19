@@ -4,7 +4,6 @@
   lib,
   ...
 }: {
-
   # ---------------------------------------------------------------------------
   # eBPF EXTENSIBLE SCHEDULER (sched-ext / scx_lavd)
   # ---------------------------------------------------------------------------
@@ -15,7 +14,7 @@
   services.scx = {
     enable = true;
     scheduler = "scx_lavd";
-    
+
     # Pass latency-oriented flags directly to the eBPF binary
     # --performance: Biases energy-aware scheduling strictly toward latency reduction
     extraArgs = [
@@ -66,23 +65,77 @@
 
   networking.networkmanager = {
     enable = true;
+
+    # Keep the receiver out of PS-Poll/U-APSD. Powersave parks the radio between
+    # beacons (this AP advertises DTIM 2 / 100 ms beacons, so ~200 ms of sleep),
+    # which leaves an inbound server tick sitting in the AP's buffer until the
+    # next wake-up instead of landing on arrival.
     wifi.powersave = false;
     wifi.macAddress = "permanent";
     dns = "systemd-resolved";
 
     settings = {
       device = {
+        # A fresh MAC per scan cycle makes the AP treat us as an unknown station,
+        # costing a full association + 4-way handshake on every reconnect.
         "wifi.scan-rand-mac-address" = "no";
       };
-      connection = {
-        "wifi.bgscan" = "ignore";
-        "ipv4.ignore-auto-dns" = "true";
-        "ipv6.ignore-auto-dns" = "true";
+
+      # --- GLOBAL DNS OVERRIDE ---
+      # Overrides the resolver list each connection learns over DHCP. Without it
+      # NetworkManager registers the router's leased servers on the default-route
+      # link, and systemd-resolved prefers those link-scoped servers over the
+      # global DoT servers configured below — so the encrypted path is bypassed,
+      # and a dead entry in the lease (this network hands out one) stalls the
+      # first lookup for the full resolver timeout before it rotates off.
+      #
+      # Declared with the DoT URI form so resolved still receives the TLS
+      # servername it needs to validate the certificate. A [global-dns-domain-*]
+      # section implies an empty [global-dns] section, and that is what makes the
+      # override authoritative over per-connection settings.
+      "global-dns-domain-*" = {
+        servers = "dns+tls://9.9.9.9#dns.quad9.net,dns+tls://1.1.1.1#cloudflare-dns.com";
       };
     };
   };
 
-  networking.firewall.allowedUDPPorts = [ 41641 ]; # Tailscale WireGuard port
+  # --- 802.11v BSS TRANSITION MANAGEMENT (ROAM STEERING) ---
+  # The AP repeatedly issues WNM "BSS Transition Management / Disassociation
+  # Imminent" frames to steer clients onto its 2.4 GHz BSS for load balancing.
+  # Obeying one costs a deauth + reassoc + 4-way handshake — seconds of dead air
+  # mid-match — and on a single-AP network there is nowhere better to roam to.
+  # Dropping BTM from our advertised capabilities stops the AP from asking.
+  networking.wireless.extraConfig = ''
+    disable_btm=1
+
+    # wpa_supplicant will not enable 6 GHz channels at all without an explicit
+    # country. Declaring it here also makes the domain SET_BY_USER — the
+    # highest-trust regulatory source — instead of leaving it inherited from
+    # whatever country IE the AP happens to beacon after we already associated.
+    country=US
+  '';
+
+  # --- REGULATORY DOMAIN (6 GHz UNLOCK) ---
+  # cfg80211 defaults to the "00" world domain, which permits no 6 GHz at all.
+  # The domain does get corrected to US later from the AP's country IE, but that
+  # lands *after* mt7925 has already registered its wiphy and locked band 4, and
+  # the driver never re-enables the band. Pin the domain at module load so 6 GHz
+  # is permitted before the radio driver ever evaluates it.
+  #
+  # This narrows what the card may do rather than widening it: the wireless-regdb
+  # US rules still cap 6 GHz at 12 dBm, indoor-only, passive-scan.
+  boot.extraModprobeConfig = ''
+    options cfg80211 ieee80211_regdom=US
+  '';
+
+  # Default is bgscan="simple:30:-70:3600" — once the link dips below -70 dBm
+  # wpa_supplicant sweeps every 30 s. Each sweep takes the radio off-channel
+  # across all bands for >100 ms, dropping every tick in that window, and on a
+  # single-AP network there is no better BSS for it to find. Off-channel scans
+  # are exactly the kind of periodic hitch that reads as "the Wi-Fi stuttered".
+  networking.wireless.scanOnLowSignal = false;
+
+  networking.firewall.allowedUDPPorts = [41641]; # Tailscale WireGuard port
   networking.firewall.checkReversePath = "loose";
 
   services.resolved = {
@@ -103,14 +156,17 @@
   # --- KERNEL NETWORK TUNING (CAKE + BBR) ---
   boot.kernelModules = ["tcp_bbr" "sch_cake"];
   boot.kernel.sysctl = {
-    # Prioritize interactive UDP game packets over bulk TCP traffic
+    # Prioritize interactive UDP game packets over bulk TCP traffic. Note this
+    # only reaches wired links (Thunderbolt dock / USB ethernet): mac80211
+    # installs "noqueue" on the Wi-Fi netdev and runs its own per-station
+    # fq_codel with airtime fairness, so no qdisc can attach there.
     "net.core.default_qdisc" = "cake";
     "net.ipv4.tcp_congestion_control" = "bbr";
 
     # Expand buffer ceilings for high-tick-rate UDP streams
     "net.core.rmem_max" = 16777216;
     "net.core.wmem_max" = 16777216;
-    
+
     # Memory compaction & swapping heuristics
     "vm.compaction_proactiveness" = 20;
     "vm.watermark_boost_factor" = 1;
@@ -169,7 +225,7 @@
               "rt.time.soft" = -1;
               "rt.time.hard" = -1;
             };
-            flags = [ "ifexists" "nofail" ];
+            flags = ["ifexists" "nofail"];
           }
         ];
       };
@@ -200,7 +256,7 @@
                 # Provide a 1-period (1.33ms) safety net for the DMA pointer
                 "api.alsa.headroom" = 64;
                 # Force high-resolution IRQ timers instead of grouped batch wakeups
-                "api.alsa.disable-batch" = true; 
+                "api.alsa.disable-batch" = true;
               };
             };
           }
@@ -211,7 +267,7 @@
       "12-blue-yeti-gain-lock" = {
         "monitor.alsa.rules" = [
           {
-            matches = [ { "node.name" = "~alsa_input.*Blue_Microphones.*"; } ];
+            matches = [{"node.name" = "~alsa_input.*Blue_Microphones.*";}];
             actions = {
               update-props = {
                 "node.pause-on-idle" = false;
@@ -249,18 +305,58 @@
   security.polkit.enable = true;
   security.pam.loginLimits = [
     # General User File Descriptors & Memory Locks
-    { domain = "@users"; item = "nofile"; type = "-"; value = "1048576"; }
-    { domain = "@users"; item = "memlock"; type = "-"; value = "unlimited"; }
+    {
+      domain = "@users";
+      item = "nofile";
+      type = "-";
+      value = "1048576";
+    }
+    {
+      domain = "@users";
+      item = "memlock";
+      type = "-";
+      value = "unlimited";
+    }
 
     # Audio Realtime Scheduling (PipeWire / WirePlumber)
-    { domain = "@audio"; item = "rtprio"; type = "-"; value = "95"; }
-    { domain = "@audio"; item = "memlock"; type = "-"; value = "unlimited"; }
-    { domain = "@audio"; item = "nice"; type = "-"; value = "-19"; }
+    {
+      domain = "@audio";
+      item = "rtprio";
+      type = "-";
+      value = "95";
+    }
+    {
+      domain = "@audio";
+      item = "memlock";
+      type = "-";
+      value = "unlimited";
+    }
+    {
+      domain = "@audio";
+      item = "nice";
+      type = "-";
+      value = "-19";
+    }
 
     # Realtime Game Engines & Compositor Priority
-    { domain = "@wheel"; item = "rtprio"; type = "-"; value = "99"; }
-    { domain = "@wheel"; item = "memlock"; type = "-"; value = "unlimited"; }
-    { domain = "@wheel"; item = "nice"; type = "-"; value = "-20"; }
+    {
+      domain = "@wheel";
+      item = "rtprio";
+      type = "-";
+      value = "99";
+    }
+    {
+      domain = "@wheel";
+      item = "memlock";
+      type = "-";
+      value = "unlimited";
+    }
+    {
+      domain = "@wheel";
+      item = "nice";
+      type = "-";
+      value = "-20";
+    }
   ];
 
   # ---------------------------------------------------------------------------
@@ -275,23 +371,23 @@
 
   services.gnome.gnome-keyring.enable = true;
   programs.fish.enable = true;
-  
+
   programs.thunar = {
     enable = true;
     plugins = with pkgs; [thunar-archive-plugin thunar-volman];
   };
-  
+
   programs.xfconf.enable = true;
   services.tumbler.enable = true;
   services.gvfs.enable = true;
-  
+
   services.journald.extraConfig = ''
     SystemMaxUse=250M
     MaxFileSec=1month
   '';
 
   environment.pathsToLink = ["/share/xdg-desktop-portal" "/share/applications"];
-  
+
   environment.systemPackages = with pkgs; [
     vim
     wget

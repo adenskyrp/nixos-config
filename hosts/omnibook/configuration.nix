@@ -80,6 +80,31 @@ in {
   ];
 
   # ---------------------------------------------------------------------------
+  # WI-FI RADIO LINK (MediaTek MT7925 / Filogic 360, 2x2 802.11be)
+  # ---------------------------------------------------------------------------
+  # PCIe ASPM lets the radio drop the link into L1/L1.2 between packets. The
+  # mt76 driver has to re-arm its DMA rings on every exit, so on an otherwise
+  # idle link — precisely the traffic shape of a game's 60 Hz UDP tick — the
+  # first packet after each idle gap eats the wake-up penalty and shows up as a
+  # sporadic multi-millisecond spike. This part is also the one the mt7921/7925
+  # family's ASPM firmware hangs are attributed to. Pin the link awake; the
+  # sub-watt cost is noise against a 65 W SMU envelope and a performance
+  # governor that already forbids deep C-states.
+  #
+  # CLC (Country Location Control) is MediaTek's own regulatory gate, layered on
+  # top of cfg80211's. It is evaluated when the driver registers the wiphy —
+  # which happens while cfg80211 is still on the "00" world domain — and the
+  # result is that all 60 channels of band 4 come up permanently `(disabled)`,
+  # even after the domain is later corrected to US. This card is 802.11be 2x2 and
+  # the AP here beacons a 6 GHz BSS (operating class 134, channel 101), so the
+  # band is worth having: it is uncontended and has no 2.4/5 GHz legacy traffic
+  # to share airtime with. cfg80211's US rules still bound transmit power.
+  boot.extraModprobeConfig = ''
+    options mt7925e disable_aspm=1
+    options mt7925_common disable_clc=1
+  '';
+
+  # ---------------------------------------------------------------------------
   # CPU & GPU POWER STATE GOVERNOR
   # ---------------------------------------------------------------------------
   powerManagement = {
