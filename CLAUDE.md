@@ -55,7 +55,7 @@ build` succeeding, and ultimately `nixos-rebuild switch` + reboot/relogin to con
   profiles, per-app packages, XDG mime associations. `home.stateVersion` lives here, independent of
   the system's `stateVersion`.
 - **`modules/*.nix`** — shared NixOS modules imported by host configs, not home-manager modules:
-  - `core.nix` — base system: sched-ext (`scx_lavd`) scheduler, nix settings/GC/optimise, DNS
+  - `core.nix` — base system: nix settings/GC/optimise, DNS
     (DoT via systemd-resolved, Quad9/Cloudflare), network queueing (`cake` + `bbr`), udev rules
     (NVMe scheduler, Thunderbolt auto-auth, HID access), PipeWire/WirePlumber low-latency tuning
     (64-sample quantum, realtime priorities), PAM rtprio/memlock/nice limits, user account

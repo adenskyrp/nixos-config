@@ -5,74 +5,15 @@
   ...
 }: {
   # ---------------------------------------------------------------------------
-  # eBPF EXTENSIBLE SCHEDULER (sched-ext / scx_lavd)
+  # CPU SCHEDULER
   # ---------------------------------------------------------------------------
-  # scx_lavd (Latency-critical Architecture-aware Virtual Deadline) is built
-  # specifically for asymmetric CPU topologies. This part is one: 4x Zen 5
-  # (cpu0-7, 5090 MHz, CPPC highest_perf 196-208) plus 6x Zen 5c (cpu8-19,
-  # 3325 MHz, highest_perf 128). A thread that drifts from a Zen 5 core onto a
-  # Zen 5c core loses ~35% of its clock instantly -- on a render or game-logic
-  # thread that is a single long frame, which is exactly what an occasional
-  # stutter looks like.
-  #
-  # --- WHY NOT --performance ---
-  # lavd only consults its CPU preference order "when the core compaction is
-  # enabled (i.e., balanced or powersave mode)". --performance implies
-  # --no-core-compaction, so it switches that ordering *off* and treats all 20
-  # logical CPUs as interchangeable. It is the one mode that discards the
-  # big/little awareness this scheduler was chosen for. Worse, it fails silently:
-  # --performance --cpu-pref-order is not rejected, the ordering is just ignored.
-  #
-  # --- WHAT --balanced BUYS ---
-  # Compaction keeps unaffinitized work packed onto the head of the preference
-  # list and only spills outward under real load. With the order pinned by hand
-  # below, "balanced" is not a power compromise: the list *is* the performance
-  # ordering, so compaction becomes big-core affinity rather than energy saving.
-  services.scx = {
-    enable = true;
-    scheduler = "scx_lavd";
-
-    extraArgs = [
-      # Enables core compaction, which is the prerequisite for --cpu-pref-order
-      # being honored at all.
-      "--balanced"
-
-      # Explicit fill order, fastest silicon first:
-      #   0,2,4,6            -- the four Zen 5 physical cores (one thread each,
-      #                         so the game's two hottest threads never contend
-      #                         for a single core's frontend before core 4 is
-      #                         even touched)
-      #   1,3,5,7            -- their SMT siblings
-      #   8,10,12,14,16,18   -- Zen 5c physical cores
-      #   9,11,13,15,17,19   -- Zen 5c SMT siblings
-      # Passing this implies --no-use-em: the order is ours, not the ACPI energy
-      # model's, which on this SKU ranks by perf-per-watt and therefore puts the
-      # dense cores too early for a latency workload.
-      "--cpu-pref-order"
-      "0,2,4,6,1,3,5,7,8,10,12,14,16,18,9,11,13,15,17,19"
-
-      # cpuFreqGovernor is pinned to "performance" with EPP=performance, so the
-      # governor already holds every core at max and lavd's own cpuperf requests
-      # cannot move it. Disabling the feature makes that explicit instead of
-      # leaving two subsystems both nominally driving frequency.
-      "--no-freq-scaling"
-    ];
-  };
-
-  # The stock unit is StartLimitBurst=2 / StartLimitIntervalSec=30 with
-  # Restart=on-failure, so two crashes inside 30 s latch the service into
-  # start-limit-hit and it stays dead. Nothing surfaces that: the kernel quietly
-  # falls back to EEVDF/BORE and the machine keeps running with a completely
-  # different scheduler until the next reboot -- a mid-session scheduler swap
-  # that reads as "it started stuttering and I don't know why". This has already
-  # happened on this machine (scx_rusty, 2026-08-18, "kptr already had cpumask").
-  # Widen the window so a transient BPF fault is ridden out, while still giving
-  # up on a genuinely broken scheduler rather than respawning forever.
-  systemd.services.scx = {
-    startLimitIntervalSec = lib.mkForce 300;
-    startLimitBurst = lib.mkForce 10;
-    serviceConfig.RestartSec = 2;
-  };
+  # No sched-ext scheduler is loaded: the CachyOS kernel's own BORE
+  # (Burst-Oriented Response Enhancer) EEVDF variant is used as-is, which
+  # measured better on this machine than scx_lavd (tested 2026-08-20). A BPF
+  # scheduler replaces BORE outright rather than layering on it, and its failure
+  # mode is silent -- if the scx unit dies the kernel drops back to the in-tree
+  # scheduler mid-session with nothing surfacing the swap. Leaving it out removes
+  # both the regression and that class of surprise.
 
   # ---------------------------------------------------------------------------
   # REPOSITORY EVALUATION POLICIES & FLAKE STATE
