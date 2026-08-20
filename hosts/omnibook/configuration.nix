@@ -67,7 +67,12 @@ in {
     "amdgpu.ppfeaturemask=0xffffffff"
 
     # Interrupt & Clock Optimization: Eliminate scheduler jitter and polling latency
-    "split_lock_mitigate=0"
+    # split_lock_mitigate is Intel-only and was being rejected outright ("Unknown
+    # kernel command line parameters", visible in dmesg on every boot) -- it is
+    # dropped. split_lock_detect is kept: it parses on x86 generally and on Zen 5
+    # gates the bus-lock detector this CPU does advertise (bus_lock_detect in
+    # /proc/cpuinfo flags), where a trap on a misaligned locked access would cost
+    # a hard #DB round trip mid-frame.
     "split_lock_detect=off"
     "threadirqs"
     "nowatchdog"

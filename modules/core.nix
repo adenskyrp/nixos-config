@@ -8,18 +8,70 @@
   # eBPF EXTENSIBLE SCHEDULER (sched-ext / scx_lavd)
   # ---------------------------------------------------------------------------
   # scx_lavd (Latency-critical Architecture-aware Virtual Deadline) is built
-  # specifically for asymmetric CPU topologies (Zen 5 + Zen 5c). It maps
-  # latency-sensitive threads (Hyprland, Proton, PipeWire) to the high-clocked
-  # Zen 5 cores while shifting low-priority workloads to the dense Zen 5c cores.
+  # specifically for asymmetric CPU topologies. This part is one: 4x Zen 5
+  # (cpu0-7, 5090 MHz, CPPC highest_perf 196-208) plus 6x Zen 5c (cpu8-19,
+  # 3325 MHz, highest_perf 128). A thread that drifts from a Zen 5 core onto a
+  # Zen 5c core loses ~35% of its clock instantly -- on a render or game-logic
+  # thread that is a single long frame, which is exactly what an occasional
+  # stutter looks like.
+  #
+  # --- WHY NOT --performance ---
+  # lavd only consults its CPU preference order "when the core compaction is
+  # enabled (i.e., balanced or powersave mode)". --performance implies
+  # --no-core-compaction, so it switches that ordering *off* and treats all 20
+  # logical CPUs as interchangeable. It is the one mode that discards the
+  # big/little awareness this scheduler was chosen for. Worse, it fails silently:
+  # --performance --cpu-pref-order is not rejected, the ordering is just ignored.
+  #
+  # --- WHAT --balanced BUYS ---
+  # Compaction keeps unaffinitized work packed onto the head of the preference
+  # list and only spills outward under real load. With the order pinned by hand
+  # below, "balanced" is not a power compromise: the list *is* the performance
+  # ordering, so compaction becomes big-core affinity rather than energy saving.
   services.scx = {
     enable = true;
     scheduler = "scx_lavd";
 
-    # Pass latency-oriented flags directly to the eBPF binary
-    # --performance: Biases energy-aware scheduling strictly toward latency reduction
     extraArgs = [
-      "--performance"
+      # Enables core compaction, which is the prerequisite for --cpu-pref-order
+      # being honored at all.
+      "--balanced"
+
+      # Explicit fill order, fastest silicon first:
+      #   0,2,4,6            -- the four Zen 5 physical cores (one thread each,
+      #                         so the game's two hottest threads never contend
+      #                         for a single core's frontend before core 4 is
+      #                         even touched)
+      #   1,3,5,7            -- their SMT siblings
+      #   8,10,12,14,16,18   -- Zen 5c physical cores
+      #   9,11,13,15,17,19   -- Zen 5c SMT siblings
+      # Passing this implies --no-use-em: the order is ours, not the ACPI energy
+      # model's, which on this SKU ranks by perf-per-watt and therefore puts the
+      # dense cores too early for a latency workload.
+      "--cpu-pref-order"
+      "0,2,4,6,1,3,5,7,8,10,12,14,16,18,9,11,13,15,17,19"
+
+      # cpuFreqGovernor is pinned to "performance" with EPP=performance, so the
+      # governor already holds every core at max and lavd's own cpuperf requests
+      # cannot move it. Disabling the feature makes that explicit instead of
+      # leaving two subsystems both nominally driving frequency.
+      "--no-freq-scaling"
     ];
+  };
+
+  # The stock unit is StartLimitBurst=2 / StartLimitIntervalSec=30 with
+  # Restart=on-failure, so two crashes inside 30 s latch the service into
+  # start-limit-hit and it stays dead. Nothing surfaces that: the kernel quietly
+  # falls back to EEVDF/BORE and the machine keeps running with a completely
+  # different scheduler until the next reboot -- a mid-session scheduler swap
+  # that reads as "it started stuttering and I don't know why". This has already
+  # happened on this machine (scx_rusty, 2026-08-18, "kptr already had cpumask").
+  # Widen the window so a transient BPF fault is ridden out, while still giving
+  # up on a genuinely broken scheduler rather than respawning forever.
+  systemd.services.scx = {
+    startLimitIntervalSec = lib.mkForce 300;
+    startLimitBurst = lib.mkForce 10;
+    serviceConfig.RestartSec = 2;
   };
 
   # ---------------------------------------------------------------------------
@@ -31,20 +83,44 @@
     experimental-features = ["nix-command" "flakes"];
   };
 
-  # Weekly garbage collection preserving a 7-day rollback safety net
+  # ---------------------------------------------------------------------------
+  # STORE MAINTENANCE (DEFERRED, NEVER CAUGHT UP MID-SESSION)
+  # ---------------------------------------------------------------------------
+  # These three jobs are heavy enough to be felt: measured on this machine,
+  # nix-optimise hard-links ~157k files reading 4-6.5 GB over ~90-115 s, nix-gc
+  # reads ~900 MB over ~24 s, and fstrim discards the full 638 GiB root in ~60 s.
+  #
+  # All three default to Persistent = true, and that is the actual hazard. A
+  # laptop is asleep or off at 00:00 and 04:00, so the timers almost never fire
+  # at their scheduled hour -- systemd instead runs the missed job on the next
+  # boot. The effect is that the machine ambushes itself with a minute of
+  # saturated NVMe I/O shortly after login, which is precisely when someone sits
+  # down to play. Dropping catch-up means a missed window is simply skipped
+  # until the next real occurrence; nothing here needs to run on a strict
+  # cadence, and a rebuild rewrites the store anyway.
+  #
+  # Note this cannot be solved with ionice: the udev rule further down sets
+  # NVMe queue/scheduler=none, and with no I/O scheduler attached there is
+  # nothing to honor an idle scheduling class -- requests go straight to the
+  # hardware queue in submission order. Not competing for the disk in the first
+  # place is the only lever that actually works.
   nix.gc = {
     automatic = true;
     dates = "weekly";
+    persistent = false;
     options = "--delete-older-than 7d";
   };
 
-  # Periodic store deduplication scheduled off-peak
   nix.optimise = {
     automatic = true;
     dates = ["04:00"];
+    persistent = false;
   };
 
   services.fstrim.enable = true;
+
+  # services.fstrim exposes no persistent option, so reach the timer directly.
+  systemd.timers.fstrim.timerConfig.Persistent = false;
 
   # High-speed memory compression
   zramSwap = {
