@@ -211,6 +211,62 @@
   '';
 
   # ---------------------------------------------------------------------------
+  # xHCI INTERRUPT AFFINITY (INPUT CONTROLLERS ONTO THE Zen5 BIG CORES)
+  # ---------------------------------------------------------------------------
+  # This Ryzen AI 9 365 is heterogeneous: cpu0-7 are the four Zen5 cores boosting
+  # to 5.09 GHz, cpu8-19 the six Zen5c dense cores capped at 3.32 GHz. Nothing
+  # constrains where a USB interrupt lands -- smp_affinity_list defaults to the
+  # full 0-19 -- and measured on this machine the kernel had placed both
+  # input-carrying controllers on dense cores:
+  #
+  #   irq 43  c5:00.0  bus3          GameSir G7 Pro       6.73M irqs  -> cpu16
+  #   irq 45  c5:00.3  bus5 + bus6   8 kHz dongle, ATK    8.82M irqs  -> cpu17
+  #                                  keyboard, Yeti, RTL8153
+  #
+  # The dongle's interrupt endpoint runs bInterval=01 at high speed, i.e. one
+  # transfer every 125 us microframe = 8000 Hz. Because `threadirqs` is set, each
+  # of those wakeups is a scheduled RT-prio-50 kernel thread (irq/45-xhci_hcd)
+  # rather than a hardirq -- so 8000 times a second the mouse's input path was
+  # being serviced by a core running ~35% slower than the ones available. Cheap
+  # in CPU terms either way; the cost is jitter on the wakeup, which is exactly
+  # what an 8 kHz mouse is bought to avoid.
+  #
+  # Restricting the mask to the big cores lets the kernel keep choosing which one
+  # while guaranteeing it never picks a Zen5c. The write is rejected for
+  # kernel-managed vectors (NVMe-style), so each result is logged rather than
+  # discarded -- an affinity change that silently no-ops is the same failure mode
+  # the CPU SCHEDULER note above rejects sched-ext for.
+  systemd.services.xhci-irq-affinity = {
+    description = "Pin xHCI interrupt handling to the Zen5 big cores";
+    wantedBy = ["multi-user.target"];
+    after = ["systemd-modules-load.service"];
+
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = pkgs.writeShellScript "xhci-irq-affinity" ''
+        for irq in $(${pkgs.gawk}/bin/awk -F: '/xhci_hcd/ {gsub(/ /, "", $1); print $1}' /proc/interrupts); do
+          if echo 0-7 > /proc/irq/"$irq"/smp_affinity_list 2>/dev/null; then
+            echo "irq $irq pinned to 0-7, now effective on cpu$(cat /proc/irq/"$irq"/effective_affinity_list)"
+          else
+            echo "irq $irq: affinity write rejected, left on cpu$(cat /proc/irq/"$irq"/effective_affinity_list)" >&2
+          fi
+        done
+      '';
+    };
+  };
+
+  # An s2idle cycle can re-enumerate the xHCI controllers and hand their vectors
+  # back out with a fresh default mask, so the boot-time pin does not survive
+  # closing the lid. Re-run the same unit on resume; it re-reads /proc/interrupts
+  # and therefore also copes with the irq numbers themselves having changed.
+  # (resumeCommands is types.lines, so this concatenates with the SMU/EPP
+  # re-injection block in hosts/omnibook/configuration.nix rather than clashing.)
+  powerManagement.resumeCommands = ''
+    ${pkgs.systemd}/bin/systemctl restart xhci-irq-affinity.service || true
+  '';
+
+  # ---------------------------------------------------------------------------
   # LOW-LATENCY AUDIO SUBSYSTEM (PipeWire 1.33ms Quantum)
   # ---------------------------------------------------------------------------
   security.rtkit.enable = true;

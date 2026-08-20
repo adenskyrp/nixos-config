@@ -33,6 +33,19 @@
           direct_scanout = true,
         },
 
+        -- The tearing trio above was complete except for this: with a hardware
+        -- cursor plane active, Hyprland reported
+        --   tearingBlockedBy: next frame is not torn, missing candidate, hw cursor
+        -- because a commit that moves the HW cursor plane cannot also be an
+        -- async/tearing page flip, so the immediate rules silently fell back to
+        -- vsynced presentation. Rendering the cursor into the frame instead costs
+        -- a trivial amount of GPU time on a 1080p surface and is what actually
+        -- lets wp_tearing_control_v1 engage on DP-2 at 599.94 Hz (1.67 ms frames,
+        -- where a whole frame of added latency is the thing being chased).
+        cursor = {
+          no_hw_cursors = true,
+        },
+
         -- Master switch for wp_tearing_control_v1 protocol negotiation
         general = {
           allow_tearing = true,
