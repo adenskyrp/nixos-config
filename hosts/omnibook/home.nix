@@ -43,7 +43,9 @@
         -- lets wp_tearing_control_v1 engage on DP-2 at 599.94 Hz (1.67 ms frames,
         -- where a whole frame of added latency is the thing being chased).
         cursor = {
-          no_hw_cursors = true,
+          -- Renamed upstream: the key is `no_hardware_cursors` on Hyprland 0.56,
+          -- and it is an int (0 = HW cursors, 1 = never, 2 = auto), not a bool.
+          no_hardware_cursors = 1,
         },
 
         -- Master switch for wp_tearing_control_v1 protocol negotiation
