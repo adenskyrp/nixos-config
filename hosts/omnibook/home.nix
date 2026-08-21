@@ -636,6 +636,7 @@
     osu-lazer-bin
     celluloid
     claude-code
+    tor-browser
 
     (discord.override {
       withVencord = true;
