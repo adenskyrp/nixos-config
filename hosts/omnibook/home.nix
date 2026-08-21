@@ -638,6 +638,9 @@
     claude-code
     tor-browser
     proton-vpn
+    p7zip
+    unrar
+    ark
 
     (discord.override {
       withVencord = true;
