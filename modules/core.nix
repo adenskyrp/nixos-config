@@ -152,9 +152,6 @@
   # are exactly the kind of periodic hitch that reads as "the Wi-Fi stuttered".
   networking.wireless.scanOnLowSignal = false;
 
-  networking.firewall.allowedUDPPorts = [41641]; # Tailscale WireGuard port
-  networking.firewall.checkReversePath = "loose";
-
   services.resolved = {
     enable = true;
     settings = {
@@ -194,7 +191,6 @@
   # THUNDERBOLT 4 / USB4 & UDEV HARDWARE ISOLATION
   # ---------------------------------------------------------------------------
   services.hardware.bolt.enable = true;
-  services.tailscale.enable = true;
 
   services.udev.extraRules = ''
     # Low-latency NVMe queue scheduler
