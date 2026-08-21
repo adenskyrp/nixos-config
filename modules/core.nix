@@ -152,6 +152,47 @@
   # are exactly the kind of periodic hitch that reads as "the Wi-Fi stuttered".
   networking.wireless.scanOnLowSignal = false;
 
+  # ---------------------------------------------------------------------------
+  # PACKET FILTER BACKEND & PROTOCOL ATTACK SURFACE
+  # ---------------------------------------------------------------------------
+  # Everything in this section lives in the kernel's netfilter/protocol path,
+  # which runs on the RX/TX softirq long before a packet's payload reaches the
+  # compositor or the GPU. None of it sits on a frame-pacing path, so none of it
+  # is measurable in mangohud -- these are per-packet boolean checks and module
+  # autoload refusals, not work that touches the render loop.
+
+  # Move the firewall off the legacy iptables backend. Two concrete wins beyond
+  # hygiene: a ruleset reload becomes a single atomic transaction instead of an
+  # iptables-restore flush-then-refill, so there is no brief window mid-reload
+  # where the box sits unfiltered; and one merged ruleset is evaluated per
+  # packet rather than walking iptables' separate tables in sequence.
+  #
+  # Safe here specifically because nothing in this repo emits raw iptables:
+  # there are no networking.firewall.extraCommands (which the nftables backend
+  # rejects outright rather than silently ignoring), and no docker/podman/libvirt
+  # daemon installing chains of its own -- only the docker-client binary in
+  # home.nix, which has no local daemon. NetworkManager touches the filter
+  # tables only for connection sharing, which is unused here.
+  #
+  # checkReversePath survives the swap: the nftables backend builds its own
+  # strict-RPF prerouting chain carrying the same DHCPv4 sport/dport carve-out
+  # the iptables path had, so the strict behavior restored in 771e49f is kept
+  # rather than quietly dropped on the backend change.
+  networking.nftables.enable = true;
+
+  # Protocol families nothing on this machine opens a socket for. The kernel
+  # autoloads any of them on demand -- a stray socket() call is enough -- so
+  # blacklisting closes the autoload path rather than unloading anything in use
+  # (none of the four are currently resident, confirmed with lsmod). DCCP and
+  # SCTP carry the bulk of the historical remote-triggerable CVEs in this set;
+  # RDS and TIPC are cluster/datacenter transports with no desktop role at all.
+  boot.blacklistedKernelModules = [
+    "dccp" # Datagram Congestion Control Protocol
+    "sctp" # Stream Control Transmission Protocol
+    "rds" # Reliable Datagram Sockets
+    "tipc" # Transparent Inter-Process Communication
+  ];
+
   services.resolved = {
     enable = true;
     settings = {
@@ -180,6 +221,51 @@
     # Expand buffer ceilings for high-tick-rate UDP streams
     "net.core.rmem_max" = 16777216;
     "net.core.wmem_max" = 16777216;
+
+    # --- ANTI-SPOOFING / ANTI-AMPLIFICATION ---
+    # Strict reverse-path filtering, set on BOTH `all` and `default` deliberately:
+    # the kernel's effective value per interface is max(all.rp_filter,
+    # <iface>.rp_filter), so setting `all` alone would still resolve to 2 (loose)
+    # against systemd's shipped default.rp_filter = 2 -- max(1, 2) = 2. The
+    # `default` entry is what a newly created netdev inherits, and NixOS writes
+    # both to /etc/sysctl.d/60-nixos.conf, which outranks systemd's
+    # 50-default.conf on numeric precedence.
+    #
+    # This duplicates the firewall's own strict-RPF chain one layer down, and is
+    # safe for DHCP despite carrying no DHCP carve-out of its own: the
+    # NetworkManager internal DHCPv4 client runs discovery over an AF_PACKET raw
+    # socket, tapped at the netdev layer before the IP stack's RPF check is ever
+    # reached. Lease renewal in BOUND state is plain unicast UDP from an
+    # already-routable source, which passes strict RPF normally.
+    "net.ipv4.conf.all.rp_filter" = 1;
+    "net.ipv4.conf.default.rp_filter" = 1;
+
+    # Refuse ICMP echo aimed at a broadcast address, which is what makes a host
+    # usable as a smurf amplifier by anyone spoofing a victim's source address.
+    "net.ipv4.icmp_echo_ignore_broadcasts" = 1;
+
+    # An accepted ICMP redirect rewrites our routing table mid-session, making it
+    # a route-injection primitive for anything on-link. On a single-AP home
+    # network there is no second gateway to legitimately be steered toward.
+    "net.ipv4.conf.all.accept_redirects" = 0;
+    "net.ipv4.conf.default.accept_redirects" = 0;
+    "net.ipv6.conf.all.accept_redirects" = 0;
+    "net.ipv6.conf.default.accept_redirects" = 0;
+
+    # Only routers emit redirects and this box does not forward, so sending them
+    # is dead weight that also leaks local topology.
+    "net.ipv4.conf.all.send_redirects" = 0;
+    "net.ipv4.conf.default.send_redirects" = 0;
+
+    # Source routing lets the sender dictate the return path, a direct spoofing
+    # aid. The option predates NAT and has no remaining legitimate use.
+    "net.ipv4.conf.all.accept_source_route" = 0;
+    "net.ipv4.conf.default.accept_source_route" = 0;
+    "net.ipv6.conf.all.accept_source_route" = 0;
+
+    # Already on in this kernel; pinned so a future default flip cannot silently
+    # remove SYN-flood resilience.
+    "net.ipv4.tcp_syncookies" = 1;
 
     # Memory compaction & swapping heuristics
     "vm.compaction_proactiveness" = 20;
