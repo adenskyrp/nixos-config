@@ -637,6 +637,7 @@
     celluloid
     claude-code
     tor-browser
+    protonvpn-gui
 
     (discord.override {
       withVencord = true;
