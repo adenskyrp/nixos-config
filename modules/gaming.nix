@@ -53,14 +53,11 @@
   # ---------------------------------------------------------------------------
   environment.sessionVariables = {
     AMD_VULKAN_ICD = "RADV";
-    # RADV_PERFTEST intentionally unset: "sam" targets resizable-BAR access to a
-    # discrete GPU's dedicated VRAM (the 880M is an iGPU sharing system RAM, so
-    # there is no BAR window to widen), and "dccmsaa" only optimizes MSAA color
-    # compression, which competitive settings disable outright.
     MESA_SHADER_CACHE_MAX_SIZE = "16G";
     WINE_FSYNC = "1";
     PROTON_NO_ESYNC = "1";
     PROTON_ENABLE_HIDRAW = "1";
+    PROTON_ENABLE_WAYLAND = "1";
     SDL_JOYSTICK_HIDAPI = "0";
     SDL_GAMECONTROLLER_IGNORE_DEVICES = "0x28de/0x11ff";
     DXVK_HUD = "0";
