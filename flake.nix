@@ -22,32 +22,11 @@
   # FLAKE OUTPUTS (SYSTEM COMPILATION MATRICES)
   # ---------------------------------------------------------------------------
   outputs = {
-    self,
     nixpkgs,
     chaotic,
     home-manager,
     ...
-  } @ inputs: let
-    # Both hosts in this flake are x86_64; Mudfish ships x86_64-only binaries.
-    system = "x86_64-linux";
-
-    # This instantiation backs the `packages` output only (i.e. `nix build
-    # .#mudfish`). The NixOS hosts do NOT inherit this config -- they build
-    # their own pkgs -- so modules/mudfish.nix carries its own
-    # allowUnfreePredicate rather than relying on this line.
-    pkgs = import nixpkgs {
-      inherit system;
-      config.allowUnfree = true;
-    };
-  in {
-    # -------------------------------------------------------------------------
-    # PACKAGE OUTPUTS
-    # -------------------------------------------------------------------------
-    packages.${system} = {
-      mudfish = pkgs.callPackage ./pkgs/mudfish {};
-      default = self.packages.${system}.mudfish;
-    };
-
+  } @ inputs: {
     nixosConfigurations = {
       # HP OmniBook Ultra 14 (AMD Ryzen AI 9 365 / Radeon 880M)
       omnibook = nixpkgs.lib.nixosSystem {
