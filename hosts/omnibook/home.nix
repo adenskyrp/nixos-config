@@ -301,9 +301,9 @@
     layer = "top";
     height = 32;
     margin = {
-      top = 4;
-      left = 8;
-      right = 8;
+      top = 0;
+      left = 0;
+      right = 0;
       bottom = 0;
     };
 
