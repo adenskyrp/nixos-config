@@ -21,14 +21,39 @@
   # ---------------------------------------------------------------------------
   # FLAKE OUTPUTS (SYSTEM COMPILATION MATRICES)
   # ---------------------------------------------------------------------------
-  outputs = { self, nixpkgs, chaotic, home-manager, ... }@inputs: {
-    nixosConfigurations = {
+  outputs = {
+    self,
+    nixpkgs,
+    chaotic,
+    home-manager,
+    ...
+  } @ inputs: let
+    # Both hosts in this flake are x86_64; Mudfish ships x86_64-only binaries.
+    system = "x86_64-linux";
 
+    # This instantiation backs the `packages` output only (i.e. `nix build
+    # .#mudfish`). The NixOS hosts do NOT inherit this config -- they build
+    # their own pkgs -- so modules/mudfish.nix carries its own
+    # allowUnfreePredicate rather than relying on this line.
+    pkgs = import nixpkgs {
+      inherit system;
+      config.allowUnfree = true;
+    };
+  in {
+    # -------------------------------------------------------------------------
+    # PACKAGE OUTPUTS
+    # -------------------------------------------------------------------------
+    packages.${system} = {
+      mudfish = pkgs.callPackage ./pkgs/mudfish {};
+      default = self.packages.${system}.mudfish;
+    };
+
+    nixosConfigurations = {
       # HP OmniBook Ultra 14 (AMD Ryzen AI 9 365 / Radeon 880M)
       omnibook = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
         # Expose inputs to all downstream modules via specialArgs
-        specialArgs = { inherit inputs; };
+        specialArgs = {inherit inputs;};
         modules = [
           # Chaotic Nyx repository overlay (provides linuxPackages_cachyos and mesa-git)
           chaotic.nixosModules.default
@@ -49,7 +74,7 @@
       # Secondary Desktop Rig
       desktop = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
-        specialArgs = { inherit inputs; };
+        specialArgs = {inherit inputs;};
         modules = [
           chaotic.nixosModules.default
           ./hosts/desktop/configuration.nix

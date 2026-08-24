@@ -38,6 +38,7 @@ in {
     ../../modules/core.nix
     ../../modules/gaming.nix
     ../../modules/minecraft.nix
+    ../../modules/mudfish.nix
   ];
 
   # Synchronize hostname with flake output schema
@@ -58,10 +59,6 @@ in {
     "ttm.pages_limit=4194304"
     "amdttm.pages_limit=4194304"
 
-    # CPU Latency & C-State Pinning: Prevent deep CPU sleep wake-up penalties
-    "processor.max_cstate=1"
-    "idle=nomwait"
-
     # Driver Performance: Active autonomous CPPC power scaling
     "amd_pstate=active"
     "amdgpu.ppfeaturemask=0xffffffff"
@@ -76,7 +73,6 @@ in {
     "split_lock_detect=off"
     "threadirqs"
     "nowatchdog"
-    "nmi_watchdog=0"
     "tsc=reliable"
     "clocksource=tsc"
     "usbcore.autosuspend=-1"
@@ -215,6 +211,29 @@ in {
       Experimental = true;
       FastConnectable = true;
     };
+  };
+
+  # ---------------------------------------------------------------------------
+  # MUDFISH CLOUD VPN (ROCKET LEAGUE ROUTE OPTIMISATION)
+  # ---------------------------------------------------------------------------
+  # Closed-source relay client; the module carries its own unfree allowance and
+  # reconstructs the vendor's hardcoded /opt prefix inside a private mount
+  # namespace. See modules/mudfish.nix for why the unit runs as uid 0 with a
+  # two-capability bounding set rather than under a dedicated User=.
+  services.mudfish = {
+    enable = true;
+
+    # Real uplink on this chassis (`ip -br a`); the Wi-Fi NIC is the only route
+    # to the internet here, eth0 is the unused dock port. Recorded even though
+    # openWebUI is false, so turning the hole on later does not need a second
+    # lookup of the interface name.
+    interface = "wlp194s0";
+
+    # The launcher UI stays on loopback. It is an unauthenticated control
+    # surface for the tunnel, and the browser that drives it runs on this same
+    # machine under Hyprland, so there is nothing to gain from putting it on the
+    # LAN and a working tunnel to lose.
+    openWebUI = false;
   };
 
   system.stateVersion = "25.11";
