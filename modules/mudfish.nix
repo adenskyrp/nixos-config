@@ -248,8 +248,9 @@ in {
         # If journalctl shows a permissions failure, add the one specific
         # capability named in the error and record why here. Do not widen to
         # CAP_SYS_ADMIN, which is effectively root again.
-        CapabilityBoundingSet = ["CAP_NET_ADMIN" "CAP_NET_RAW"];
-        AmbientCapabilities = ["CAP_NET_ADMIN" "CAP_NET_RAW"];
+	CapabilityBoundingSet = [ "CAP_NET_ADMIN" "CAP_NET_RAW" "CAP_BPF" "CAP_PERFMON" ];
+	AmbientCapabilities  = [ "CAP_NET_ADMIN" "CAP_NET_RAW" "CAP_BPF" "CAP_PERFMON" ];
+	LimitMEMLOCK = "infinity";      
         NoNewPrivileges = true;
 
         # -- Sandbox ---------------------------------------------------------
