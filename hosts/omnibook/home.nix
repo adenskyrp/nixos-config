@@ -30,7 +30,7 @@
 
         -- Direct scanout bypasses composition passes on fullscreen surfaces
         render = {
-          direct_scanout = true,
+          direct_scanout = false,
         },
 
         -- The tearing trio above was complete except for this: with a hardware
@@ -45,7 +45,7 @@
         cursor = {
           -- Renamed upstream: the key is `no_hardware_cursors` on Hyprland 0.56,
           -- and it is an int (0 = HW cursors, 1 = never, 2 = auto), not a bool.
-          no_hardware_cursors = 0,
+          no_hardware_cursors = 1,
         },
 
         -- Master switch for wp_tearing_control_v1 protocol negotiation
