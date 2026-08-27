@@ -284,52 +284,135 @@
 
     # Auto-authorize Thunderbolt 4 endpoints
     ACTION=="add", SUBSYSTEM=="thunderbolt", ATTR{authorized}=="0", ATTR{authorized}="1"
-
-    # High-polling HID and direct gamepad access permissions
-    SUBSYSTEM=="hidraw", ATTRS{idVendor}=="05a7", ATTRS{idProduct}=="40fe", TAG+="uaccess"
-    SUBSYSTEM=="hidraw", ATTRS{idVendor}=="05a7", ATTRS{idProduct}=="400d", TAG+="uaccess"
-    KERNEL=="hidraw*", SUBSYSTEM=="hidraw", MODE="0660", GROUP="users", TAG+="uaccess"
-    KERNEL=="uinput", SUBSYSTEM=="misc", MODE="0660", GROUP="users", TAG+="uaccess"
   '';
 
+  # --- hidraw SEAT ACCESS ---
+  # Shipped as a udev *package* rather than through services.udev.extraRules,
+  # and that distinction is the whole point of the file existing. extraRules is
+  # written to 99-local.rules, but the uaccess builtin is invoked from
+  # systemd's 73-seat-late.rules:
+  #
+  #   TAG=="uaccess|xaccess-*", ENV{MAJOR}!="", RUN{builtin}+="uaccess"
+  #
+  # 99 sorts after 73, so a TAG+="uaccess" set from extraRules lands after the
+  # decision to run the builtin has already been taken and does nothing at all.
+  #
+  # The deadline is 73, not 70 -- worth stating precisely, because 70-uaccess.rules
+  # is the file whose name suggests otherwise. That file only *sets* the tag on
+  # the device classes systemd knows about (cdrom, sound, scanners, ...); it does
+  # not act on it. 73-seat-late.rules is what turns a tag into an ACL. So a rule
+  # numbered 71 or 72 would still work; 99 does not. 60 is used here to sit
+  # clearly ahead of both, alongside Valve's own input rules.
+  #
+  # This was the state here until 2026-08-27: every hidraw node was reachable
+  # purely through a MODE="0660", GROUP="users" grant, with no ACL on any of
+  # them (verified -- `ls -l /dev/hidraw*` showed no `+`, and udevadm test
+  # reported an empty tag set). /dev/uinput was the control case: it *did* carry
+  # user:crazycat:rw-, because Valve's 60-steam-input.rules tags it at priority
+  # 60, ahead of 73.
+  #
+  # Installing at 60 makes the tag effective, which then makes it safe to drop
+  # MODE/GROUP. That matters beyond tidiness: GROUP="users" is a permanent,
+  # seat-independent read grant to every member of `users` over every hidraw
+  # node, and hidraw on a keyboard is a keylogger primitive. uaccess instead
+  # grants an ACL to whoever holds the active seat and revokes it on logout.
+  #
+  # Verification after a rebuild -- note that switching reloads the rules but
+  # does not re-run them against already-attached devices, so re-plug or trigger:
+  #
+  #   sudo udevadm control --reload
+  #   sudo udevadm trigger --subsystem-match=hidraw
+  #   getfacl /dev/hidraw1     # expect user:crazycat:rw-
+  services.udev.packages = [
+    (pkgs.writeTextFile {
+      name = "hidraw-uaccess-rules";
+      destination = "/lib/udev/rules.d/60-hidraw-uaccess.rules";
+      text = ''
+        KERNEL=="hidraw*", SUBSYSTEM=="hidraw", TAG+="uaccess"
+      '';
+    })
+  ];
+
+  # Guarantees the module is actually loaded rather than assuming something else
+  # pulled it in -- the bare KERNEL=="uinput" rule this replaces silently did
+  # nothing whenever it wasn't. Access itself continues to come from Valve's
+  # 60-steam-input.rules, which tags uinput uaccess at priority 60; the `uinput`
+  # group this option creates is left unused deliberately, since a standing
+  # group grant is exactly what the hidraw change above removes.
+  hardware.uinput.enable = true;
+
   # ---------------------------------------------------------------------------
-  # xHCI INTERRUPT AFFINITY (INPUT CONTROLLERS ONTO THE Zen5 BIG CORES)
+  # xHCI INTERRUPT AFFINITY (UNPINNED -- MEASUREMENT BASELINE, 2026-08-27)
   # ---------------------------------------------------------------------------
-  # This Ryzen AI 9 365 is heterogeneous: cpu0-7 are the four Zen5 cores boosting
-  # to 5.09 GHz, cpu8-19 the six Zen5c dense cores capped at 3.32 GHz. Nothing
-  # constrains where a USB interrupt lands -- smp_affinity_list defaults to the
-  # full 0-19 -- and measured on this machine the kernel had placed both
-  # input-carrying controllers on dense cores:
+  # The previous configuration pinned every xhci_hcd vector to the Zen5 big
+  # cores (cpu0-7) on the theory that an 8 kHz mouse serviced by a Zen5c dense
+  # core was paying avoidable wakeup jitter. Measurement does not support the
+  # premise. The USB topology, read from PCI msi_irqs rather than guessed:
   #
-  #   irq 43  c5:00.0  bus3          GameSir G7 Pro       6.73M irqs  -> cpu16
-  #   irq 45  c5:00.3  bus5 + bus6   8 kHz dongle, ATK    8.82M irqs  -> cpu17
-  #                                  keyboard, Yeti, RTL8153
+  #   c3:00.4  irq 41  usb1/2  HP camera                            ~0/s
+  #   c5:00.0  irq 43  usb3/4  GameSir, Synaptics fprint, MTK BT  1000.4/s
+  #   c5:00.3  irq 45  usb5/6  USB-C -> DP cable only                0.0/s
+  #   c5:00.4  irq 47  usb7/8  Anker dock: Yeti, mouse dongle,    1008.8/s
+  #                            ATK keyboard, RTL8153, USB storage
   #
-  # The dongle's interrupt endpoint runs bInterval=01 at high speed, i.e. one
-  # transfer every 125 us microframe = 8000 Hz. Because `threadirqs` is set, each
-  # of those wakeups is a scheduled RT-prio-50 kernel thread (irq/45-xhci_hcd)
-  # rather than a hardirq -- so 8000 times a second the mouse's input path was
-  # being serviced by a core running ~35% slower than the ones available. Cheap
-  # in CPU terms either way; the cost is jitter on the wakeup, which is exactly
-  # what an 8 kHz mouse is bought to avoid.
+  # The dongle's interrupt endpoint is bInterval=01 (125 us microframes, so
+  # 8 kHz-capable) and usbhid carries no mousepoll override, but irq 47 totals
+  # ~1009 interrupts/sec for the mouse, keyboard and Yeti *combined*. The 8000
+  # wakeups/sec the old comment reasoned from were never occurring. irq 45 --
+  # the vector that comment attributed the whole input set to -- has taken 36
+  # interrupts in the machine's lifetime.
   #
-  # Restricting the mask to the big cores lets the kernel keep choosing which one
-  # while guaranteeing it never picks a Zen5c. The write is rejected for
-  # kernel-managed vectors (NVMe-style), so each result is logged rather than
-  # discarded -- an affinity change that silently no-ops is the same failure mode
-  # the CPU SCHEDULER note above rejects sched-ext for.
-  systemd.services.xhci-irq-affinity = {
-    description = "Pin xHCI interrupt handling to the Zen5 big cores";
+  # So the pin is removed rather than kept or parameterized: it was justified by
+  # a rate that does not exist, and leaving it in place would mean carrying an
+  # unmeasured tunable through a stutter investigation whose whole premise is
+  # that unmeasured tunables are what got us here.
+  #
+  # The general lesson, worth more than the specific numbers: A HARDWARE TOPOLOGY
+  # RECORDED IN A COMMENT IS A SNAPSHOT, AND THIS CONFIG WAS TUNED AGAINST A
+  # STALE ONE. The devices genuinely were grouped as the old comment described;
+  # they are simply no longer on the vector it named. Docks re-enumerate, bus
+  # numbers shift when a hub is moved between ports, and MSI vector assignments
+  # move across suspend and firmware updates. Anything here that names an irq
+  # number is a claim with an expiry date -- re-derive it from PCI msi_irqs
+  # before reasoning from it, rather than trusting the table above:
+  #
+  #   for p in /sys/bus/pci/devices/*/; do
+  #     [ -d "$p/msi_irqs" ] && echo "$(basename "$p") $(ls "$p/msi_irqs")"
+  #   done
+  #
+  # For the same reason the unit below matches on the *driver name* in
+  # /proc/interrupts rather than on hardcoded vector numbers, so it keeps working
+  # when the numbers move.
+  #
+  # Also measured while establishing the above, recorded here because it is the
+  # natural place someone will look for it: amdgpu holds exactly one MSI-X
+  # vector (irq 160 on this machine), carrying vblank, fences and hotplug
+  # together, and it lands on cpu11 -- a Zen5c dense core -- at 268/s idle.
+  # Tempting as a pin target, and not available as one: the affinity write is
+  # REJECTED because the vector is kernel-managed, so any pin would silently
+  # no-op. Confirmed 2026-08-27 by writing its current value back and observing
+  # the rejection. Left alone deliberately; there is no lever here to pull.
+  #
+  # The teardown unit below is not optional. A oneshot that writes to /proc has
+  # no implicit undo: deleting the pinning service stops it being created but
+  # leaves 0-7 live in the running kernel until reboot, so the change would
+  # appear to do nothing and any A/B would measure the pinned config while
+  # believing it was measuring the unpinned one. Writing the mask back is what
+  # makes the removal real. That silent-no-op failure mode is the same one the
+  # CPU SCHEDULER note at the top of this file rejects sched-ext for.
+  systemd.services.xhci-irq-unpin = {
+    description = "Restore default (all-CPU) IRQ affinity for xHCI controllers";
     wantedBy = ["multi-user.target"];
     after = ["systemd-modules-load.service"];
 
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
-      ExecStart = pkgs.writeShellScript "xhci-irq-affinity" ''
+      ExecStart = pkgs.writeShellScript "xhci-irq-unpin" ''
+        mask="0-$(($(${pkgs.coreutils}/bin/nproc --all) - 1))"
         for irq in $(${pkgs.gawk}/bin/awk -F: '/xhci_hcd/ {gsub(/ /, "", $1); print $1}' /proc/interrupts); do
-          if echo 0-7 > /proc/irq/"$irq"/smp_affinity_list 2>/dev/null; then
-            echo "irq $irq pinned to 0-7, now effective on cpu$(cat /proc/irq/"$irq"/effective_affinity_list)"
+          if echo "$mask" > /proc/irq/"$irq"/smp_affinity_list 2>/dev/null; then
+            echo "irq $irq unpinned to $mask, now effective on cpu$(cat /proc/irq/"$irq"/effective_affinity_list)"
           else
             echo "irq $irq: affinity write rejected, left on cpu$(cat /proc/irq/"$irq"/effective_affinity_list)" >&2
           fi
@@ -339,13 +422,12 @@
   };
 
   # An s2idle cycle can re-enumerate the xHCI controllers and hand their vectors
-  # back out with a fresh default mask, so the boot-time pin does not survive
-  # closing the lid. Re-run the same unit on resume; it re-reads /proc/interrupts
-  # and therefore also copes with the irq numbers themselves having changed.
+  # back out with a fresh mask, and the irq numbers themselves can change, so
+  # re-run the unit on resume rather than trusting the boot-time write to hold.
   # (resumeCommands is types.lines, so this concatenates with the SMU/EPP
   # re-injection block in hosts/omnibook/configuration.nix rather than clashing.)
   powerManagement.resumeCommands = ''
-    ${pkgs.systemd}/bin/systemctl restart xhci-irq-affinity.service || true
+    ${pkgs.systemd}/bin/systemctl restart xhci-irq-unpin.service || true
   '';
 
   # ---------------------------------------------------------------------------

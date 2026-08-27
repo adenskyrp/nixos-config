@@ -38,6 +38,7 @@ in {
     ../../modules/core.nix
     ../../modules/gaming.nix
     ../../modules/minecraft.nix
+    ../../modules/diagnostics.nix
   ];
 
   # Synchronize hostname with flake output schema
@@ -210,6 +211,24 @@ in {
       Experimental = true;
       FastConnectable = true;
     };
+  };
+
+  # ---------------------------------------------------------------------------
+  # STUTTER INVESTIGATION HARNESS (TEMPORARY, OPENED 2026-08-27)
+  # ---------------------------------------------------------------------------
+  # Installs stutter-trace / psi-watch / perf for the intermittent-frame-hitch
+  # measurement. Purely additive -- no scheduling, power or I/O behaviour
+  # changes -- so it is safe to leave on across the investigation. Turn it off
+  # once the cause is bucketed rather than letting the tooling become permanent
+  # system state.
+  #
+  # unsafeTracing is left off deliberately: it drops perf_event_paranoid to -1
+  # and kptr_restrict to 0, which weakens KASLR and opens the PMU to every local
+  # process. Switch it on only for the duration of a perf session that actually
+  # needs kernel symbols, then switch it back.
+  local.diagnostics = {
+    enable = true;
+    unsafeTracing = false;
   };
 
   system.stateVersion = "25.11";
