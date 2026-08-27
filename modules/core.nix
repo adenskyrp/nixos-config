@@ -268,8 +268,8 @@
     "net.ipv4.tcp_syncookies" = 1;
 
     # Memory compaction & swapping heuristics
-    "vm.compaction_proactiveness" = 20;
-    "vm.watermark_boost_factor" = 1;
+    "vm.compaction_proactiveness" = 0;
+    "vm.watermark_boost_factor" = 0;
     "vm.swappiness" = 10;
   };
 
@@ -364,8 +364,8 @@
         "context.properties" = {
           "default.clock.rate" = 48000;
           "default.clock.allowed-rates" = [48000 96000];
-          "default.clock.quantum" = 64;
-          "default.clock.min-quantum" = 64;
+          "default.clock.quantum" = 512;
+          "default.clock.min-quantum" = 128;
           "default.clock.max-quantum" = 1024;
         };
       };
