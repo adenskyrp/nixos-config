@@ -212,7 +212,10 @@ in {
       FastConnectable = true;
     };
   };
-
+  services.fwupd = {
+    enable = true;
+    extraRemotes = ["lvfs-testing"];
+  };
   # ---------------------------------------------------------------------------
   # STUTTER INVESTIGATION HARNESS (TEMPORARY, OPENED 2026-08-27)
   # ---------------------------------------------------------------------------
@@ -227,7 +230,7 @@ in {
   # process. Switch it on only for the duration of a perf session that actually
   # needs kernel symbols, then switch it back.
   local.diagnostics = {
-    enable = true;
+    enable = false;
     unsafeTracing = false;
   };
 
