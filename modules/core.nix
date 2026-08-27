@@ -431,8 +431,24 @@
   '';
 
   # ---------------------------------------------------------------------------
-  # LOW-LATENCY AUDIO SUBSYSTEM (PipeWire 1.33ms Quantum)
+  # LOW-LATENCY AUDIO SUBSYSTEM (PipeWire: 512 requested, 256 realized = 5.33 ms)
   # ---------------------------------------------------------------------------
+  # The banner states the *configured* and the *realized* quantum, because they
+  # are not the same number and the difference is the point. It read
+  # "1.33ms Quantum" until 2026-08-27, which was wrong twice over: nothing here
+  # requests 64 frames any more, and a request is not an outcome.
+  #
+  # What actually happens: default.clock.quantum below asks for 512, and the
+  # ALSA sink negotiates what its own period constraints allow. Measured with
+  # `pw-top` on this machine, the output driver
+  # (alsa_output.pci-0000_c3_00.6.HiFi__Headphones__sink) runs QUANT 256 at
+  # 48000, i.e. 5.33 ms -- so the sink, not this file, is what sets the realized
+  # figure. min-quantum = 128 only bounds how low a client may drag it.
+  #
+  # There is ample margin at that quantum: the same sample showed the driver
+  # BUSY at 6.0 us against the 5.33 ms period (0.11% utilisation), B/Q 0.00 and
+  # ERR 0. PipeWire is not a plausible contributor to the frame drops, and
+  # chasing a smaller quantum here would spend CPU wakeups for nothing.
   security.rtkit.enable = true;
   services.pipewire = {
     enable = true;
@@ -474,7 +490,10 @@
           "server.address" = ["unix:native"];
         };
         "stream.properties" = {
-          "node.latency" = "64/48000";
+          # 256/48000 = 5.33 ms, matching the period the sink actually negotiates.
+          # This was 64/48000 (1.33 ms), a request the sink never granted; asking
+          # for a latency the hardware refuses just leaves PipeWire to clamp it.
+          "node.latency" = "256/48000";
         };
       };
     };
@@ -489,9 +508,19 @@
                 "node.pause-on-idle" = false;
                 "audio.format" = "S32LE";
                 "audio.rate" = 48000;
-                "api.alsa.period-size" = 64;
-                # Provide a 1-period (1.33ms) safety net for the DMA pointer
-                "api.alsa.headroom" = 64;
+                # These were 64/64 with a comment claiming a "1-period (1.33ms)
+                # safety net", stale against the 512 quantum requested above and
+                # the 256 the sink actually negotiates. A period-size request the
+                # sink will not honour is not a tuning, and 64 frames of headroom
+                # is a quarter-period at 256, not one period.
+                #
+                # Set to match the realized 256-frame period, with one full
+                # period of headroom for the DMA pointer. Re-derive both from
+                # `pw-top` (the driver row's QUANT column) if the sink or the
+                # quantum above changes -- do not assume these numbers still
+                # hold.
+                "api.alsa.period-size" = 256;
+                "api.alsa.headroom" = 256;
                 # Force high-resolution IRQ timers instead of grouped batch wakeups
                 "api.alsa.disable-batch" = true;
               };

@@ -14,6 +14,19 @@
   fastPowerLimit = 65000; # 65W: Peak immediate burst (fPPT) matching 65W AC charger
   temperatureLimit = 90; # 90°C: Maximum allowed junction temperature (Tctl)
 
+  # STAPM IS NOT A SLIDING WINDOW ON THIS MACHINE. Measured with `ryzenadj -i`
+  # during osu! (2026-08-27): StapmTimeConst = 0.000. STAPM's whole mechanism is
+  # a time-averaged power limit, and a zero time constant disables the averaging
+  # -- so the "sliding time-averaged power limit" a laptop normally imposes, and
+  # which the earlier stutter investigation ranked as its #1 hypothesis, cannot
+  # fire here at all.
+  #
+  # The same sample: STAPM 19.2/21.9 W, PPT slow 18.4/45 W, Tctl 66 °C, cores
+  # holding 5042 MHz. Nowhere near any of the ceilings below. That both
+  # eliminates power throttling as a cause of the frame drops and retroactively
+  # validates these limits -- they are not being hit, so they are not the thing
+  # to tune. Re-check with `ryzenadj -i` before blaming power again.
+
   # GPU DPM level, applied at boot and re-applied on resume.
   # "auto" lets the SMU shift the shared 54-65W envelope toward the CPU when the
   # iGPU is not the bottleneck (Rocket League at 1080p is CPU/netcode-bound).
@@ -212,6 +225,22 @@ in {
       FastConnectable = true;
     };
   };
+  # ---------------------------------------------------------------------------
+  # FIRMWARE UPDATES (fwupd)
+  # ---------------------------------------------------------------------------
+  # Here for visibility over the NVMe and the USB4/DisplayPort retimer firmware,
+  # not for the BIOS -- W81 Ver. 01.01.21 (2026-06-15) is current, and HP exposes
+  # no UMA/VRAM-carveout setting to go looking for anyway. The dock sits directly
+  # in the video path (the 599.94 Hz panel reaches the APU over DisplayPort MST
+  # through a USB-C adapter), which makes retimer firmware a legitimate suspect
+  # for a link-level fault, so `fwupdmgr get-devices` is worth having.
+  #
+  # lvfs-testing widens the remote to firmware that has not cleared LVFS's
+  # stable gate. Enabling a remote flashes nothing on its own, so this is inert
+  # until `fwupdmgr update` is run by hand -- but note that while the frame-drop
+  # cause is still unidentified, taking a testing-channel update means adding a
+  # variable to an open experiment. Prefer flashing from stable, or after the
+  # drops are understood.
   services.fwupd = {
     enable = true;
     extraRemotes = ["lvfs-testing"];
