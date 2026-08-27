@@ -45,7 +45,7 @@
         cursor = {
           -- Renamed upstream: the key is `no_hardware_cursors` on Hyprland 0.56,
           -- and it is an int (0 = HW cursors, 1 = never, 2 = auto), not a bool.
-          no_hardware_cursors = 1,
+          no_hardware_cursors = 2,
         },
 
         -- Master switch for wp_tearing_control_v1 protocol negotiation
