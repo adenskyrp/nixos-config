@@ -40,7 +40,6 @@
     PROTON_NO_ESYNC = "1";
     PROTON_ENABLE_HIDRAW = "1";
     PROTON_ENABLE_WAYLAND = "1";
-    SDL_JOYSTICK_HIDAPI = "0";
     SDL_GAMECONTROLLER_IGNORE_DEVICES = "0x28de/0x11ff";
     DXVK_HUD = "0";
     DXVK_CONFIG_FILE = "/etc/dxvk.conf";
@@ -91,6 +90,8 @@
   # ---------------------------------------------------------------------------
   environment.systemPackages = with pkgs; [
     mangohud # Frame-time and latency analysis overlay
+    usbutils
+    evtest
     evhz # USB polling rate verification
   ];
 }
