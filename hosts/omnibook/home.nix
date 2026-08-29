@@ -660,6 +660,7 @@
       obs-pipewire-audio-capture
       obs-vaapi
       obs-gstreamer
+      input-overlay
     ];
   };
 
