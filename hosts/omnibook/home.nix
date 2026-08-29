@@ -772,7 +772,7 @@
     p7zip
     unrar
     ark
-
+    pear-desktop
     (discord.override {
       withVencord = true;
       withOpenASAR = true;
