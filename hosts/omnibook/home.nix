@@ -270,13 +270,41 @@
       hl.bind(mainMod .. " + D", hl.dsp.exec_cmd(
         "systemctl --user is-active --quiet ironbar && systemctl --user stop ironbar || systemctl --user start ironbar"
       ))
-      hl.bind(mainMod .. " + SHIFT + S", hl.dsp.exec_cmd("screenshot-region"))
+      -- Screenshot lived on SUPER + SHIFT + S until 2026-08-30. It moved here to
+      -- free that chord for the special-workspace move below, which is where
+      -- upstream's own bundled example config puts it. PRINT was unbound, and is
+      -- the obvious home for a screenshot key anyway.
+      hl.bind("PRINT", hl.dsp.exec_cmd("screenshot-region"))
 
       -- Workspaces 1-5 Dispatcher Mapping
       for i = 1, 5 do
         hl.bind(mainMod .. " + " .. tostring(i), hl.dsp.focus({ workspace = tostring(i) }))
         hl.bind(mainMod .. " + SHIFT + " .. tostring(i), hl.dsp.window.move({ workspace = tostring(i) }))
       end
+
+      -- Special ("magic") Workspace -- the scratchpad overlay
+      --
+      -- A special workspace is not one of the numbered ones. It renders as an
+      -- overlay ON TOP of whichever workspace is currently active, and toggling
+      -- it away leaves that underlying workspace focused and untouched -- no
+      -- workspace switch, so nothing below it gets re-tiled or re-focused. That
+      -- is what makes it usable mid-game: flash up a terminal or a chat window
+      -- over Rocket League and dismiss it without the game's workspace ever
+      -- changing under it.
+      --
+      -- "magic" is just the workspace's name -- any string works. The only
+      -- requirement is that the two binds agree, and note they spell it
+      -- differently on purpose: toggle_special takes the BARE name, while the
+      -- window-move dispatcher takes the QUALIFIED `special:magic`, because it
+      -- accepts ordinary workspaces too and needs the prefix to disambiguate.
+      --
+      -- These are the native Lua dispatchers, matching upstream's bundled
+      -- example config for 0.56.2. The `togglespecialworkspace` / `movetoworkspace`
+      -- spellings in the Hyprland wiki are hyprland.conf syntax and do not apply
+      -- to this file -- see the mouse binds below for what happens when
+      -- hyprland.conf syntax is pasted into a Lua config.
+      hl.bind(mainMod .. " + S", hl.dsp.workspace.toggle_special("magic"))
+      hl.bind(mainMod .. " + SHIFT + S", hl.dsp.window.move({ workspace = "special:magic" }))
 
       -- Scroll Wheel Workspace Switching
       hl.bind(mainMod .. " + mouse_down", hl.dsp.focus({ workspace = "e+1" }))
