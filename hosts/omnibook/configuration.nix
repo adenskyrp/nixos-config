@@ -188,22 +188,23 @@ in {
   services.udev.packages = [pkgs.swayosd];
   environment.systemPackages = [pkgs.ryzenadj];
 
-  # Fingerprint reader daemon with lid-safety check
-  services.fprintd.enable = true;
-  systemd.services.fprintd = {
-    serviceConfig = {
-      ExecStartPre = pkgs.writeShellScript "check-display-and-lid" ''
-        if grep -q "closed" /proc/acpi/button/lid/*/state 2>/dev/null; then
-          exit 1
-        fi
-        EDP_STATUS=$(cat /sys/class/drm/card*-eDP-*/enabled 2>/dev/null | head -n 1)
-        if [ "$EDP_STATUS" = "disabled" ]; then
-          exit 1
-        fi
-        exit 0
-      '';
-    };
-  };
+  # FINGERPRINT READER (fprintd) IS DELIBERATELY ABSENT -- removed 2026-08-30.
+  #
+  # It used to be enabled here with an ExecStartPre guard that refused to start
+  # the daemon while the lid was shut or eDP-1 was disabled. That is the normal
+  # state on this machine -- it runs docked, driving DP-1 with the internal panel
+  # off -- so the guard fired on every boot and the unit sat permanently
+  # `failed`. Fingerprint auth was already dead in practice, not just unused.
+  #
+  # Nothing has to be deleted on the PAM side to finish unwinding this. nixpkgs
+  # declares (nixos/modules/security/pam.nix)
+  #     security.pam.services.<name>.fprintAuth.default = services.fprintd.enable;
+  # so dropping the line above retracts `auth sufficient pam_fprintd.so` from
+  # every generated stack on its own. `sufficient` is the load-bearing word: the
+  # fprintd entry could only ever ADD a way to authenticate, never gate one, so
+  # pam_unix.so was already the fallback everywhere and is now the sole auth
+  # module ahead of pam_deny.so. Password auth for login/greetd/sudo/su/polkit
+  # is unaffected. Do not re-add without also re-checking those five stacks.
 
   # ---------------------------------------------------------------------------
   # GREETD / TUIGREET COMPOSITOR LAUNCHER
