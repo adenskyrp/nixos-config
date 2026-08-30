@@ -311,14 +311,27 @@
       hl.bind(mainMod .. " + mouse_up", hl.dsp.focus({ workspace = "e-1" }))
 
       -- ======================================================================
-      -- MOUSE WINDOW OPERATIONS (NATIVE C++ ARRAY ENGINE)
+      -- MOUSE WINDOW OPERATIONS
       -- ======================================================================
-      hl.config({
-        bindm = {
-          "SUPER, mouse:272, movewindow",
-          "SUPER, mouse:273, resizewindow",
-        }
-      })
+      -- These two were previously written as
+      --     hl.config({ bindm = { "SUPER, mouse:272, movewindow", ... } })
+      -- which was DEAD CONFIG. `bindm` is an hyprland.conf keyword, not a Lua
+      -- config variable, and hl.config() drops keys it does not recognise
+      -- without warning -- nothing appeared in the log, so it looked live. It
+      -- was not: `hyprctl binds` listed thirty binds and not one mouse bind, and
+      -- SUPER + drag had silently done nothing since the Lua migration.
+      --
+      -- The Lua form takes the button as part of the key string and needs
+      -- `{ mouse = true }` to register as a held bind rather than a press. Held
+      -- is the whole point here: the dispatcher runs for the duration of the
+      -- drag and ends on button release, which is what makes drag-to-move and
+      -- drag-to-resize continuous instead of one-shot.
+      --
+      -- 272 is left button, 273 is right (BTN_LEFT / BTN_RIGHT, linux/input-event-codes.h).
+      -- window.drag / window.resize are the Lua names for what hyprland.conf
+      -- calls movewindow / resizewindow.
+      hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(), {mouse = true})
+      hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), {mouse = true})
 
       -- SwayOSD Audio & Brightness Integration
       hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("${pkgs.swayosd}/bin/swayosd-client --output-volume +5"))
