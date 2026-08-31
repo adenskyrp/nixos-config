@@ -52,6 +52,12 @@ in {
     ../../modules/gaming.nix
     ../../modules/minecraft.nix
     ../../modules/diagnostics.nix
+
+    # xHCI interrupt affinity pin (Zen5 cores). Imported here rather than from
+    # flake.nix because it names this machine's PCI addresses -- it is host
+    # hardware, not host-independent behaviour. Deleting this one line is the
+    # full revert: it also un-masks core.nix's xhci-irq-unpin baseline.
+    ../../modules/irq-affinity.nix
   ];
 
   # Synchronize hostname with flake output schema
