@@ -209,7 +209,7 @@
   };
 
   # --- KERNEL NETWORK TUNING (CAKE + BBR) ---
-  boot.kernelModules = ["tcp_bbr" "sch_cake"];
+  boot.kernelModules = ["tcp_bbr" "sch_cake" "ntsync"];
   boot.kernel.sysctl = {
     # Prioritize interactive UDP game packets over bulk TCP traffic. Note this
     # only reaches wired links (Thunderbolt dock / USB ethernet): mac80211
