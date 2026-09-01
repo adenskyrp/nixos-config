@@ -88,6 +88,7 @@
   # SYSTEM PACKAGES & TELEMETRY
   # ---------------------------------------------------------------------------
   environment.systemPackages = with pkgs; [
+    heroic
     mangohud # Frame-time and latency analysis overlay
     usbutils
     evtest
