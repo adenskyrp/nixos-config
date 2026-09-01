@@ -89,6 +89,7 @@
   # ---------------------------------------------------------------------------
   environment.systemPackages = with pkgs; [
     heroic
+    protonup-qt
     mangohud # Frame-time and latency analysis overlay
     usbutils
     evtest
