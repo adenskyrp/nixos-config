@@ -813,6 +813,7 @@
     p7zip
     unrar
     ark
+    etterna
     pear-desktop
     (discord.override {
       withVencord = true;
