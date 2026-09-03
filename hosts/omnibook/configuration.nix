@@ -81,7 +81,7 @@ in {
     # Driver Performance: Active autonomous CPPC power scaling
     "amd_pstate=active"
     "amdgpu.ppfeaturemask=0xffffffff"
-
+    "pcie_aspm=off"
     # Interrupt & Clock Optimization: Eliminate scheduler jitter and polling latency
     # split_lock_mitigate is Intel-only and was being rejected outright ("Unknown
     # kernel command line parameters", visible in dmesg on every boot) -- it is
