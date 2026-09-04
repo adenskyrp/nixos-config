@@ -647,11 +647,6 @@
   services.tumbler.enable = true;
   services.gvfs.enable = true;
 
-  services.journald.extraConfig = ''
-    SystemMaxUse=250M
-    MaxFileSec=1month
-  '';
-
   environment.pathsToLink = ["/share/xdg-desktop-portal" "/share/applications"];
 
   environment.systemPackages = with pkgs; [
