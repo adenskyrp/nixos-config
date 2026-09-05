@@ -813,7 +813,6 @@
     p7zip
     unrar
     ark
-    etterna
     pear-desktop
     (discord.override {
       withVencord = true;
@@ -828,22 +827,6 @@
       ${pkgs.grim}/bin/grim -g "$(${pkgs.slurp}/bin/slurp)" - | tee "$FILENAME" | ${pkgs.wl-clipboard}/bin/wl-copy
       if command -v notify-send &> /dev/null; then
         notify-send "Screenshot Captured" "Saved to $FILENAME and copied to clipboard." --icon=camera
-      fi
-    '')
-
-    (writeShellScriptBin "osu-launcher" ''
-      export WINEPREFIX="$HOME/.wine-osu"
-      export STAGING_AUDIO_DURATION="10000"
-      export STEAM_COMPAT_DATA_PATH="$HOME/.wine-osu"
-      export PIPEWIRE_LATENCY="64/48000"
-      export DXVK_HUD=0
-
-      server_input=$(echo "" | ${pkgs.fuzzel}/bin/fuzzel -d -p "osu! DevServer (Leave blank for Bancho): ")
-
-      if [ -n "$server_input" ]; then
-        exec obs-gamecapture ${pkgs.wineWow64Packages.staging}/bin/wine "$HOME/Games/osu/osu!.exe" -devserver "$server_input" "$@"
-      else
-        exec obs-gamecapture ${pkgs.wineWow64Packages.staging}/bin/wine "$HOME/Games/osu/osu!.exe" "$@"
       fi
     '')
   ];
