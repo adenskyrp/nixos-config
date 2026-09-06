@@ -215,7 +215,7 @@
     # only reaches wired links (Thunderbolt dock / USB ethernet): mac80211
     # installs "noqueue" on the Wi-Fi netdev and runs its own per-station
     # fq_codel with airtime fairness, so no qdisc can attach there.
-    "net.core.default_qdisc" = "cake";
+    "net.core.default_qdisc" = "fq";
     "net.ipv4.tcp_congestion_control" = "bbr";
 
     # Expand buffer ceilings for high-tick-rate UDP streams
