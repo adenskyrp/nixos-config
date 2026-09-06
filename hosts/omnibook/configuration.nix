@@ -51,6 +51,7 @@ in {
     ../../modules/core.nix
     ../../modules/gaming.nix
     ../../modules/minecraft.nix
+    ../../modules/sober.nix
     ../../modules/diagnostics.nix
 
     # xHCI interrupt affinity pin (Zen5 cores). Imported here rather than from
