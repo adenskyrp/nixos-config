@@ -43,7 +43,7 @@
         -- eDP-1 is explicitly disabled when docked to free APU display engine
         -- bandwidth.
         monitor = {
-          "DP-1, 1920x1080@599.94, 0x0, 1",
+          "DP-1, auto@highrr, 0x0, 1",
           "eDP-1, disable",
         },
 
@@ -893,36 +893,6 @@
   # ---------------------------------------------------------------------------
   # XDG MIME ROUTING & THEMES
   # ---------------------------------------------------------------------------
-  xdg.desktopEntries = {
-    osu-stable = {
-      name = "osu!stable";
-      exec = "osu-launcher %U";
-      icon = "osu!";
-      comment = "osu! stable";
-      terminal = false;
-      categories = ["Game"];
-      mimeType = [
-        "application/x-osu-beatmap"
-        "application/x-osu-skin"
-        "application/x-osu-replay"
-        "application/x-extension-osz"
-        "application/x-extension-osk"
-        "application/x-extension-osr"
-      ];
-    };
-  };
-
-  xdg.mimeApps = {
-    enable = true;
-    defaultApplications = {
-      "application/x-osu-beatmap" = "osu-stable.desktop";
-      "application/x-osu-skin" = "osu-stable.desktop";
-      "application/x-osu-replay" = "osu-stable.desktop";
-      "application/x-extension-osz" = "osu-stable.desktop";
-      "application/x-extension-osk" = "osu-stable.desktop";
-      "application/x-extension-osr" = "osu-stable.desktop";
-    };
-  };
 
   gtk = {
     enable = true;
