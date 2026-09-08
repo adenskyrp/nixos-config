@@ -35,9 +35,7 @@
   # ---------------------------------------------------------------------------
   environment.sessionVariables = {
     MESA_SHADER_CACHE_MAX_SIZE = "16G";
-    PROTON_ENABLE_WAYLAND = "1";
     PROTON_USE_NTSYNC = "1";
-    SDL_GAMECONTROLLER_IGNORE_DEVICES = "0x28de/0x11ff";
     DXVK_HUD = "0";
     DXVK_CONFIG_FILE = "/etc/dxvk.conf";
     NIXOS_OZONE_WL = "1";
