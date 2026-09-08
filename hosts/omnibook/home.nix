@@ -43,7 +43,7 @@
         -- eDP-1 is explicitly disabled when docked to free APU display engine
         -- bandwidth.
         monitor = {
-          "DP-1, 1920x1080@highrr, 0x0, 1",
+          "DP-1, 1920x1080@599.94, 0x0, 1",
           "eDP-1, disable",
         },
 
@@ -74,7 +74,7 @@
         -- scanout drop on those keypresses; that is acceptable and not worth
         -- fixing.
         render = {
-          direct_scanout = 0,
+          direct_scanout = 1,
         },
 
         -- HARDWARE CURSORS ARE KEPT ON, AND THIS CONFLICTS WITH TEARING. Read
