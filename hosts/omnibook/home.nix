@@ -745,7 +745,7 @@
       settings = {
         "gfx.webrender.all" = true;
         "gfx.webrender.compositor" = true;
-        "gfx.webrender.compositor.force-enabled" = true;
+        "gfx.webrender.compositor.force-enabled" = false;
         "widget.use-aspect-ratio" = true;
         "widget.dmabuf.wayland-hardware-efficient" = true;
         "media.ffmpeg.vaapi.enabled" = true;
