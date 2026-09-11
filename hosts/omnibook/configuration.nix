@@ -54,6 +54,12 @@ in {
     ../../modules/sober.nix
     ../../modules/diagnostics.nix
 
+    # Pixel-as-webcam: v4l2loopback sink fed by scrcpy over adb. Host-independent
+    # behaviour, so it is a shared module rather than inline here -- but note it
+    # reads boot.kernelPackages (set below) to build the out-of-tree loopback
+    # module against this machine's CachyOS kernel rather than nixpkgs' default.
+    ../../modules/webcam.nix
+
     # xHCI interrupt affinity pin (Zen5 cores). Imported here rather than from
     # flake.nix because it names this machine's PCI addresses -- it is host
     # hardware, not host-independent behaviour. Deleting this one line is the
