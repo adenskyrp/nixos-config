@@ -459,12 +459,20 @@ in {
   # once the cause is bucketed rather than letting the tooling become permanent
   # system state.
   #
+  # REOPENED 2026-09-12. The seven-commit tuning series went live in a single
+  # switch (generation 242) instead of the planned batch-at-a-time, and the
+  # flake.lock bump rode along with it, so no frametime delta can be attributed
+  # to an individual commit any more. That makes these samplers more
+  # load-bearing, not less: the frame-drop bug is now the only thing left to
+  # measure directly, and amdgpu.sg_display=0 -- its candidate fix -- is already
+  # running, so this harness is how we learn whether it did anything.
+  #
   # unsafeTracing is left off deliberately: it drops perf_event_paranoid to -1
   # and kptr_restrict to 0, which weakens KASLR and opens the PMU to every local
   # process. Switch it on only for the duration of a perf session that actually
   # needs kernel symbols, then switch it back.
   local.diagnostics = {
-    enable = false;
+    enable = true;
     unsafeTracing = false;
   };
 
