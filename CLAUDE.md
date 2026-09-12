@@ -39,9 +39,12 @@ build` succeeding, and ultimately `nixos-rebuild switch` + reboot/relogin to con
 
 - **`flake.nix`** — entry point. Inputs: `nixpkgs` (nixos-unstable), `chaotic` (Chaotic-Nyx overlay,
   provides `linuxPackages_cachyos` and `mesa-git`), `home-manager` (following nixpkgs). Defines
-  `nixosConfigurations.omnibook` and `nixosConfigurations.desktop`. **Note:** `desktop` points at
-  `./hosts/desktop/configuration.nix`, which does not exist in this tree yet — it's a stub for a
-  second machine, not a bug to "fix" by removing.
+  `nixosConfigurations.omnibook` and — conditionally — `nixosConfigurations.desktop`. **Note:**
+  `desktop` points at `./hosts/desktop/configuration.nix`, which does not exist in this tree yet —
+  it's a stub for a second machine, not a bug to "fix" by removing. It is wrapped in
+  `lib.optionalAttrs (builtins.pathExists ...)` so that `nix flake check` can still pass: the check
+  evaluates every `nixosConfiguration`, so an unconditional stub made it fail permanently. The
+  output reappears on its own once that file is created.
 - **`hosts/<host>/configuration.nix`** — per-host root. Imports that host's
   `hardware-configuration.nix` (machine-generated, never hand-edit) plus the shared modules under
   `modules/`, then layers host-specific stuff: hostname, bootloader/kernel params, power/thermal

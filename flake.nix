@@ -45,41 +45,58 @@
     nix-flatpak,
     ...
   } @ inputs: {
-    nixosConfigurations = {
-      # HP OmniBook Ultra 14 (AMD Ryzen AI 9 365 / Radeon 880M)
-      omnibook = nixpkgs.lib.nixosSystem {
-        system = "x86_64-linux";
-        # Expose inputs to all downstream modules via specialArgs
-        specialArgs = {inherit inputs;};
-        modules = [
-          # Chaotic Nyx repository overlay (provides linuxPackages_cachyos and mesa-git)
-          chaotic.nixosModules.default
+    nixosConfigurations =
+      {
+        # HP OmniBook Ultra 14 (AMD Ryzen AI 9 365 / Radeon 880M)
+        omnibook = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          # Expose inputs to all downstream modules via specialArgs
+          specialArgs = {inherit inputs;};
+          modules = [
+            # Chaotic Nyx repository overlay (provides linuxPackages_cachyos and mesa-git)
+            chaotic.nixosModules.default
 
-          # Declarative Flatpak module (consumed by modules/sober.nix)
-          nix-flatpak.nixosModules.nix-flatpak
+            # Declarative Flatpak module (consumed by modules/sober.nix)
+            nix-flatpak.nixosModules.nix-flatpak
 
-          # Home Manager module integration
-          home-manager.nixosModules.home-manager
-          {
-            home-manager.useGlobalPkgs = true;
-            home-manager.useUserPackages = true;
-            home-manager.users.crazycat = import ./hosts/omnibook/home.nix;
-          }
+            # Home Manager module integration
+            home-manager.nixosModules.home-manager
+            {
+              home-manager.useGlobalPkgs = true;
+              home-manager.useUserPackages = true;
+              home-manager.users.crazycat = import ./hosts/omnibook/home.nix;
+            }
 
-          # Host-specific root entrypoint (handles internal module imports)
-          ./hosts/omnibook/configuration.nix
-        ];
+            # Host-specific root entrypoint (handles internal module imports)
+            ./hosts/omnibook/configuration.nix
+          ];
+        };
+      }
+      # -------------------------------------------------------------------------
+      # SECONDARY DESKTOP RIG (STUB -- NOT PRESENT IN THIS TREE)
+      # -------------------------------------------------------------------------
+      # hosts/desktop/ does not exist yet. That is deliberate, it is documented in
+      # CLAUDE.md, and it is NOT a bug to "fix" by deleting this output.
+      #
+      # The pathExists gate is new, and it is about the gate rather than about the
+      # stub: `nix flake check` walks every nixosConfiguration and evaluates it, so
+      # an unconditional `desktop` made the check fail permanently on a missing
+      # import. The repo's only whole-flake gate could therefore never pass, which
+      # means nobody reads it, which means it stops catching the regressions it
+      # exists to catch. A gate that always fails is not a gate.
+      #
+      # Gating costs nothing and hides nothing: the intent stays declared right
+      # here, and `desktop` reappears on its own the moment
+      # hosts/desktop/configuration.nix is created. Nothing needs remembering.
+      // nixpkgs.lib.optionalAttrs (builtins.pathExists ./hosts/desktop/configuration.nix) {
+        desktop = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          specialArgs = {inherit inputs;};
+          modules = [
+            chaotic.nixosModules.default
+            ./hosts/desktop/configuration.nix
+          ];
+        };
       };
-
-      # Secondary Desktop Rig
-      desktop = nixpkgs.lib.nixosSystem {
-        system = "x86_64-linux";
-        specialArgs = {inherit inputs;};
-        modules = [
-          chaotic.nixosModules.default
-          ./hosts/desktop/configuration.nix
-        ];
-      };
-    };
   };
 }
