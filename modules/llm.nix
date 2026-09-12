@@ -52,6 +52,32 @@
   # instead: they are already sized to nearly all of usable RAM.
   contextSize = 32768;
 
+  # ---------------------------------------------------------------------------
+  # MEMORY BUDGET -- DO NOT RUN THIS AND A GAME AT THE SAME TIME
+  # ---------------------------------------------------------------------------
+  # Three ceilings on this machine now overlap, on 30.65 GiB of usable RAM:
+  #
+  #   GTT ceiling      24.00 GiB   (ttm.pages_limit, hosts/omnibook)
+  #   zram swap       ~15.30 GiB   (core.nix, zramSwap.memoryPercent = 50)
+  #   model weights    19.71 GiB   (Q4_K_M, resident while the server runs)
+  #
+  # They sum to well over physical memory, which is survivable only because all
+  # three are ceilings rather than reservations -- nothing is consumed until
+  # something asks. The arithmetic still says the machine cannot honour all
+  # three at once, so the operational rule is simply: DO NOT RUN llama-server
+  # AND A GAME TOGETHER. A game wants GTT for its own buffers, and the
+  # compositor is already holding some; a resident 20 GiB model leaves neither
+  # room to grow into, and the failure will present as the desktop swapping to
+  # zram (i.e. burning CPU on decompression) rather than as a clean error.
+  # `systemctl --user stop llama-server` before launching anything.
+  #
+  # GTT headroom is also tighter than "24 GiB" makes it sound. Measured/derived:
+  # 19.71 weights + 1.33 KV (q8_0 at 32768, from n_layer=40, n_head_kv=2,
+  # key_length=value_length=256) + compute and graph buffers ~= 21.5-22 GiB,
+  # before the compositor's own allocations. That should fit, but it is a
+  # prediction, not a measurement -- confirm GTT residency with `amdgpu_top`
+  # once the server is actually up rather than assuming it.
+
   # Loopback only. This server has no authentication of any kind and will answer
   # anything that can reach the socket; it must not be bound to a routable
   # address without something in front of it.
