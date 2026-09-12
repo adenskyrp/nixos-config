@@ -3,7 +3,59 @@
   pkgs,
   lib,
   ...
-}: {
+}: let
+  # ---------------------------------------------------------------------------
+  # CCX PINNING WRAPPERS (STEAM LAUNCH-OPTION PREFIXES)
+  # ---------------------------------------------------------------------------
+  # This CPU is two L3 domains, not one. Measured:
+  #
+  #   cpu0 cache/index3/shared_cpu_list = 0-7    (4x Zen 5,  5090 MHz)
+  #   cpu8 cache/index3/shared_cpu_list = 8-19   (6x Zen 5c, 3325 MHz)
+  #
+  # A thread that migrates across that boundary therefore pays twice: a ~35%
+  # clock drop AND a cold L3, because the second domain shares none of the
+  # first's cache. For a game whose critical path is one hot thread -- Rocket
+  # League's simulation/netcode loop -- a single migration is a visible
+  # frametime spike, against a 1.667 ms budget at 599.94 Hz.
+  #
+  # The scheduler cannot avoid this by itself on this machine. CONFIG_SCHED_MC_PRIO=y
+  # and amd_pstate does populate prefcore_ranking (208/208/202/196 across the
+  # Zen 5 cores against a flat 128 on all twelve Zen 5c threads) -- but
+  # /proc/sys/kernel/sched_itmt_enabled does not exist, which means
+  # sched_set_itmt_support() was never called and that ranking is never promoted
+  # into scheduling policy. The fast cores are, as far as placement is
+  # concerned, invisible.
+  #
+  # ITMT would not be sufficient even if it were live, which is the reason to
+  # pin rather than to go hunting for a way to enable it: SD_ASYM_PACKING biases
+  # where a task is placed during idle balance. It does not reach in and pull an
+  # already-running thread back off a slow core. Explicit affinity is strictly
+  # stronger than the missing feature, not a workaround for it.
+  #
+  # LAUNCH-OPTION ONLY, DELIBERATELY -- no systemd unit, no global application.
+  # Both variants have to be A/B-able per run without a rebuild, and a global
+  # taskset would also pin shader compilation, Proton's own threads and every
+  # background service onto the eight threads the game wants to itself.
+  #
+  #   Steam -> Properties -> Launch Options:
+  #     zen5 %command%
+  #     zen5-nosmt %command%
+  #
+  # Which of the two wins is workload-shaped and is NOT measured here -- that is
+  # what the A/B is for. Hypothesis for nosmt: RL's hot thread stops sharing a
+  # physical core's front-end and FPU with anything, at the cost of half the
+  # thread count for everything else Proton is doing.
+  #
+  # SMT pairing verified from topology/thread_siblings_list: (0,1) (2,3) (4,5)
+  # (6,7), so 0,2,4,6 really is one thread per physical Zen 5 core.
+  zen5 = pkgs.writeShellScriptBin "zen5" ''
+    exec ${pkgs.util-linux}/bin/taskset -c 0-7 "$@"
+  '';
+
+  zen5-nosmt = pkgs.writeShellScriptBin "zen5-nosmt" ''
+    exec ${pkgs.util-linux}/bin/taskset -c 0,2,4,6 "$@"
+  '';
+in {
   # ---------------------------------------------------------------------------
   # VIRTUAL MEMORY & SCHEDULER TUNING
   # ---------------------------------------------------------------------------
@@ -113,6 +165,12 @@
   # SYSTEM PACKAGES & TELEMETRY
   # ---------------------------------------------------------------------------
   environment.systemPackages = with pkgs; [
+    # CCX pinning prefixes, defined in the `let` above. These resolve to the
+    # let-bindings rather than to pkgs -- `with` only supplies names that are
+    # not already bound, so a let binding of the same name wins.
+    zen5
+    zen5-nosmt
+
     heroic
     protonup-qt
     umu-launcher
