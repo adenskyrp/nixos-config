@@ -53,6 +53,7 @@ in {
     ../../modules/minecraft.nix
     ../../modules/sober.nix
     ../../modules/diagnostics.nix
+    ../../modules/llm.nix
 
     # Pixel-as-webcam: v4l2loopback sink fed by scrcpy over adb. Host-independent
     # behaviour, so it is a shared module rather than inline here -- but note it
@@ -81,9 +82,46 @@ in {
 
   # Low-latency kernel parameters mapped to Zen 5 & RDNA 3.5 APU silicon
   boot.kernelParams = [
-    # APU Dynamic VRAM: Expand Translation Table Maps buffer for unified LPDDR5X
-    "ttm.pages_limit=4194304"
-    "amdttm.pages_limit=4194304"
+    # --- APU DYNAMIC VRAM (GTT) SIZING ---
+    # There is no meaningful VRAM carveout on this machine: the BIOS hands
+    # amdgpu a 512 MB UMA aperture ("VRAM: 512M ... 512M used" in dmesg) and
+    # every other buffer the iGPU touches is GTT -- ordinary LPDDR5X mapped
+    # through the GART. GTT *is* the VRAM budget here, so it is what caps how
+    # large a model llama.cpp's Vulkan backend can hold resident.
+    #
+    # amdgpu sizes GTT as min(its own default, ttm_tt_pages_limit()), which is
+    # why the previous 4194304 produced exactly "16384M of GTT memory ready":
+    # 4194304 * 4 KiB = 16 GiB, the TTM cap, not an amdgpu decision. 6291456
+    # pages = 24 GiB, sized to hold a ~20 GiB Q4_K_M MoE plus its KV cache and
+    # compute buffers.
+    #
+    # 24 of 30.65 GiB usable is aggressive, and it is a ceiling rather than a
+    # reservation -- nothing leaves the system until the GPU actually allocates
+    # it. But a fully resident 20 GiB model does leave only ~7 GiB for
+    # everything else. If the desktop starts swapping while serving, shrink the
+    # model or the server's --ctx-size; shrinking this below the model size just
+    # converts the symptom into a Vulkan allocation failure.
+    "ttm.pages_limit=6291456"
+
+    # TTM's free-page cache, in pages. Defaults to half of RAM. Matching it to
+    # pages_limit stops TTM handing pages back to the kernel and re-zeroing them
+    # on the next allocation, which is pure overhead for a workload that claims
+    # ~20 GiB once and then holds it. Shrinker-backed, so the kernel can still
+    # reclaim under pressure.
+    "ttm.page_pool_size=6291456"
+
+    # amdgpu's own GTT ceiling, in MiB, kept in step with the TTM cap. Belt and
+    # braces: TTM is the binding constraint today, but amdgpu's internal default
+    # has moved between releases, and pinning both means a kernel bump cannot
+    # silently shrink the budget underneath the inference server.
+    "amdgpu.gttsize=24576"
+
+    # THE `amdttm.pages_limit` LINE THAT USED TO SIT HERE IS GONE, DELIBERATELY.
+    # amdttm is the symbol-renamed TTM that ships with AMD's out-of-tree amdgpu
+    # (the DKMS/ROCm packaging). This kernel uses the in-tree driver: `lsmod`
+    # shows a plain `ttm` bound to amdgpu, and /sys/module/amdttm does not
+    # exist. The parameter was parsed and discarded on every boot. Restore it
+    # only if boot.kernelPackages ever moves to a kernel that builds amdttm.
 
     # Driver Performance: Active autonomous CPPC power scaling
     "amd_pstate=active"
