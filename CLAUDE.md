@@ -56,15 +56,22 @@ build` succeeding, and ultimately `nixos-rebuild switch` + reboot/relogin to con
   the system's `stateVersion`.
 - **`modules/*.nix`** — shared NixOS modules imported by host configs, not home-manager modules:
   - `core.nix` — base system: nix settings/GC/optimise, DNS
-    (DoT via systemd-resolved, Quad9/Cloudflare), network queueing (`cake` + `bbr`), udev rules
+    (DoT via systemd-resolved, Quad9/Cloudflare), network queueing (`fq` pacing + `bbr`), udev rules
     (NVMe scheduler, Thunderbolt auto-auth, HID access), PipeWire/WirePlumber low-latency tuning
     (64-sample quantum, realtime priorities), PAM rtprio/memlock/nice limits, user account
     definition, base system packages.
   - `gaming.nix` — Steam + Proton-GE, VM/sysctl tuning for Esync/Fsync, global env vars
-    (`RADV_PERFTEST`, `WINE_FSYNC`, etc.), and a declarative `/etc/dxvk.conf` applied to all
-    DX9/DX11 titles.
-  - `minecraft.nix` — Prism Launcher wrapped with multiple JDKs + `gamemode`/`taskset`, patched
-    GLFW for Wayland.
+    (`PROTON_USE_NTSYNC`, `MESA_SHADER_CACHE_MAX_SIZE`, `MANGOHUD_CONFIG`, ...), the `zen5` /
+    `zen5-nosmt` CCX-pinning launch wrappers, and a declarative `/etc/dxvk.conf` applied to all
+    DX9/DX11 titles. Note it sets neither `RADV_PERFTEST` nor `WINE_FSYNC` — this file used to
+    claim both, and neither has ever appeared in the repo.
+  - `minecraft.nix` — Prism Launcher with multiple JDKs and `taskset` exposed on its PATH via
+    `additionalPrograms` (not a wrapper script — nothing here wraps the launch), patched GLFW
+    for Wayland. `gamemode` was removed 2026-09-12: it was a no-op without
+    `programs.gamemode.enable`, and is unwanted — see the comment in that file.
+  - `llm.nix` — local inference: `llama-cpp` built with `vulkanSupport` for the gfx1150 iGPU
+    (RADV, deliberately not ROCm), a model store at `/var/lib/llama/models` outside the Nix
+    store, and a manual-start `llama-server` user unit on loopback.
   - New host-independent system behavior should generally become a new file here and get imported
     from the relevant `hosts/*/configuration.nix`, following the existing style (a commented
     section-header banner per logical group, values pulled into named `let` bindings when they

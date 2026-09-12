@@ -87,6 +87,22 @@ in {
   # ---------------------------------------------------------------------------
   environment.sessionVariables = {
     MESA_SHADER_CACHE_MAX_SIZE = "16G";
+    # NO UDEV RULE IS NEEDED FOR THIS, AND ADDING ONE WOULD BE DEAD CONFIG.
+    # Checked 2026-09-12 because the absence of a rule looked like the bug:
+    #
+    #   ls -l /dev/ntsync      -> crw-rw-rw- root root      (mode 0666)
+    #   udevadm info           -> DEVMODE=0666
+    #   grep -r ntsync /etc/udev/rules.d /run/udev/rules.d  -> no hits at all
+    #
+    # The 0666 comes from the kernel driver's own miscdevice registration, not
+    # from any rule, which is why there is no rule to find. Every user can
+    # already open it, so Proton is not being denied ntsync and is not silently
+    # falling back to fsync for permission reasons. The `uaccess` priority-60
+    # argument in core.nix's hidraw block is correct but simply does not apply
+    # here: there is no access to grant.
+    #
+    # Whether Proton actually USES ntsync is a separate, runtime question --
+    # PROTON_LOG=1 and grep the log. Do not answer it by adding a udev rule.
     PROTON_USE_NTSYNC = "1";
     DXVK_CONFIG_FILE = "/etc/dxvk.conf";
     NIXOS_OZONE_WL = "1";

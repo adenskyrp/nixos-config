@@ -208,8 +208,26 @@
     };
   };
 
-  # --- KERNEL NETWORK TUNING (CAKE + BBR) ---
-  boot.kernelModules = ["tcp_bbr" "sch_cake" "ntsync"];
+  # --- KERNEL NETWORK TUNING (FQ PACING + BBR) ---
+  # sch_cake IS DELIBERATELY ABSENT -- removed 2026-09-12.
+  #
+  # It was loaded here and never attached to anything. The qdisc in use is `fq`
+  # (net.core.default_qdisc below), and `tc qdisc show dev eth0` confirmed
+  # `qdisc fq 0: root` on the live link, so cake was resident module text and
+  # nothing more.
+  #
+  # Not replaced, on purpose. `fq` is the correct partner for BBR rather than an
+  # accident: BBR computes a pacing rate and relies on fq to enforce it. And
+  # cake only earns its keep when THIS machine is the bottleneck -- on a gigabit
+  # dock into a router, it is not; the queue that matters is the ISP uplink's,
+  # which lives in the router. Flipping default_qdisc to "cake" would also give
+  # an unshaped cake (no `bandwidth` parameter), which on an uncongested link
+  # does approximately nothing: that would trade a wrong comment for inert
+  # config, which is strictly worse.
+  #
+  # If bufferbloat ever does need addressing, it wants a measured `bandwidth`
+  # ceiling on egress, applied deliberately -- not a default_qdisc change.
+  boot.kernelModules = ["tcp_bbr" "ntsync"];
   boot.kernel.sysctl = {
     # Prioritize interactive UDP game packets over bulk TCP traffic. Note this
     # only reaches wired links (Thunderbolt dock / USB ethernet): mac80211
