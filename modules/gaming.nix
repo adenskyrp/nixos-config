@@ -101,9 +101,33 @@ in {
     # argument in core.nix's hidraw block is correct but simply does not apply
     # here: there is no access to grant.
     #
-    # Whether Proton actually USES ntsync is a separate, runtime question --
-    # PROTON_LOG=1 and grep the log. Do not answer it by adding a udev rule.
+    # Whether Proton actually USES ntsync was the remaining open question. The
+    # two vars below close it by removing the places it could quietly land
+    # instead -- see the note under them.
     PROTON_USE_NTSYNC = "1";
+
+    # NTSYNC OR NOTHING, DELIBERATELY. ntsync supersedes both of Wine's
+    # userspace sync shims, so with it working these change nothing at all.
+    # Their entire purpose is what happens when it is NOT working: without them
+    # Proton silently drops to fsync, which performs well enough that the
+    # fallback is invisible, and PROTON_USE_NTSYNC above sits there looking
+    # effective while doing nothing. That is the exact failure mode this whole
+    # pass has been digging out of the config.
+    #
+    # THE COST IS REAL AND IS THE POINT. With fsync and esync both refused, a
+    # broken ntsync path leaves wineserver-based synchronisation, which is
+    # markedly slower than either -- an obvious, unmissable regression rather
+    # than a quiet one. A regression you can see beats a fallback you cannot.
+    # If games suddenly feel bad after this lands, do not revert blindly: that
+    # IS the measurement, and it means ntsync is not working. Confirm with
+    # PROTON_LOG=1 and grep the log for ntsync before deciding.
+    #
+    # Naming, since the old CLAUDE.md text got this wrong twice over: Wine's own
+    # switches are WINEFSYNC / WINEESYNC (no underscore after WINE), while these
+    # PROTON_NO_* names are Proton's launcher-level controls, and it is the
+    # Proton ones that matter for anything launched through Steam.
+    PROTON_NO_FSYNC = "1";
+    PROTON_NO_ESYNC = "1";
     DXVK_CONFIG_FILE = "/etc/dxvk.conf";
     NIXOS_OZONE_WL = "1";
 
