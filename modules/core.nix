@@ -692,5 +692,6 @@
     ffmpegthumbnailer
     sshfs
     fastfetch
+    acpi
   ];
 }
