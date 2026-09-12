@@ -153,8 +153,15 @@ in {
   # first packet after each idle gap eats the wake-up penalty and shows up as a
   # sporadic multi-millisecond spike. This part is also the one the mt7921/7925
   # family's ASPM firmware hangs are attributed to. Pin the link awake; the
-  # sub-watt cost is noise against a 65 W SMU envelope and a performance
-  # governor that already forbids deep C-states.
+  # sub-watt cost is noise against the SMU envelope set in the `let` above.
+  #
+  # CORRECTION (2026-09-12): this paragraph used to end "...and a performance
+  # governor that already forbids deep C-states". That was simply wrong, and it
+  # is the kind of wrong that hides a real cost -- cpufreq governors select
+  # P-states (voltage/frequency); C-states belong to cpuidle, an independent
+  # subsystem the governor does not touch. With `performance` active this
+  # machine was still entering C3 tens of millions of times per boot. That is
+  # now capped explicitly; see CPUIDLE C-STATE CEILING below.
   #
   # CLC (Country Location Control) is MediaTek's own regulatory gate, layered on
   # top of cfg80211's. It is evaluated when the driver registers the wiphy —
@@ -207,6 +214,46 @@ in {
   };
 
   # ---------------------------------------------------------------------------
+  # CPUIDLE C-STATE CEILING
+  # ---------------------------------------------------------------------------
+  # cpufreq and cpuidle are independent. `cpuFreqGovernor = "performance"` above
+  # pins P-states and has no bearing whatsoever on C-states, which is why this
+  # needs its own mechanism. Measured with the performance governor active:
+  #
+  #   state2  C2  latency  18 us   usage 106,107,508
+  #   state3  C3  latency 350 us   usage  34,036,190
+  #
+  # C3 is being entered tens of millions of times per boot, and its 350 us exit
+  # latency is 21% of the 1.667 ms frame budget at 599.94 Hz. A wake-up that
+  # lands on the wrong side of a frame boundary is a dropped frame.
+  #
+  # -D 350 disables every state whose exit latency is >= 350 us, which on this
+  # CPU is C3 and only C3 -- C2 at 18 us survives, so cores still clock-gate
+  # between frames and this is not a "disable idle entirely" hammer. The
+  # threshold is chosen to sit under the frame budget and nothing else: re-derive
+  # it if the refresh rate changes, rather than treating 350 as magic.
+  #
+  # THIS IS A MICRO-STUTTER FIX AND NOTHING MORE. 350 us cannot explain the
+  # multi-second black-and-recover symptom in the open frame-drop investigation;
+  # that is a different bug and this change must not be credited with it.
+  systemd.services.cpu-idle-limit = {
+    description = "Cap cpuidle at C2 (C3 exit latency 350us vs 1.667ms frame)";
+    wantedBy = ["multi-user.target"];
+    after = ["systemd-modules-load.service"];
+
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+
+      # cpupower MUST come from boot.kernelPackages. Verified against this
+      # flake.lock: `pkgs.cpupower` does not exist at all (nix suggests
+      # "upower"), and `pkgs.linuxPackages.cpupower` resolves to a 6.18.51 build
+      # -- the wrong kernel for a machine running CachyOS 7.2.4.
+      ExecStart = "${config.boot.kernelPackages.cpupower}/bin/cpupower idle-set -D 350";
+    };
+  };
+
+  # ---------------------------------------------------------------------------
   # SUSPEND/RESUME POWER STATE RE-APPLICATION
   # ---------------------------------------------------------------------------
   # tmpfiles.rules and the oneshot above only run at boot. On a laptop, amdgpu
@@ -222,6 +269,14 @@ in {
       echo ${gpuDpmLevel} > "$f" || true
     done
     ${applySmuLimits} || true
+
+    # cpuidle re-enables every state across s2idle, exactly like the SMU and EPP
+    # registers above -- so without this the C3 cap silently lapses on the first
+    # lid close and never comes back until reboot. Written into this block
+    # rather than as a second `powerManagement.resumeCommands` assignment
+    # because both would live in this one attrset, where a repeated attribute is
+    # an eval error regardless of the option's merge type.
+    ${pkgs.systemd}/bin/systemctl restart cpu-idle-limit.service || true
   '';
 
   # ---------------------------------------------------------------------------
