@@ -6,13 +6,30 @@
   ...
 }: let
   # ---------------------------------------------------------------------------
-  # STRIX POINT APU SMU POWER TARGETS (65W AC CONTRACT)
+  # STRIX POINT APU SMU POWER TARGETS (THERMALLY LIMITED, EXCEEDS THE CHARGER)
   # ---------------------------------------------------------------------------
   # Defined in milliwatts (mW) for direct register injection via ryzenadj.
-  sustainedPowerLimit = 54000; # 54W: Maximum sustained thermal envelope for 14" chassis
-  slowPowerLimit = 60000; # 60W: Short sustained burst (tPPT) for intensive compute
-  fastPowerLimit = 65000; # 65W: Peak immediate burst (fPPT) matching 65W AC charger
-  temperatureLimit = 90; # 90°C: Maximum allowed junction temperature (Tctl)
+  #
+  # THESE EXCEED THE 65 W AC ADAPTER, DELIBERATELY. This banner used to read
+  # "65W AC CONTRACT" and the values under it were chosen to fit inside what the
+  # charger supplies. That is no longer the policy, so the banner is rewritten
+  # rather than left describing a contract the numbers no longer honour.
+  #
+  # When draw exceeds what the adapter supplies, the shortfall comes out of the
+  # battery, so a long session can net-discharge WHILE PLUGGED IN. That is an
+  # accepted consequence of this change, not a fault to be diagnosed later: if
+  # it becomes a problem, the fix is lowering these numbers again, not looking
+  # for a charging bug.
+  #
+  # Tctl at 95 °C is the load-bearing limit here, not the wattages. A 14"
+  # chassis reaches 95 °C long before it sustains 75 W, so temperature is what
+  # will actually cap this machine. The power figures are headroom that lets the
+  # SMU burst freely up to that thermal wall -- they are a ceiling, not a target,
+  # and hitting them is not expected.
+  sustainedPowerLimit = 65000; # 65W: sustained (STAPM)            -- was 54W
+  slowPowerLimit = 70000; # 70W: short sustained burst (tPPT) -- was 60W
+  fastPowerLimit = 75000; # 75W: peak immediate burst (fPPT)  -- was 65W
+  temperatureLimit = 95; # 95°C: max junction temperature (Tctl) -- was 90°C
 
   # STAPM IS NOT A SLIDING WINDOW ON THIS MACHINE. Measured with `ryzenadj -i`
   # during osu! (2026-08-27): StapmTimeConst = 0.000. STAPM's whole mechanism is
@@ -26,9 +43,33 @@
   # eliminates power throttling as a cause of the frame drops and retroactively
   # validates these limits -- they are not being hit, so they are not the thing
   # to tune. Re-check with `ryzenadj -i` before blaming power again.
+  #
+  # REVISITED 2026-09-12 -- the limits above were raised regardless. The block
+  # above is kept intact rather than deleted, because its reasoning is exactly
+  # what has to be argued against, and losing that trail is how a repo ends up
+  # re-litigating settled ground. Two reasons it no longer settles the question:
+  #
+  #   1. That sample is osu!. Rocket League has never been sampled on this
+  #      machine, and it is a substantially heavier CPU load -- a physics and
+  #      netcode loop rather than a 2D renderer. "Not power throttled during
+  #      osu!" does not generalise to it.
+  #
+  #   2. The sample predates the machine's current behaviour. The cpuidle C2 cap
+  #      and mitigations=off both raise sustained draw -- the first by keeping
+  #      cores out of C3, the second by removing work from every syscall and
+  #      context switch. Whatever headroom existed on 2026-08-27 is not the
+  #      headroom that exists now.
+  #
+  # THIS CHANGE IS FALSIFIABLE AND SHOULD BE FALSIFIED. Re-sample with
+  # `ryzenadj -i` during Rocket League, not osu!:
+  #
+  #   - STAPM/PPT climbing toward the new ceilings -> the envelope is being used.
+  #   - Tctl pinning at 95 °C first                -> this bought nothing, and
+  #     the honest move is reverting to 54/60/65 W rather than keeping numbers
+  #     that only look generous.
 
   # GPU DPM level, applied at boot and re-applied on resume.
-  # "auto" lets the SMU shift the shared 54-65W envelope toward the CPU when the
+  # "auto" lets the SMU shift the shared 65-75W envelope toward the CPU when the
   # iGPU is not the bottleneck (Rocket League at 1080p is CPU/netcode-bound).
   # "high" pins maximum GPU clocks instead, at the cost of CPU thermal headroom.
   gpuDpmLevel = "auto";
