@@ -171,6 +171,34 @@ in {
     # on this machine has been A/B'd yet -- that is what Change 1's MangoHud
     # frametime capture is for.
     "mitigations=off"
+
+    # --- DISPLAY SCATTER-GATHER: OFF (UNVERIFIED WORKAROUND) ---
+    # HYPOTHESIS ONLY. This is a candidate for the OPEN, UNEXPLAINED frame-drop
+    # investigation and has NOT been shown to fix anything on this machine. Do
+    # not let a later reader mistake it for a diagnosed fix.
+    #
+    # sg_display=0 forces the display engine's framebuffer into a physically
+    # contiguous allocation instead of letting it scatter-gather across system
+    # pages. Default here is -1 (auto), confirmed from
+    # /sys/module/amdgpu/parameters/sg_display before the change.
+    #
+    # The reason it is worth trying on THIS machine specifically: scatter-gather
+    # display makes the scanout engine's fetch latency depend on page-table
+    # walks through GTT, and this panel leaves no slack to absorb a late fetch.
+    # The link is already at its ceiling -- 4 lanes @ HBR3, i.e.
+    # `link_settings: Current: 4 0x1e 0`, ~25.92 Gbps effective against roughly
+    # 32 Gbps for 1920x1080 @ 599.94 Hz 24bpp -- so the stream is DSC-compressed
+    # and arrives over an MST branch in a USB-C dock. An underflow there is a
+    # display-engine event, not a rendering one, which is consistent with a
+    # symptom that looks like the picture dropping rather than the game hitching.
+    #
+    # Note this interacts with GTT sizing: a contiguous display buffer is
+    # allocated from a memory pool this config now also asks to hold ~20 GiB of
+    # LLM weights. If the display comes up wrong or the allocation fails, that
+    # interaction is the first thing to suspect.
+    #
+    # Revert is deleting this one line and rebooting.
+    "amdgpu.sg_display=0"
   ];
 
   # ---------------------------------------------------------------------------
