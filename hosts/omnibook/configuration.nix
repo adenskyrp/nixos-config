@@ -142,6 +142,35 @@ in {
     "usbcore.autosuspend=-1"
     "iomem=relaxed"
     "reboot=pci"
+
+    # --- SPECULATIVE EXECUTION MITIGATIONS: OFF ---
+    # THIS IS A SECURITY TRADE, MADE KNOWINGLY. Stated plainly so a future
+    # reader sees a decision and not an oversight:
+    #
+    # `mitigations=off` disables the Spectre/Meltdown-class mitigations
+    # wholesale -- IBPB/IBRS/STIBP, retpolines, the various store-bypass and
+    # MDS/TAA buffer clears, and whatever else the umbrella covers on a given
+    # kernel. This machine runs Firefox, Discord and tor-browser. Turning these
+    # off re-opens speculative side channels to ANY local process, and the
+    # realistic attacker here is not a local login, it is JavaScript in a tab.
+    #
+    # It is also a blunt switch by construction: it covers vulnerabilities this
+    # CPU may not even have, and it will silently cover future ones the same
+    # way, because it is defined as "off by default for everything" rather than
+    # as a list. The granular form (`spectre_v2=off retbleed=off
+    # spec_store_bypass_disable=off` and so on) exists if that is ever wanted;
+    # deliberately not doing that now.
+    #
+    # Revert is deleting this one line and rebooting. Audit the current state
+    # with:  grep . /sys/devices/system/cpu/vulnerabilities/*
+    #
+    # HYPOTHESIS, NOT MEASURED HERE: 2-8% on CPU-bound workloads on Zen 5.
+    # Rocket League is single-thread/netcode bound, which is where mitigation
+    # overhead concentrates (syscall and context-switch paths), so this is
+    # expected to land on the critical path rather than on throughput. Nothing
+    # on this machine has been A/B'd yet -- that is what Change 1's MangoHud
+    # frametime capture is for.
+    "mitigations=off"
   ];
 
   # ---------------------------------------------------------------------------
