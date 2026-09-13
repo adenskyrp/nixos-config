@@ -89,7 +89,7 @@ in {
   # ---------------------------------------------------------------------------
   environment.systemPackages = [
     llamaCppVulkan
-
+    pkgs.jq
     # Provides both `hf` and the deprecated `huggingface-cli` alias. Used to
     # populate modelDir by hand -- see the service comment for the invocation.
     pkgs.python3Packages.huggingface-hub
