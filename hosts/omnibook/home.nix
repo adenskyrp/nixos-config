@@ -74,7 +74,7 @@
         -- scanout drop on those keypresses; that is acceptable and not worth
         -- fixing.
         render = {
-          direct_scanout = 1,
+          direct_scanout = 0,
         },
 
         -- HARDWARE CURSORS ARE KEPT ON, AND THIS CONFLICTS WITH TEARING. Read
@@ -215,6 +215,8 @@
         match = { class = "cs2" },
         immediate = true,
         no_anim = true,
+
+
         tile = true,
         workspace = 5,
       })
