@@ -295,6 +295,12 @@ in {
     "w /sys/class/drm/card*/device/power_dpm_force_performance_level - - - - ${gpuDpmLevel}"
   ];
 
+  # --- ASYMMETRIC CPU ISOLATION (ZEN 5C SYSTEM & AUDIO DAEMONS) ---
+  systemd.slices."system".sliceConfig.AllowedCPUs = "8-19";
+  systemd.user.services.pipewire.serviceConfig.CPUAffinity = "8-19";
+  systemd.user.services.pipewire-pulse.serviceConfig.CPUAffinity = "8-19";
+  systemd.user.services.wireplumber.serviceConfig.CPUAffinity = "8-19";
+
   # ---------------------------------------------------------------------------
   # SMU MAILBOX REGISTER OVERRIDES (ryzenadj)
   # ---------------------------------------------------------------------------
@@ -417,7 +423,7 @@ in {
     enable = true;
     settings = {
       default_session = {
-        command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --cmd 'start-hyprland'";
+        command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --cmd '${pkgs.util-linux}/bin/taskset -c 0-7 start-hyprland'";
         user = "crazycat";
       };
     };

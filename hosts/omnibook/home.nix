@@ -74,7 +74,7 @@
         -- scanout drop on those keypresses; that is acceptable and not worth
         -- fixing.
         render = {
-          direct_scanout = 0,
+          direct_scanout = 1,
         },
 
         -- HARDWARE CURSORS ARE KEPT ON, AND THIS CONFLICTS WITH TEARING. Read
@@ -108,7 +108,7 @@
         cursor = {
           -- Renamed upstream: the key is `no_hardware_cursors` on Hyprland 0.56,
           -- and it is an int (0 = HW cursors, 1 = never, 2 = auto), not a bool.
-          no_hardware_cursors = 2,
+          no_hardware_cursors = 1,
         },
 
         -- Master switch for wp_tearing_control_v1 protocol negotiation
@@ -629,6 +629,7 @@
       # memory bus is shared with the CPU. Measured headroom for doing it on the
       # CPU instead: 28 MiB peak RSS and 491 ms of CPU over two minutes.
       Environment = ["GSK_RENDERER=cairo"];
+      CPUAffinity = "8-19";
     };
     Install = {
       WantedBy = ["hyprland-session.target"];
@@ -889,6 +890,40 @@
         ServerAliveCountMax = 3;
         TCPKeepAlive = "yes";
       };
+    };
+  };
+
+  xdg.desktopEntries = {
+    firefox = {
+      name = "Firefox";
+      genericName = "Web Browser";
+      exec = "${pkgs.util-linux}/bin/taskset -c 8-19 firefox %U";
+      terminal = false;
+      type = "Application";
+      icon = "firefox";
+    };
+    pear-desktop = {
+      name = "Pear Desktop";
+      exec = "${pkgs.util-linux}/bin/taskset -c 8-19 pear-desktop";
+      terminal = false;
+      type = "Application";
+      icon = "pear-desktop"; # Assumes default icon name; adjust if Fuzzel drops the icon
+    };
+    discord = {
+      name = "Discord";
+      genericName = "Internet Messenger";
+      exec = "${pkgs.util-linux}/bin/taskset -c 8-19 discord %U";
+      terminal = false;
+      type = "Application";
+      icon = "discord";
+    };
+    steam = {
+      name = "Steam";
+      genericName = "Application Store";
+      exec = "${pkgs.util-linux}/bin/taskset -c 8-19 steam %U";
+      terminal = false;
+      type = "Application";
+      icon = "steam";
     };
   };
 
