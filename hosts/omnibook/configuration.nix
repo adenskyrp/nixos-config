@@ -72,7 +72,7 @@
   # "auto" lets the SMU shift the shared 65-75W envelope toward the CPU when the
   # iGPU is not the bottleneck (Rocket League at 1080p is CPU/netcode-bound).
   # "high" pins maximum GPU clocks instead, at the cost of CPU thermal headroom.
-  gpuDpmLevel = "auto";
+  gpuDpmLevel = "high";
 
   # Shared by the boot-time oneshot and the resume hook so both paths inject an
   # identical envelope rather than drifting apart.
@@ -309,17 +309,10 @@ in {
   # Writes register values to sysfs during early boot before services launch.
   # Replaces multiple conflicting bash services.
   systemd.tmpfiles.rules = [
-    # Zen 5 performance cores (0-7): Maximum performance, fixed governor
-    "w /sys/devices/system/cpu/cpu[0-7]/cpufreq/scaling_governor - - - - performance"
-    "w /sys/devices/system/cpu/cpu[0-7]/cpufreq/energy_performance_preference - - - - performance"
-
-    # Zen 5c compact cores (8-19): CPPC hardware autonomous scaling
-    "w /sys/devices/system/cpu/cpu[8-9]/cpufreq/scaling_governor - - - - powersave"
-    "w /sys/devices/system/cpu/cpu[8-9]/cpufreq/energy_performance_preference - - - - balance_performance"
-    "w /sys/devices/system/cpu/cpu1[0-9]/cpufreq/scaling_governor - - - - powersave"
-    "w /sys/devices/system/cpu/cpu1[0-9]/cpufreq/energy_performance_preference - - - - balance_performance"
-
-    # Apply the chosen GPU DPM level across all detected DRM card nodes
+    "w /sys/devices/system/cpu/cpu[0-9]/cpufreq/scaling_governor - - - - performance"
+    "w /sys/devices/system/cpu/cpu[0-9]/cpufreq/energy_performance_preference - - - - performance"
+    "w /sys/devices/system/cpu/cpu1[0-9]/cpufreq/scaling_governor - - - - performance"
+    "w /sys/devices/system/cpu/cpu1[0-9]/cpufreq/energy_performance_preference - - - - performance"
     "w /sys/class/drm/card*/device/power_dpm_force_performance_level - - - - ${gpuDpmLevel}"
   ];
 
