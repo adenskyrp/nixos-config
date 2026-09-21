@@ -287,9 +287,11 @@ in {
   # Writes register values to sysfs during early boot before services launch.
   # Replaces multiple conflicting bash services.
   systemd.tmpfiles.rules = [
-    # Set AMD Energy-Performance Preference (EPP) to raw performance across all 10 cores
-    "w /sys/devices/system/cpu/cpu*/cpufreq/energy_performance_preference - - - - performance"
-
+    # Zen 5 performance cores (0-7)
+    "w /sys/devices/system/cpu/cpu[0-7]/cpufreq/energy_performance_preference - - - - performance"
+    # Zen 5c compact cores (8-19)
+    "w /sys/devices/system/cpu/cpu[8-9]/cpufreq/energy_performance_preference - - - - balance_performance"
+    "w /sys/devices/system/cpu/cpu1[0-9]/cpufreq/energy_performance_preference - - - - balance_performance"
     # Apply the chosen GPU DPM level across all detected DRM card nodes
     "w /sys/class/drm/card*/device/power_dpm_force_performance_level - - - - ${gpuDpmLevel}"
   ];
