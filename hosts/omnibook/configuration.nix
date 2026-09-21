@@ -108,7 +108,7 @@ in {
     # full revert: it also un-masks core.nix's xhci-irq-unpin baseline.
     ../../modules/irq-affinity.nix
   ];
-  # Disable AMD PMF to prevent 30W STAPM lock (also disables NPU dependency)
+
   boot.blacklistedKernelModules = [ "amd_pmf" "amdxdna" ];
 
   systemd.services.ryzenadj-unlock = {
@@ -124,9 +124,10 @@ in {
     wantedBy = [ "timers.target" ];
     timerConfig = {
       OnBootSec = "30s";
-      OnUnitActiveSec = "5s"; # Tighten poll loop from 1m to 5s
+      OnUnitActiveSec = "10s";
     };
   };
+
   # Synchronize hostname with flake output schema
   networking.hostName = "omnibook";
 
