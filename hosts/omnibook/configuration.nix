@@ -111,15 +111,21 @@ in {
   # Disable AMD PMF to prevent 30W STAPM lock (also disables NPU dependency)
   boot.blacklistedKernelModules = [ "amd_pmf" "amdxdna" ];
 
-  # Apply 45W sustained / 54W burst limits at boot
   systemd.services.ryzenadj-unlock = {
     description = "Unlock APU Power Limits";
-    wantedBy = [ "multi-user.target" ];
-    after = [ "multi-user.target" ];
+    # Removed wantedBy/after; triggered exclusively by timer
     serviceConfig = {
       Type = "oneshot";
       ExecStart = "${pkgs.ryzenadj}/bin/ryzenadj --stapm-limit=54000 --fast-limit=65000 --slow-limit=54000 --tctl-temp=95";
-      RemainAfterExit = true;
+    };
+  };
+
+  systemd.timers.ryzenadj-unlock = {
+    description = "Enforce APU Power Limits periodically";
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnBootSec = "30s";
+      OnUnitActiveSec = "1m"; # Re-applies every 60 seconds
     };
   };
   # Synchronize hostname with flake output schema
