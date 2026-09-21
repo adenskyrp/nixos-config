@@ -155,7 +155,7 @@ in {
     # braces: TTM is the binding constraint today, but amdgpu's internal default
     # has moved between releases, and pinning both means a kernel bump cannot
     # silently shrink the budget underneath the inference server.
-    "amdgpu.gttsize=24576"
+    "amdgpu.gttsize=15258"
 
     # THE `amdttm.pages_limit` LINE THAT USED TO SIT HERE IS GONE, DELIBERATELY.
     # amdttm is the symbol-renamed TTM that ships with AMD's out-of-tree amdgpu
