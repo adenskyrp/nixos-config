@@ -113,10 +113,9 @@ in {
 
   systemd.services.ryzenadj-unlock = {
     description = "Unlock APU Power Limits";
-    # Removed wantedBy/after; triggered exclusively by timer
     serviceConfig = {
       Type = "oneshot";
-      ExecStart = "${pkgs.ryzenadj}/bin/ryzenadj --stapm-limit=54000 --fast-limit=65000 --slow-limit=54000 --tctl-temp=95";
+      ExecStart = "${pkgs.ryzenadj}/bin/ryzenadj --stapm-limit=54000 --fast-limit=65000 --slow-limit=54000 --apu-slow-limit=54000 --tctl-temp=95";
     };
   };
 
@@ -125,7 +124,7 @@ in {
     wantedBy = [ "timers.target" ];
     timerConfig = {
       OnBootSec = "30s";
-      OnUnitActiveSec = "1m"; # Re-applies every 60 seconds
+      OnUnitActiveSec = "5s"; # Tighten poll loop from 1m to 5s
     };
   };
   # Synchronize hostname with flake output schema
