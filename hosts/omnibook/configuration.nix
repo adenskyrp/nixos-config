@@ -142,14 +142,14 @@ in {
     # everything else. If the desktop starts swapping while serving, shrink the
     # model or the server's --ctx-size; shrinking this below the model size just
     # converts the symptom into a Vulkan allocation failure.
-    "ttm.pages_limit=6291456"
+    "ttm.pages_limit=4194304"
 
     # TTM's free-page cache, in pages. Defaults to half of RAM. Matching it to
     # pages_limit stops TTM handing pages back to the kernel and re-zeroing them
     # on the next allocation, which is pure overhead for a workload that claims
     # ~20 GiB once and then holds it. Shrinker-backed, so the kernel can still
     # reclaim under pressure.
-    "ttm.page_pool_size=6291456"
+    "ttm.page_pool_size=4194304"
 
     # amdgpu's own GTT ceiling, in MiB, kept in step with the TTM cap. Belt and
     # braces: TTM is the binding constraint today, but amdgpu's internal default
@@ -239,7 +239,6 @@ in {
     # interaction is the first thing to suspect.
     #
     # Revert is deleting this one line and rebooting.
-    "amdgpu.sg_display=0"
   ];
 
   # ---------------------------------------------------------------------------
