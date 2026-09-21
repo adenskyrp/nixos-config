@@ -240,7 +240,10 @@ in {
     #
     # Revert is deleting this one line and rebooting.
   ];
-
+  boot.extraModulePackages = with config.boot.kernelPackages; [
+    acpi_call
+  ];
+  boot.kernelModules = [ "acpi_call" ];
   # ---------------------------------------------------------------------------
   # WI-FI RADIO LINK (MediaTek MT7925 / Filogic 360, 2x2 802.11be)
   # ---------------------------------------------------------------------------
