@@ -927,10 +927,10 @@
     };
     "osu!" = {
       name = "osu!";
-      exec = "${pkgs.util-linux}/bin/taskset -c 0-7 osu-lazer %U";
+      exec = "${pkgs.util-linux}/bin/taskset -c 0-7 osu! %U";
       terminal = false;
       type = "Application";
-      icon = "osu-lazer";
+      icon = "osu!";
     };
   };
 
