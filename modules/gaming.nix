@@ -126,7 +126,6 @@ in {
     # switches are WINEFSYNC / WINEESYNC (no underscore after WINE), while these
     # PROTON_NO_* names are Proton's launcher-level controls, and it is the
     # Proton ones that matter for anything launched through Steam.
-    PROTON_NO_FSYNC = "1";
     PROTON_NO_ESYNC = "1";
     DXVK_CONFIG_FILE = "/etc/dxvk.conf";
     NIXOS_OZONE_WL = "1";
@@ -151,7 +150,7 @@ in {
     # cursor is not blocking it; MAILBOX or FIFO means wp_tearing_control_v1 is
     # not taking effect and the tradeoff documented there is being paid for
     # nothing. Check this before touching `no_hardware_cursors`.
-    MANGOHUD_CONFIG = "frametime,frame_timing,present_mode,gpu_load,cpu_load,throttling_status,core_load";
+    # MANGOHUD_CONFIG = "frametime,frame_timing,present_mode,gpu_load,cpu_load,throttling_status,core_load";
 
     # DXVK_HUD IS DELIBERATELY UNSET -- it used to be set to "0" here.
     # "0" is not a documented value: DXVK's HUD string is a comma-separated list
@@ -170,6 +169,7 @@ in {
   environment.etc."dxvk.conf".text = ''
     # --- PRESENTATION & FRAME QUEUE LATENCY ---
     # Disables internal swapchain tear-free buffering and VSync
+    dxvk.numCompilerThreads = 2
     dxvk.syncInterval = 0
     dxvk.tearFree = False
     dxgi.syncInterval = 0
