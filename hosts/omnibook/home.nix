@@ -74,7 +74,7 @@
         -- scanout drop on those keypresses; that is acceptable and not worth
         -- fixing.
         render = {
-          direct_scanout = 0,
+          direct_scanout = 1,
         },
 
         -- HARDWARE CURSORS ARE KEPT ON, AND THIS CONFLICTS WITH TEARING. Read
@@ -108,7 +108,7 @@
         cursor = {
           -- Renamed upstream: the key is `no_hardware_cursors` on Hyprland 0.56,
           -- and it is an int (0 = HW cursors, 1 = never, 2 = auto), not a bool.
-          no_hardware_cursors = 0,
+          no_hardware_cursors = 1,
         },
 
         -- Master switch for wp_tearing_control_v1 protocol negotiation
