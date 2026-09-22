@@ -147,16 +147,8 @@
           sensitivity = 0.0,
           accel_profile = "flat", -- 1:1 raw bypass; eliminates libinput software curves
           touchpad = {
-            disable_while_typing = true,
+            disable_while_typing = false,
             natural_scroll = false,
-          },
-        },
-
-        device = {
-          {
-            name = "compx-wireless-mouse-8k-dongle-l-mouse",
-            sensitivity = 0.0,
-            accel_profile = "flat",
           },
         },
       })
