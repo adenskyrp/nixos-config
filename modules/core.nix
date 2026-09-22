@@ -228,6 +228,7 @@
   # If bufferbloat ever does need addressing, it wants a measured `bandwidth`
   # ceiling on egress, applied deliberately -- not a default_qdisc change.
   boot.kernelModules = ["tcp_bbr" "ntsync"];
+  boot.kernelParams = [ "8250.nr_uarts=0" ];
   boot.kernel.sysctl = {
     # Prioritize interactive UDP game packets over bulk TCP traffic. Note this
     # only reaches wired links (Thunderbolt dock / USB ethernet): mac80211
