@@ -933,7 +933,7 @@
       type = "Application";
       icon = "steam";
     };
-    "sh.ppy.osu" = {
+    "osu!" = {
       name = "osu!";
       exec = "${pkgs.util-linux}/bin/taskset -c 0-7 osu-lazer %U";
       terminal = false;
