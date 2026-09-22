@@ -449,6 +449,10 @@ in {
       };
     };
   };
+  systemd.services.greetd = {
+    wants = lib.mkForce [ ];
+    after = lib.mkForce [ "systemd-user-sessions.service" ];
+  };
   hardware.bluetooth = {
     enable = true;
     powerOnBoot = false;
@@ -456,26 +460,6 @@ in {
       Experimental = true;
       FastConnectable = true;
     };
-  };
-  # ---------------------------------------------------------------------------
-  # FIRMWARE UPDATES (fwupd)
-  # ---------------------------------------------------------------------------
-  # Here for visibility over the NVMe and the USB4/DisplayPort retimer firmware,
-  # not for the BIOS -- W81 Ver. 01.01.21 (2026-06-15) is current, and HP exposes
-  # no UMA/VRAM-carveout setting to go looking for anyway. The dock sits directly
-  # in the video path (the 599.94 Hz panel reaches the APU over DisplayPort MST
-  # through a USB-C adapter), which makes retimer firmware a legitimate suspect
-  # for a link-level fault, so `fwupdmgr get-devices` is worth having.
-  #
-  # lvfs-testing widens the remote to firmware that has not cleared LVFS's
-  # stable gate. Enabling a remote flashes nothing on its own, so this is inert
-  # until `fwupdmgr update` is run by hand -- but note that while the frame-drop
-  # cause is still unidentified, taking a testing-channel update means adding a
-  # variable to an open experiment. Prefer flashing from stable, or after the
-  # drops are understood.
-  services.fwupd = {
-    enable = true;
-    extraRemotes = ["lvfs-testing"];
   };
   # ---------------------------------------------------------------------------
   # STUTTER INVESTIGATION HARNESS (TEMPORARY, OPENED 2026-08-27)
@@ -499,7 +483,7 @@ in {
   # process. Switch it on only for the duration of a perf session that actually
   # needs kernel symbols, then switch it back.
   local.diagnostics = {
-    enable = true;
+    enable = false;
     unsafeTracing = false;
   };
 

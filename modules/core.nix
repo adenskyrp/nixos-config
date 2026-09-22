@@ -653,7 +653,7 @@
     layout = "us";
     variant = "";
   };
-
+  services.fwupd.enable = false;
   services.gnome.gnome-keyring.enable = true;
   programs.fish.enable = true;
 
