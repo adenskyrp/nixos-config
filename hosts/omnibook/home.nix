@@ -816,15 +816,7 @@
     p7zip
     unrar
     ark
-    (pkgs.symlinkJoin {
-      name = "pear-desktop-pinned";
-      paths = [ pkgs.pear-desktop ];
-      buildInputs = [ pkgs.makeWrapper ];
-      postBuild = ''
-        wrapProgram $out/bin/pear-desktop \
-          --run "${pkgs.util-linux}/bin/taskset -c 8-19"
-      '';
-    })
+    pear-desktop
     (discord.override {
       withVencord = true;
       withOpenASAR = true;
@@ -912,10 +904,10 @@
     };
     "com.github.th-ch.youtube-music" = {
       name = "Pear Desktop";
-      exec = "${pkgs.util-linux}/bin/taskset -c 8-19 pear-desktop";
+      exec = "${pkgs.util-linux}/bin/taskset -c 8-19 ${pkgs.pear-desktop}/bin/pear-desktop %U";
       terminal = false;
       type = "Application";
-      icon = "pear-desktop"; # Assumes default icon name; adjust if Fuzzel drops the icon
+      icon = "pear-desktop";
     };
     discord = {
       name = "Discord";
