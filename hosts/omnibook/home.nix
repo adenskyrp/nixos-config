@@ -816,6 +816,15 @@
     p7zip
     unrar
     ark
+    (pkgs.symlinkJoin {
+      name = "pear-desktop-pinned";
+      paths = [ pkgs.pear-desktop ];
+      buildInputs = [ pkgs.makeWrapper ];
+      postBuild = ''
+        wrapProgram $out/bin/pear-desktop \
+          --run "${pkgs.util-linux}/bin/taskset -c 8-19"
+      '';
+    })
     (discord.override {
       withVencord = true;
       withOpenASAR = true;
