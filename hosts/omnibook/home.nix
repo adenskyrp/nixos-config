@@ -910,7 +910,7 @@
       type = "Application";
       icon = "firefox";
     };
-    pear-desktop = {
+    "com.github.th-ch.youtube-music" = {
       name = "Pear Desktop";
       exec = "${pkgs.util-linux}/bin/taskset -c 8-19 pear-desktop";
       terminal = false;
@@ -932,6 +932,13 @@
       terminal = false;
       type = "Application";
       icon = "steam";
+    };
+    "sh.ppy.osu" = {
+      name = "osu!";
+      exec = "${pkgs.util-linux}/bin/taskset -c 0-7 osu-lazer %U";
+      terminal = false;
+      type = "Application";
+      icon = "osu-lazer";
     };
   };
 
