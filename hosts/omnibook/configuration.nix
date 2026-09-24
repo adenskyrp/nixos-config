@@ -461,6 +461,11 @@ in {
       FastConnectable = true;
     };
   };
+
+  services.gnome.gnome-keyring.enable = true;
+  security.pam.services.login.enableGnomeKeyring = true;
+  # If using a display manager (e.g., greetd, sddm, gdm):
+  security.pam.services.greetd.enableGnomeKeyring = true;
   # ---------------------------------------------------------------------------
   # STUTTER INVESTIGATION HARNESS (TEMPORARY, OPENED 2026-08-27)
   # ---------------------------------------------------------------------------
