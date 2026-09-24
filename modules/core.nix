@@ -299,6 +299,14 @@
   # ---------------------------------------------------------------------------
   services.hardware.bolt.enable = true;
 
+  hardware.graphics = {
+    enable = true;
+    extraPackages = with pkgs; [
+      rocmPackages.clr
+      rocmPackages.clr.icd
+    ];
+  };
+
   services.udev.extraRules = ''
     # Low-latency NVMe queue scheduler
     ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/scheduler}="none"
@@ -591,7 +599,7 @@
   users.users.crazycat = {
     isNormalUser = true;
     description = "Aden Sky";
-    extraGroups = ["networkmanager" "wheel" "video" "input" "audio"];
+    extraGroups = ["networkmanager" "wheel" "video" "input" "audio" "render"];
     shell = pkgs.fish;
   };
 

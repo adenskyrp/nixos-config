@@ -97,6 +97,7 @@ in {
     DISABLE_VK_LAYER_VALVE_steam_overlay_1 = "1";
     SDL_JOYSTICK_HIDAPI = "0";
     SDL_GAMECONTROLLERCONFIG = "";
+    HSA_OVERRIDE_GFX_VERSION = "11.0.0";
   };
 
   # ---------------------------------------------------------------------------
