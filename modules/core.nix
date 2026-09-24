@@ -308,6 +308,9 @@
 
     # USB: Force continuous active power state (eliminates first-input wake delay)
     ACTION=="add", SUBSYSTEM=="usb", ATTR{power/control}="on"
+
+    # Blind the GameSir motion sensor to prevent 5000Hz gyro CPU overhead
+    ACTION=="add|change", SUBSYSTEM=="input", ATTRS{name}=="Guangzhou Chicken Run Network Technology Co., Ltd. Wireless Controller Motion Sensors", MODE="0000", ENV{ID_INPUT_ACCELEROMETER}="0", ENV{ID_INPUT_JOYSTICK}="0"
   '';
 
   # --- hidraw SEAT ACCESS ---
