@@ -87,79 +87,13 @@ in {
   # ---------------------------------------------------------------------------
   environment.sessionVariables = {
     MESA_SHADER_CACHE_MAX_SIZE = "16G";
-    # NO UDEV RULE IS NEEDED FOR THIS, AND ADDING ONE WOULD BE DEAD CONFIG.
-    # Checked 2026-09-12 because the absence of a rule looked like the bug:
-    #
-    #   ls -l /dev/ntsync      -> crw-rw-rw- root root      (mode 0666)
-    #   udevadm info           -> DEVMODE=0666
-    #   grep -r ntsync /etc/udev/rules.d /run/udev/rules.d  -> no hits at all
-    #
-    # The 0666 comes from the kernel driver's own miscdevice registration, not
-    # from any rule, which is why there is no rule to find. Every user can
-    # already open it, so Proton is not being denied ntsync and is not silently
-    # falling back to fsync for permission reasons. The `uaccess` priority-60
-    # argument in core.nix's hidraw block is correct but simply does not apply
-    # here: there is no access to grant.
-    #
-    # Whether Proton actually USES ntsync was the remaining open question. The
-    # two vars below close it by removing the places it could quietly land
-    # instead -- see the note under them.
     PROTON_USE_NTSYNC = "1";
-
-    # NTSYNC OR NOTHING, DELIBERATELY. ntsync supersedes both of Wine's
-    # userspace sync shims, so with it working these change nothing at all.
-    # Their entire purpose is what happens when it is NOT working: without them
-    # Proton silently drops to fsync, which performs well enough that the
-    # fallback is invisible, and PROTON_USE_NTSYNC above sits there looking
-    # effective while doing nothing. That is the exact failure mode this whole
-    # pass has been digging out of the config.
-    #
-    # THE COST IS REAL AND IS THE POINT. With fsync and esync both refused, a
-    # broken ntsync path leaves wineserver-based synchronisation, which is
-    # markedly slower than either -- an obvious, unmissable regression rather
-    # than a quiet one. A regression you can see beats a fallback you cannot.
-    # If games suddenly feel bad after this lands, do not revert blindly: that
-    # IS the measurement, and it means ntsync is not working. Confirm with
-    # PROTON_LOG=1 and grep the log for ntsync before deciding.
-    #
-    # Naming, since the old CLAUDE.md text got this wrong twice over: Wine's own
-    # switches are WINEFSYNC / WINEESYNC (no underscore after WINE), while these
-    # PROTON_NO_* names are Proton's launcher-level controls, and it is the
-    # Proton ones that matter for anything launched through Steam.
     PROTON_NO_ESYNC = "1";
     DXVK_CONFIG_FILE = "/etc/dxvk.conf";
     NIXOS_OZONE_WL = "1";
-
-    # --- FRAMETIME INSTRUMENTATION ---
-    # The metric that matters on this machine is frametime CONSISTENCY, not
-    # average FPS. At 599.94 Hz the budget is 1.667 ms per frame, so a 3 ms
-    # hitch is two frames gone and moves a 600 FPS average by less than half a
-    # percent -- it does not show up in the number people usually quote.
-    # `frametime` + `frame_timing` plot the distribution; `throttling_status`,
-    # `core_load` and `gpu_load` are there to attribute a spike to power,
-    # thermal or scheduler rather than leaving it unexplained.
-    #
-    # `present_mode` is the load-bearing entry. It reports the Vulkan present
-    # mode actually in use, which is precisely the measurement missing from the
-    # hardware-cursor vs. tearing argument recorded in hosts/omnibook/home.nix
-    # (the `cursor` / `allow_tearing` block, ~lines 80-107). That comment is
-    # careful to record `tearingBlockedBy: ... hw cursor` "as a claim rather
-    # than as fact", because the log line is only emitted when a tearing flip is
-    # actually attempted. This settles it from the client side instead: a
-    # fullscreen game reporting IMMEDIATE means tearing engaged and the hardware
-    # cursor is not blocking it; MAILBOX or FIFO means wp_tearing_control_v1 is
-    # not taking effect and the tradeoff documented there is being paid for
-    # nothing. Check this before touching `no_hardware_cursors`.
-    # MANGOHUD_CONFIG = "frametime,frame_timing,present_mode,gpu_load,cpu_load,throttling_status,core_load";
-
-    # DXVK_HUD IS DELIBERATELY UNSET -- it used to be set to "0" here.
-    # "0" is not a documented value: DXVK's HUD string is a comma-separated list
-    # of element names (`fps`, `frametimes`, `devinfo`, `full`, ...) plus the
-    # special "1", and anything unrecognised is simply ignored. So "0" was never
-    # an off switch, it was an empty HUD spelled in a way that reads like one --
-    # another line that looks like configuration and is not. Unset is how the
-    # same state is expressed on purpose, and MangoHud above is the overlay
-    # actually doing the measuring.
+    DISABLE_VK_LAYER_VALVE_steam_overlay_1 = "1";
+    SDL_JOYSTICK_HIDAPI = "0";
+    SDL_GAMECONTROLLERCONFIG = "";
   };
 
   # ---------------------------------------------------------------------------
