@@ -810,6 +810,7 @@
     unrar
     ark
     pear-desktop
+    blender
     (discord.override {
       withVencord = true;
       withOpenASAR = true;
