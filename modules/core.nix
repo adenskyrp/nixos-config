@@ -240,7 +240,9 @@
     # Expand buffer ceilings for high-tick-rate UDP streams
     "net.core.rmem_max" = 16777216;
     "net.core.wmem_max" = 16777216;
-
+    "net.core.rmem_default" = 262144;
+    "net.core.wmem_default" = 262144;
+    "net.ipv4.tcp_low_latency" = 1;
     # --- ANTI-SPOOFING / ANTI-AMPLIFICATION ---
     # Strict reverse-path filtering, set on BOTH `all` and `default` deliberately:
     # the kernel's effective value per interface is max(all.rp_filter,
@@ -303,6 +305,9 @@
 
     # Auto-authorize Thunderbolt 4 endpoints
     ACTION=="add", SUBSYSTEM=="thunderbolt", ATTR{authorized}=="0", ATTR{authorized}="1"
+
+    # USB: Force continuous active power state (eliminates first-input wake delay)
+    ACTION=="add", SUBSYSTEM=="usb", ATTR{power/control}="on"
   '';
 
   # --- hidraw SEAT ACCESS ---

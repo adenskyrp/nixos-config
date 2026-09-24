@@ -82,6 +82,8 @@ in {
     ];
   };
 
+  hardware.steam-hardware.enable = true;
+
   # ---------------------------------------------------------------------------
   # LOW-LATENCY PROTON & DRIVER ENVIRONMENT
   # ---------------------------------------------------------------------------
@@ -89,6 +91,7 @@ in {
     MESA_SHADER_CACHE_MAX_SIZE = "16G";
     PROTON_USE_NTSYNC = "1";
     PROTON_NO_ESYNC = "1";
+    PROTON_DXVK_LOWLATENCY = "1";
     DXVK_CONFIG_FILE = "/etc/dxvk.conf";
     NIXOS_OZONE_WL = "1";
     DISABLE_VK_LAYER_VALVE_steam_overlay_1 = "1";
