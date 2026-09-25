@@ -675,7 +675,9 @@
 
   programs.thunar = {
     enable = true;
-    plugins = with pkgs; [thunar-archive-plugin thunar-volman];
+    plugins = with pkgs.xfce; [
+      thunar-archive-plugin
+    ];
   };
 
   programs.xfconf.enable = true;

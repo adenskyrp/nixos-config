@@ -807,7 +807,10 @@
     tor-browser
     proton-vpn
     p7zip
+    xarchiver
+    unzip
     unrar
+    zip
     ark
     pear-desktop
     blender
