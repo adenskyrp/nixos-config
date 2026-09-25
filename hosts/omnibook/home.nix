@@ -809,6 +809,7 @@
     p7zip
     xarchiver
     unzip
+    file-roller
     unrar
     zip
     ark
