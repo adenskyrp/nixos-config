@@ -128,6 +128,14 @@ in {
     };
   };
 
+  services.wivrn = {
+    enable = true;
+    openFirewall = true;
+    autoStart = true;
+    # Uncomment if using Nvidia:
+    # package = pkgs.wivrn.override { cudaSupport = true; };
+  };
+
   # Synchronize hostname with flake output schema
   networking.hostName = "omnibook";
 
@@ -461,7 +469,7 @@ in {
       FastConnectable = true;
     };
   };
-
+  services.avahi.enable = true;
   services.gnome.gnome-keyring.enable = true;
   security.pam.services.login.enableGnomeKeyring = true;
   # If using a display manager (e.g., greetd, sddm, gdm):
