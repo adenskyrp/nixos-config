@@ -308,6 +308,9 @@
   };
 
   services.udev.extraRules = ''
+    # Disable PCIe power management for MediaTek MT7925 Wi-Fi
+    ACTION=="add", SUBSYSTEM=="pci", ATTR{vendor}=="0x14c3", ATTR{device}=="0x7925", ATTR{power/control}="on"
+
     # Low-latency NVMe queue scheduler
     ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/scheduler}="none"
 
