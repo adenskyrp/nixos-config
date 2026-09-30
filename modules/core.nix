@@ -299,6 +299,10 @@
   # THUNDERBOLT 4 / USB4 & UDEV HARDWARE ISOLATION
   # ---------------------------------------------------------------------------
   services.hardware.bolt.enable = true;
+  services.power-profiles-daemon.enable = false;
+  systemd.tmpfiles.rules = [
+    "w /sys/firmware/acpi/platform_profile - - - - performance"
+  ];
 
   hardware.graphics = {
     enable = true;
