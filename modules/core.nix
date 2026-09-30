@@ -195,6 +195,12 @@
     "tipc" # Transparent Inter-Process Communication
   ];
 
+  networking.wireless.iwd.settings = {
+    Scan = {
+      DisablePeriodicScan = true;
+    };
+  };
+
   services.resolved = {
     enable = true;
     settings = {
@@ -263,8 +269,8 @@
     # socket, tapped at the netdev layer before the IP stack's RPF check is ever
     # reached. Lease renewal in BOUND state is plain unicast UDP from an
     # already-routable source, which passes strict RPF normally.
-    "net.ipv4.conf.all.rp_filter" = 2;
-    "net.ipv4.conf.default.rp_filter" = 2;
+    "net.ipv4.conf.all.rp_filter" = 1;
+    "net.ipv4.conf.default.rp_filter" = 1;
 
     # Refuse ICMP echo aimed at a broadcast address, which is what makes a host
     # usable as a smurf amplifier by anyone spoofing a victim's source address.
