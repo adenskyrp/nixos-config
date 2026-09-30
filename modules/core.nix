@@ -508,9 +508,9 @@
         "context.properties" = {
           "default.clock.rate" = 48000;
           "default.clock.allowed-rates" = [44100 48000 96000];
-          "default.clock.quantum" = 512;
-          "default.clock.min-quantum" = 128;
-          "default.clock.max-quantum" = 1024;
+          "default.clock.quantum" = 1024;
+          "default.clock.min-quantum" = 256;
+          "default.clock.max-quantum" = 4096;
         };
       };
       # Explicitly bind the Real-Time module to claim the priority granted by PAM/RTKit
@@ -723,5 +723,6 @@
     sshfs
     fastfetch
     acpi
+    ripgrep
   ];
 }
