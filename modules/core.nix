@@ -123,6 +123,7 @@
   # Obeying one costs a deauth + reassoc + 4-way handshake — seconds of dead air
   # mid-match — and on a single-AP network there is nowhere better to roam to.
   # Dropping BTM from our advertised capabilities stops the AP from asking.
+  hardware.wirelessRegulatoryDatabase = true;
   networking.wireless.extraConfig = ''
     disable_btm=1
 
