@@ -87,6 +87,7 @@
     # beacons (this AP advertises DTIM 2 / 100 ms beacons, so ~200 ms of sleep),
     # which leaves an inbound server tick sitting in the AP's buffer until the
     # next wake-up instead of landing on arrival.
+    wifi.backend = "iwd";
     wifi.powersave = false;
     wifi.macAddress = "permanent";
     dns = "systemd-resolved";
