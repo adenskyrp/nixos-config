@@ -45,7 +45,7 @@
         -- eDP-1 is explicitly disabled when docked to free APU display engine
         -- bandwidth.
         monitor = {
-          "DP-2, 1920x1080@599.94, 0x0, 1",
+          "DP-1, 1920x1080@599.94, 0x0, 1",
           "eDP-1, disable",
         },
 
