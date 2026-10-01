@@ -74,15 +74,6 @@
   # "high" pins maximum GPU clocks instead, at the cost of CPU thermal headroom.
   gpuDpmLevel = "auto";
 
-  # Shared by the boot-time oneshot and the resume hook so both paths inject an
-  # identical envelope rather than drifting apart.
-  applySmuLimits = pkgs.writeShellScript "set-smu-limits" ''
-    ${pkgs.ryzenadj}/bin/ryzenadj \
-      --stapm-limit=${toString sustainedPowerLimit} \
-      --slow-limit=${toString slowPowerLimit} \
-      --fast-limit=${toString fastPowerLimit} \
-      --tctl-temp=${toString temperatureLimit}
-  '';
 in {
   # ---------------------------------------------------------------------------
   # MODULAR ARCHITECTURE IMPORTS
@@ -116,15 +107,6 @@ in {
     serviceConfig = {
       Type = "oneshot";
 	ExecStart = "${pkgs.ryzenadj}/bin/ryzenadj -a 45000 -b 57000 -c 45000 -f 95 --vrm-current=70000 --vrmmax-current=70000 --stapm-time=0xffffffff --slow-time=0xffffffff --max-performance";
-    };
-  };
-
-  systemd.timers.ryzenadj-unlock = {
-    description = "Enforce APU Power Limits periodically";
-    wantedBy = [ "timers.target" ];
-    timerConfig = {
-      OnBootSec = "30s";
-      OnUnitActiveSec = "10s";
     };
   };
 
@@ -331,22 +313,6 @@ in {
   systemd.user.services.wireplumber.serviceConfig.CPUAffinity = "8-19";
 
   # ---------------------------------------------------------------------------
-  # SMU MAILBOX REGISTER OVERRIDES (ryzenadj)
-  # ---------------------------------------------------------------------------
-  # Writes sustained wattage envelopes directly to the AMD System Management Unit.
-  systemd.services.amd-power-boost = {
-    description = "Apply 65W SMU power envelope to AMD Ryzen AI 9 365";
-    wantedBy = ["multi-user.target"];
-    after = ["systemd-modules-load.service"];
-
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-      ExecStart = applySmuLimits;
-    };
-  };
-
-  # ---------------------------------------------------------------------------
   # CPUIDLE C-STATE CEILING
   # ---------------------------------------------------------------------------
   # cpufreq and cpuidle are independent. `cpuFreqGovernor = "performance"` above
@@ -385,32 +351,6 @@ in {
       ExecStart = "${config.boot.kernelPackages.cpupower}/bin/cpupower idle-set -D 350";
     };
   };
-
-  # ---------------------------------------------------------------------------
-  # SUSPEND/RESUME POWER STATE RE-APPLICATION
-  # ---------------------------------------------------------------------------
-  # tmpfiles.rules and the oneshot above only run at boot. On a laptop, amdgpu
-  # resets power_dpm_force_performance_level and the SMU can fall back to stock
-  # wattage envelopes across an s2idle cycle -- so closing the lid between
-  # matches would silently drop the machine to default power limits with no
-  # visible indication. Re-inject the same registers after every resume.
-  powerManagement.resumeCommands = ''
-    for f in /sys/devices/system/cpu/cpu*/cpufreq/energy_performance_preference; do
-      echo performance > "$f" || true
-    done
-    for f in /sys/class/drm/card*/device/power_dpm_force_performance_level; do
-      echo ${gpuDpmLevel} > "$f" || true
-    done
-    ${applySmuLimits} || true
-
-    # cpuidle re-enables every state across s2idle, exactly like the SMU and EPP
-    # registers above -- so without this the C3 cap silently lapses on the first
-    # lid close and never comes back until reboot. Written into this block
-    # rather than as a second `powerManagement.resumeCommands` assignment
-    # because both would live in this one attrset, where a repeated attribute is
-    # an eval error regardless of the option's merge type.
-    ${pkgs.systemd}/bin/systemctl restart cpu-idle-limit.service || true
-  '';
 
   # ---------------------------------------------------------------------------
   # GRAPHICS & BLEEDING-EDGE MESA STACK
