@@ -97,20 +97,21 @@ in {
 
   boot.blacklistedKernelModules = [ "amd_pmf" "amdxdna" ];
 
-  systemd.services.ryzenadj-unlock = {
+  systemd.services.ryzenadj-tdp-unlock = {
     description = "Unlock APU Power Limits";
     serviceConfig = {
       Type = "oneshot";
-	ExecStart = "${pkgs.ryzenadj}/bin/ryzenadj -a 45000 -b 57000 -c 45000 -f 95 --vrm-current=70000 --vrmmax-current=70000 --stapm-time=0xffffffff --slow-time=0xffffffff --max-performance";
+	ExecStart = "${pkgs.ryzenadj}/bin/ryzenadj -a 45000 -b 57000 -c 45000 -f 100 --vrm-current=70000 --vrmmax-current=70000 --stapm-time=0xffffffff --slow-time=0xffffffff --max-performance";
     };
   };
 
-  services.wivrn = {
-    enable = true;
-    openFirewall = true;
-    autoStart = true;
-    # Uncomment if using Nvidia:
-    # package = pkgs.wivrn.override { cudaSupport = true; };
+  systemd.timers.ryzenadj-tdp-unlock = {
+    description = "Constantly re-apply Ryzen TDP limits";
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnBootSec = "10s";
+      OnUnitActiveSec = "10s"; # Fires every 10 seconds permanently
+    };
   };
 
   # Synchronize hostname with flake output schema
