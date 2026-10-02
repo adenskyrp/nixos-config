@@ -124,7 +124,7 @@ in {
   boot.loader.efi.canTouchEfiVariables = true;
 
   # CachyOS kernel with BORE (Burst-Oriented Response Enhancer) scheduler
-  boot.kernelPackages = pkgs.linuxPackages_cachyos;
+  boot.kernelPackages = pkgs.linuxPackages_cachyos-lto-znver4;
 
   # Low-latency kernel parameters mapped to Zen 5 & RDNA 3.5 APU silicon
   boot.kernelParams = [
