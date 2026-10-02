@@ -933,8 +933,8 @@
       icon = "osu!";
       categories = [ "Game" ];
     };
-    "sober" = {
-      name = "sober";
+    "org.vinegarhq.Sober" = {
+      name = "Sober";
       exec = "${pkgs.util-linux}/bin/taskset -c 0-7 flatpak run org.vinegarhq.Sober %U";
       icon = "org.vinegarhq.Sober";
       terminal = false;
