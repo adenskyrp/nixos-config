@@ -26,11 +26,6 @@
   # will actually cap this machine. The power figures are headroom that lets the
   # SMU burst freely up to that thermal wall -- they are a ceiling, not a target,
   # and hitting them is not expected.
-  sustainedPowerLimit = 65000; # 65W: sustained (STAPM)            -- was 54W
-  slowPowerLimit = 70000; # 70W: short sustained burst (tPPT) -- was 60W
-  fastPowerLimit = 75000; # 75W: peak immediate burst (fPPT)  -- was 65W
-  temperatureLimit = 95; # 95°C: max junction temperature (Tctl) -- was 90°C
-
   # STAPM IS NOT A SLIDING WINDOW ON THIS MACHINE. Measured with `ryzenadj -i`
   # during osu! (2026-08-27): StapmTimeConst = 0.000. STAPM's whole mechanism is
   # a time-averaged power limit, and a zero time constant disables the averaging
@@ -289,8 +284,7 @@ in {
   # CPU & GPU POWER STATE GOVERNOR
   # ---------------------------------------------------------------------------
   powerManagement = {
-    enable = true;
-    cpuFreqGovernor = "performance";
+    enable = false;
   };
 
   # ---------------------------------------------------------------------------
