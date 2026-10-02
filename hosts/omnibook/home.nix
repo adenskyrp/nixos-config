@@ -931,6 +931,15 @@
       terminal = false;
       type = "Application";
       icon = "osu!";
+      categories = [ "Game" ];
+    };
+    "sober" = {
+      name = "sober";
+      exec = "${pkgs.util-linux}/bin/taskset -c 0-7 flatpak run org.vinegarhq.Sober %U";
+      icon = "org.vinegarhq.Sober";
+      terminal = false;
+      categories = [ "Game" ];
+      mimeType = [ "x-scheme-handler/roblox" "x-scheme-handler/roblox-player" ];      
     };
   };
 
