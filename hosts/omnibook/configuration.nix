@@ -67,7 +67,7 @@
   # "auto" lets the SMU shift the shared 65-75W envelope toward the CPU when the
   # iGPU is not the bottleneck (Rocket League at 1080p is CPU/netcode-bound).
   # "high" pins maximum GPU clocks instead, at the cost of CPU thermal headroom.
-  gpuDpmLevel = "auto";
+  gpuDpmLevel = "high";
 
 in {
   # ---------------------------------------------------------------------------
