@@ -215,7 +215,7 @@
       })
       hl.window_rule({
 	match = { class = "steam_app_2073850" },
-	immediate - true,
+	immediate = true,
 	no_anim = true,
         fullscreen_state = "2 2",
         tile = true,
