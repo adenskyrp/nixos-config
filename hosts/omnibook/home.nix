@@ -164,7 +164,7 @@
 
       -- Rocket League (DX11 / Proton Swapchain)
       hl.window_rule({
-        match = { class = "rocketleague.exe" },
+        match = { class = "rocketleague\\.exe" },
         immediate = true,          -- Triggers wp_tearing_control_v1 async scanout
         no_anim = true,           -- snake_case per Hyprland Lua API (not "noanim")
         fullscreen_state = "2 2",  -- Forces client + compositor exclusive fullscreen
@@ -200,18 +200,24 @@
 
       -- Counter-Strike 2 & Aim Lab
       hl.window_rule({
-        match = { class = "aimlab_tb.exe" },
+        match = { class = "aimlab_tb\\.exe" },
         immediate = true,
         no_anim = true,
         tile = true,
         workspace = 5,
       })
       hl.window_rule({
-        match = { class = "cs2" },
+        match = { class = "cs2\\.exe" },
         immediate = true,
         no_anim = true,
-
-
+        tile = true,
+        workspace = 5,
+      })
+      hl.window_rule({
+	match = { class = "steam_app_2073850" },
+	immediate - true,
+	no_anim = true,
+        fullscreen_state = "2 2",
         tile = true,
         workspace = 5,
       })

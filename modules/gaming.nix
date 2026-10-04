@@ -88,7 +88,6 @@ in {
   # LOW-LATENCY PROTON & DRIVER ENVIRONMENT
   # ---------------------------------------------------------------------------
   environment.sessionVariables = {
-    MESA_SHADER_CACHE_MAX_SIZE = "16G";
     PROTON_USE_NTSYNC = "1";
     PROTON_NO_ESYNC = "1";
     PROTON_DXVK_LOWLATENCY = "1";
