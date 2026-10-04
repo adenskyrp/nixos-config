@@ -88,8 +88,10 @@ in {
   # LOW-LATENCY PROTON & DRIVER ENVIRONMENT
   # ---------------------------------------------------------------------------
   environment.sessionVariables = {
+    MESA_VK_WSI_PRESENT_MODE = "immediate";
     PROTON_USE_NTSYNC = "1";
     PROTON_NO_ESYNC = "1";
+    PROTON_VKD3D_LOWLATENCY = "1";
     PROTON_DXVK_LOWLATENCY = "1";
     DXVK_CONFIG_FILE = "/etc/dxvk.conf";
     NIXOS_OZONE_WL = "1";
