@@ -5,64 +5,6 @@
   inputs,
   ...
 }: let
-  # ---------------------------------------------------------------------------
-  # STRIX POINT APU SMU POWER TARGETS (THERMALLY LIMITED, EXCEEDS THE CHARGER)
-  # ---------------------------------------------------------------------------
-  # Defined in milliwatts (mW) for direct register injection via ryzenadj.
-  #
-  # THESE EXCEED THE 65 W AC ADAPTER, DELIBERATELY. This banner used to read
-  # "65W AC CONTRACT" and the values under it were chosen to fit inside what the
-  # charger supplies. That is no longer the policy, so the banner is rewritten
-  # rather than left describing a contract the numbers no longer honour.
-  #
-  # When draw exceeds what the adapter supplies, the shortfall comes out of the
-  # battery, so a long session can net-discharge WHILE PLUGGED IN. That is an
-  # accepted consequence of this change, not a fault to be diagnosed later: if
-  # it becomes a problem, the fix is lowering these numbers again, not looking
-  # for a charging bug.
-  #
-  # Tctl at 95 °C is the load-bearing limit here, not the wattages. A 14"
-  # chassis reaches 95 °C long before it sustains 75 W, so temperature is what
-  # will actually cap this machine. The power figures are headroom that lets the
-  # SMU burst freely up to that thermal wall -- they are a ceiling, not a target,
-  # and hitting them is not expected.
-  # STAPM IS NOT A SLIDING WINDOW ON THIS MACHINE. Measured with `ryzenadj -i`
-  # during osu! (2026-08-27): StapmTimeConst = 0.000. STAPM's whole mechanism is
-  # a time-averaged power limit, and a zero time constant disables the averaging
-  # -- so the "sliding time-averaged power limit" a laptop normally imposes, and
-  # which the earlier stutter investigation ranked as its #1 hypothesis, cannot
-  # fire here at all.
-  #
-  # The same sample: STAPM 19.2/21.9 W, PPT slow 18.4/45 W, Tctl 66 °C, cores
-  # holding 5042 MHz. Nowhere near any of the ceilings below. That both
-  # eliminates power throttling as a cause of the frame drops and retroactively
-  # validates these limits -- they are not being hit, so they are not the thing
-  # to tune. Re-check with `ryzenadj -i` before blaming power again.
-  #
-  # REVISITED 2026-09-12 -- the limits above were raised regardless. The block
-  # above is kept intact rather than deleted, because its reasoning is exactly
-  # what has to be argued against, and losing that trail is how a repo ends up
-  # re-litigating settled ground. Two reasons it no longer settles the question:
-  #
-  #   1. That sample is osu!. Rocket League has never been sampled on this
-  #      machine, and it is a substantially heavier CPU load -- a physics and
-  #      netcode loop rather than a 2D renderer. "Not power throttled during
-  #      osu!" does not generalise to it.
-  #
-  #   2. The sample predates the machine's current behaviour. The cpuidle C2 cap
-  #      and mitigations=off both raise sustained draw -- the first by keeping
-  #      cores out of C3, the second by removing work from every syscall and
-  #      context switch. Whatever headroom existed on 2026-08-27 is not the
-  #      headroom that exists now.
-  #
-  # THIS CHANGE IS FALSIFIABLE AND SHOULD BE FALSIFIED. Re-sample with
-  # `ryzenadj -i` during Rocket League, not osu!:
-  #
-  #   - STAPM/PPT climbing toward the new ceilings -> the envelope is being used.
-  #   - Tctl pinning at 95 °C first                -> this bought nothing, and
-  #     the honest move is reverting to 54/60/65 W rather than keeping numbers
-  #     that only look generous.
-
   # GPU DPM level, applied at boot and re-applied on resume.
   # "auto" lets the SMU shift the shared 65-75W envelope toward the CPU when the
   # iGPU is not the bottleneck (Rocket League at 1080p is CPU/netcode-bound).
@@ -111,6 +53,29 @@ in {
     timerConfig = {
       OnBootSec = "10s";
       OnUnitActiveSec = "10s"; # Fires every 10 seconds permanently
+    };
+  };
+
+  environment.systemPackages = with pkgs; [
+    ryzenadj
+    ethtool
+  ];
+
+  systemd.services.optimize-nic = {
+    description = "Disable Ethernet power-saving and interrupt coalescing";
+    after = [ "network.target" ];
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = pkgs.writeShellScript "tune-nic" ''
+        IFACE="enp2s0" # Replace with your actual interface from `ip -br link`
+      
+        # Disable Energy Efficient Ethernet (physical link sleep)
+        ${pkgs.ethtool}/bin/ethtool --set-eee$IFACE eee off || true
+
+        # Disable interrupt coalescing for immediate packet delivery
+        ${pkgs.ethtool}/bin/ethtool -C$IFACE adaptive-rx off adaptive-tx off rx-usecs 0 tx-usecs 0 || true
+      '';
     };
   };
 
@@ -360,7 +325,6 @@ in {
   # PERIPHERALS & LAPTOP HARDWARE GUARDS
   # ---------------------------------------------------------------------------
   services.udev.packages = [pkgs.swayosd];
-  environment.systemPackages = [pkgs.ryzenadj];
 
   # FINGERPRINT READER (fprintd) IS DELIBERATELY ABSENT -- removed 2026-08-30.
   #
