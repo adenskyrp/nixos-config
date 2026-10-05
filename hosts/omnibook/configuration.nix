@@ -68,17 +68,16 @@ in {
     serviceConfig = {
       Type = "oneshot";
       ExecStart = pkgs.writeShellScript "tune-nic" ''
-        IFACE="enp2s0" # Replace with your actual interface from `ip -br link`
+        IFACE="eth0"
       
-        # Disable Energy Efficient Ethernet (physical link sleep)
-        ${pkgs.ethtool}/bin/ethtool --set-eee$IFACE eee off || true
+        # Drop RX coalescing delay to 0 (or lowest accepted value)
+        ${pkgs.ethtool}/bin/ethtool -C $IFACE rx-usecs 0 || ${pkgs.ethtool}/bin/ethtool -C $IFACE rx-usecs 1 || true
 
-        # Disable interrupt coalescing for immediate packet delivery
-        ${pkgs.ethtool}/bin/ethtool -C$IFACE adaptive-rx off adaptive-tx off rx-usecs 0 tx-usecs 0 || true
+        # Disable Energy Efficient Ethernet if supported
+        ${pkgs.ethtool}/bin/ethtool --set-eee $IFACE eee off || true
       '';
     };
   };
-
   # Synchronize hostname with flake output schema
   networking.hostName = "omnibook";
 
