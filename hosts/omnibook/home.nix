@@ -823,6 +823,8 @@
     ark
     pear-desktop
     blender
+    en-croissant
+    stockfish
     (discord.override {
       withVencord = true;
       withOpenASAR = true;
