@@ -45,7 +45,7 @@
         -- eDP-1 is explicitly disabled when docked to free APU display engine
         -- bandwidth.
         monitor = {
-          "DP-1, 1920x1080@360.11, 0x0, 1",
+          "DP-1, 1920x1080@498.93, 0x0, 1",
           "eDP-1, disable",
         },
 
@@ -864,7 +864,7 @@
             }
             {
               criteria = "BNQ XL2586X+ EB3CR02979SL0";
-              mode = "1920x1080@360.11Hz";
+              mode = "1920x1080@498.93Hz";
               position = "0,0";
               scale = 1.0;
               status = "enable";
@@ -880,7 +880,7 @@
               criteria = "eDP-1";
               mode = "2240x1400@60.00Hz";
               position = "0,0";
-              scale = 1.4583334;
+              scale = 1.0;
               status = "enable";
             }
           ];
