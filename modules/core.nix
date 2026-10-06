@@ -195,9 +195,19 @@
     "tipc" # Transparent Inter-Process Communication
   ];
 
-  networking.wireless.iwd.settings = {
-    Scan = {
-      DisablePeriodicScan = true;
+  networking.wireless.iwd = {
+    enable = true;
+    settings = {
+      Rank = {
+        # Boost 6GHz and 5GHz ranking over 2.4GHz
+        BandModifier6G = 1.3;
+        BandModifier5G = 1.1;
+        BandModifier2_4G = 0.8;
+      };
+      Scan = {
+        # Stop background scans while connected (eliminates gaming jitter)
+        DisablePeriodicScan = true;
+      };
     };
   };
 
