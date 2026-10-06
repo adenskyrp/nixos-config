@@ -864,7 +864,7 @@
             }
             {
               criteria = "BNQ XL2586X+ EB3CR02979SL0";
-              mode = "1920x1080@599.94Hz";
+              mode = "1920x1080@360.11Hz";
               position = "0,0";
               scale = 1.0;
               status = "enable";
