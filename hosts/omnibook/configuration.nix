@@ -62,7 +62,7 @@ in {
   ];
 
   systemd.services.optimize-nic = {
-    description = "Disable Ethernet power-saving and interrupt coalescing";
+    description = "Tune USB Ethernet adapter for competitive gaming latency";
     after = [ "network.target" ];
     wantedBy = [ "multi-user.target" ];
     serviceConfig = {
@@ -70,14 +70,23 @@ in {
       ExecStart = pkgs.writeShellScript "tune-nic" ''
         IFACE="eth0"
       
-        # Drop RX coalescing delay to 0 (or lowest accepted value)
-        ${pkgs.ethtool}/bin/ethtool -C $IFACE rx-usecs 0 || ${pkgs.ethtool}/bin/ethtool -C $IFACE rx-usecs 1 || true
-
-        # Disable Energy Efficient Ethernet if supported
+        # Driver-safe 15us coalescing to prevent USB FIFO overflows
+        ${pkgs.ethtool}/bin/ethtool -C $IFACE rx-usecs 15000 || true
+      
+        # Disable Energy Efficient Ethernet (EEE)
         ${pkgs.ethtool}/bin/ethtool --set-eee $IFACE eee off || true
+      
+        # Disable packet aggregation (GRO) for instant UDP frame dispatch
+        ${pkgs.ethtool}/bin/ethtool -K $IFACE gro off || true
+      
+        # Disable USB 3 Link Power Management on the parent device
+        USB_DEV=$(readlink -f /sys/class/net/$IFACE/device)
+        echo 0 > "$USB_DEV/power/usb3_lpm_u1_permit" 2>/dev/null || true
+        echo 0 > "$USB_DEV/power/usb3_lpm_u2_permit" 2>/dev/null || true
       '';
     };
   };
+
   # Synchronize hostname with flake output schema
   networking.hostName = "omnibook";
 
