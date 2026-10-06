@@ -161,7 +161,8 @@ in {
     "usbcore.autosuspend=-1"
     "iomem=relaxed"
     "reboot=pci"
-
+    "processor.max_cstate=1"
+    "intel_idle.max_cstate=1"
     # --- SPECULATIVE EXECUTION MITIGATIONS: OFF ---
     # THIS IS A SECURITY TRADE, MADE KNOWINGLY. Stated plainly so a future
     # reader sees a decision and not an oversight:
