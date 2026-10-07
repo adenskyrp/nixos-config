@@ -93,7 +93,7 @@ in {
     PROTON_NO_ESYNC = "1";
     PROTON_VKD3D_LOWLATENCY = "1";
     PROTON_DXVK_LOWLATENCY = "1";
-    DXVK_CONFIG_FILE = "/etc/dxvk.conf";
+    DXVK_CONFIG_FILE = "dxvk.conf";
     MESA_SHADER_CACHE_MAX_SIZE = "16G";
     NIXOS_OZONE_WL = "1";
     DISABLE_VK_LAYER_VALVE_steam_overlay_1 = "1";
