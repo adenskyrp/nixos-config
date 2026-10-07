@@ -107,6 +107,7 @@ in {
   # ---------------------------------------------------------------------------
   environment.sessionVariables = {
     MESA_VK_WSI_PRESENT_MODE = "immediate";
+    RADV_PERFTEST = "nggc";
     PROTON_USE_NTSYNC = "1";
     PROTON_NO_ESYNC = "1";
     PROTON_VKD3D_LOWLATENCY = "1";
