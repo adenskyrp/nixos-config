@@ -94,6 +94,7 @@ in {
     PROTON_VKD3D_LOWLATENCY = "1";
     PROTON_DXVK_LOWLATENCY = "1";
     DXVK_CONFIG_FILE = "dxvk.conf";
+    DXVK_CONFIG = "dxvk.numCompilerThreads=8";
     MESA_SHADER_CACHE_MAX_SIZE = "16G";
     NIXOS_OZONE_WL = "1";
     DISABLE_VK_LAYER_VALVE_steam_overlay_1 = "1";
@@ -109,7 +110,7 @@ in {
   environment.etc."dxvk.conf".text = ''
     # --- PRESENTATION & FRAME QUEUE LATENCY ---
     # Disables internal swapchain tear-free buffering and VSync
-    dxvk.numCompilerThreads = 4
+    dxvk.numCompilerThreads = 8
     dxvk.syncInterval = 0
     dxvk.tearFree = False
     dxgi.syncInterval = 0
