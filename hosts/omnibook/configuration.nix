@@ -44,7 +44,7 @@ in {
     wantedBy = [ "default.target" ];
     after = [ "network.target" ];
     serviceConfig = {
-      ExecStart = "${pkgs.llama-cpp-vulkan}/bin/llama-server -m /home/crazycat/qwen-finetune/qwen2.5-14b-orchestrator-q4_k_m.gguf -ngl 49 -c 4096 --host 127.0.0.1 --port 8080";
+      ExecStart = "${pkgs.llama-cpp-vulkan}/bin/llama-server -m /home/crazycat/qwen-finetune/qwen2.5-14b-orchestrator-q4_k_m.gguf -ngl 49 -c 4096 --grammar-file /home/crazycat/qwen-finetune/json.gbnf --host 127.0.0.1 --port 8080";
       Restart = "on-failure";
       RestartSec = 3;
     };
