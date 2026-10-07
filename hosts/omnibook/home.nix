@@ -833,6 +833,46 @@
     blender
     en-croissant
     stockfish
+
+    (writeShellApplication {
+      name = "update-proton-cachyos";
+      runtimeInputs = [ curl jq nix ];
+      text = ''
+        set -euo pipefail
+        
+        # Point directly to the new modules folder
+        CONFIG_DIR="/home/crazycat/nixos-config"
+        JSON_FILE="$CONFIG_DIR/modules/proton-cachyos.json"
+
+        echo "Fetching latest Proton-CachyOS release metadata..."
+        RELEASE_JSON=$(curl -sSL "https://api.github.com/repos/CachyOS/proton-cachyos/releases/latest")
+        VERSION=$(echo "$RELEASE_JSON" | jq -r .tag_name)
+        
+        # Ensure we specifically grab the x86_64_v3 SLR package
+	ASSET_URL=$(echo "$RELEASE_JSON" | jq -r '.assets[] | select(.name | test("slr-x86_64_v3\\.tar\\.xz$")) | .browser_download_url')
+
+        if [ -f "$JSON_FILE" ]; then
+          CURRENT_VERSION=$(jq -r .version "$JSON_FILE")
+          if [ "$CURRENT_VERSION" = "$VERSION" ]; then
+            echo "Already up-to-date: $VERSION"
+            exit 0
+          fi
+        fi
+
+        echo "New version found: $VERSION"
+        echo "Prefetching SRI hash..."
+        HASH=$(nix store prefetch-file "$ASSET_URL" --json | jq -r .hash)
+
+        jq -n \
+          --arg version "$VERSION" \
+          --arg url "$ASSET_URL" \
+          --arg hash "$HASH" \
+          '{version: $version, url: $url, hash: $hash}' > "$JSON_FILE"
+
+        echo "Updated $JSON_FILE to $VERSION ($HASH)"
+      '';
+    })
+
     (discord.override {
       withVencord = true;
       withOpenASAR = true;

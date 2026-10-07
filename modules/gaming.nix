@@ -68,6 +68,7 @@ in {
     "vm.dirty_ratio" = 10;
   };
 
+
   # ---------------------------------------------------------------------------
   # STEAM & PROTON RUNTIME PIPELINE
   # ---------------------------------------------------------------------------
@@ -75,15 +76,32 @@ in {
     enable = true;
     remotePlay.openFirewall = false;
     dedicatedServer.openFirewall = false;
-
-    # Declaratively registers Proton-GE into Steam's compatibility directory
-    extraCompatPackages = with pkgs; [
-      proton-ge-bin
-    ];
   };
+  programs.steam.extraCompatPackages = let
+    protonData = builtins.fromJSON (builtins.readFile ./proton-cachyos.json);
+    
+    proton-cachyos-slr-v3 = pkgs.stdenvNoCC.mkDerivation {
+      pname = "proton-cachyos";
+      inherit (protonData) version;
 
-  hardware.steam-hardware.enable = true;
+      src = pkgs.fetchurl {
+        inherit (protonData) url hash;
+      };
 
+      nativeBuildInputs = [ pkgs.xz pkgs.gnutar ];
+
+      buildCommand = ''
+        mkdir -p $out
+        # Removed --zstd; tar auto-detects .xz compression
+        tar -xf $src -C $out
+        
+        # Automatically patch compiler threads to 4
+        sed -i 's/threads = os.cpu_count().*/threads = 4/' $out/*/proton
+      '';
+    };
+  in [ proton-cachyos-slr-v3 ];
+
+  hardware.steam-hardware.enable = lib.mkForce false;
   # ---------------------------------------------------------------------------
   # LOW-LATENCY PROTON & DRIVER ENVIRONMENT
   # ---------------------------------------------------------------------------
@@ -94,7 +112,6 @@ in {
     PROTON_VKD3D_LOWLATENCY = "1";
     PROTON_DXVK_LOWLATENCY = "1";
     DXVK_CONFIG_FILE = "dxvk.conf";
-    DXVK_CONFIG = "dxvk.numCompilerThreads=8";
     MESA_SHADER_CACHE_MAX_SIZE = "16G";
     NIXOS_OZONE_WL = "1";
     DISABLE_VK_LAYER_VALVE_steam_overlay_1 = "1";
