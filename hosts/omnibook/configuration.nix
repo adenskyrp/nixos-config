@@ -41,7 +41,7 @@ in {
 
   systemd.user.services.qwen-orchestrator = {
     description = "Qwen 2.5 14B Orchestrator";
-    wantedBy = [ "default.target" ];
+    # wantedBy = [ "default.target" ];
     after = [ "network.target" ];
     serviceConfig = {
       ExecStart = "${pkgs.llama-cpp-vulkan}/bin/llama-server -m /home/crazycat/qwen-finetune/qwen2.5-14b-orchestrator-q4_k_m.gguf -ngl 49 -c 4096 --chat-template chatml --host 127.0.0.1 --port 8080";
