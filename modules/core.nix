@@ -48,14 +48,14 @@
   nix.gc = {
     automatic = true;
     dates = "weekly";
-    persistent = false;
-    options = "--delete-older-than 7d";
+    persistent = true;
+    options = "--delete-older-than 3d";
   };
 
   nix.optimise = {
     automatic = true;
     dates = ["04:00"];
-    persistent = false;
+    persistent = true;
   };
 
   services.fstrim.enable = true;
@@ -247,14 +247,14 @@
   #
   # If bufferbloat ever does need addressing, it wants a measured `bandwidth`
   # ceiling on egress, applied deliberately -- not a default_qdisc change.
-  boot.kernelModules = ["tcp_bbr" "ntsync"];
+  boot.kernelModules = ["tcp_bbr" "cake" "ntsync"];
   boot.kernelParams = [ "8250.nr_uarts=0" ];
   boot.kernel.sysctl = {
     # Prioritize interactive UDP game packets over bulk TCP traffic. Note this
     # only reaches wired links (Thunderbolt dock / USB ethernet): mac80211
     # installs "noqueue" on the Wi-Fi netdev and runs its own per-station
     # fq_codel with airtime fairness, so no qdisc can attach there.
-    "net.core.default_qdisc" = "fq";
+    "net.core.default_qdisc" = "cake";
     "net.ipv4.tcp_congestion_control" = "bbr";
 
     # Expand buffer ceilings for high-tick-rate UDP streams
