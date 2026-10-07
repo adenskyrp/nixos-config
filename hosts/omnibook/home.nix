@@ -187,7 +187,14 @@
 	tile = true,
 	workspace = 5,
       })
-
+      hl.window_rule({
+	match = { class = "steam_app_980610" },
+	immediate = true,
+	no_anim = true,
+	fullscreen state = "2 2",
+	tile = true,
+	workspace = 5,
+      })
       -- osu! (Wine Staging / Direct Latency Pipeline)
       hl.window_rule({
         match = { class = "osu!\\.exe" },
