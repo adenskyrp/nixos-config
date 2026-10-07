@@ -170,7 +170,6 @@ in {
     zen5-nosmt
 
     heroic
-    protonup-qt
     umu-launcher
     libnotify
     mangohud # Frame-time and latency analysis overlay
