@@ -183,10 +183,22 @@ in {
     # bandwidth is shared with the CPU and is the first thing to check when a
     # frametime spike has no thermal or power correlate.
     amdgpu_top
-
     usbutils
     evtest
     evhz # USB polling rate verification
     lsof
+
+    (let
+      gamescope-git = gamescope.overrideAttrs (old: {
+        version = "git";
+        src = fetchFromGitHub {
+          owner = "ValveSoftware";
+          repo = "gamescope";
+	  rev = "refs/heads/master";
+	  hash = "sha256-mekHosNBFk/wMCtzVNbo7I5cC+oL6MGICFIG56jCKbY=";
+          fetchSubmodules = true;
+        };
+      });
+    in gamescope-git)
   ];
 }
