@@ -191,7 +191,7 @@
 	match = { class = "steam_app_980610" },
 	immediate = true,
 	no_anim = true,
-	fullscreen state = "2 2",
+	fullscreen_state = "2 2",
 	tile = true,
 	workspace = 5,
       })
