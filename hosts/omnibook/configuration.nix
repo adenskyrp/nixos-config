@@ -97,8 +97,17 @@ in {
   boot.loader.efi.canTouchEfiVariables = true;
 
   # CachyOS kernel with BORE (Burst-Oriented Response Enhancer) scheduler
-  boot.kernelPackages = pkgs.linuxPackages_cachyos-bore;
-
+  boot.kernelPackages = pkgs.linuxPackages_cachyos.cachyOverride {
+    cachyVars = pkgs.linuxPackages_cachyos.kernel.cachyConfig.cachyVars // {
+      # This forces GCC to strip generic compatibility and compile specifically 
+      # for the Zen 4/Zen 5 AVX-512 execution pipeline.
+      "_processor_opt" = "ZEN4"; 
+      
+      # Optional: Explicitly ensure the BORE scheduler is the chosen default 
+      # (though CachyOS defaults to this anyway).
+      "_cpusched" = "bore";
+    };
+  };
   # Low-latency kernel parameters mapped to Zen 5 & RDNA 3.5 APU silicon
   boot.kernelParams = [
     # --- APU DYNAMIC VRAM (GTT) SIZING ---
@@ -157,6 +166,7 @@ in {
     "threadirqs"
     "nowatchdog"
     "tsc=reliable"
+    "idle=poll"
     "clocksource=tsc"
     "usbcore.autosuspend=-1"
     "iomem=relaxed"
