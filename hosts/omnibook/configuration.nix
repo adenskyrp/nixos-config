@@ -39,12 +39,13 @@ in {
 
   boot.blacklistedKernelModules = [ "amd_pmf" "amdxdna" ];
 
+  # Qwen 2.5 14B Local Server
   systemd.user.services.qwen-orchestrator = {
     description = "Qwen 2.5 14B Orchestrator";
-    wantedBy = [ "default.target" ];
+    # wantedBy = [ "default.target" ]; # Uncomment if you want it to auto-launch on login
     after = [ "network.target" ];
     serviceConfig = {
-      ExecStart = "${pkgs.llama-cpp-vulkan}/bin/llama-server -m /home/crazycat/qwen-finetune/qwen2.5-14b-orchestrator-q4_k_m.gguf -ngl 49 -c 4096 --grammar-file /home/crazycat/qwen-finetune/json.gbnf --host 127.0.0.1 --port 8080";
+      ExecStart = "${pkgs.llama-cpp-vulkan}/bin/llama-server -m /home/crazycat/qwen-finetune/qwen2.5-14b-orchestrator-q4_k_m.gguf -ngl 49 -c 4096 --stop '<|im_end|>' --stop '<|endoftext|>' --host 127.0.0.1 --port 8080";
       Restart = "on-failure";
       RestartSec = 3;
     };
