@@ -73,6 +73,7 @@ in {
   # ---------------------------------------------------------------------------
   programs.steam = {
     enable = true;
+    protontricks.enable = true;
     remotePlay.openFirewall = false;
     dedicatedServer.openFirewall = false;
   };
@@ -112,6 +113,7 @@ in {
     PROTON_VKD3D_LOWLATENCY = "1";
     PROTON_DXVK_LOWLATENCY = "1";
     DXVK_CONFIG_FILE = "dxvk.conf";
+    DXVK_ASYNC = "1";
     MESA_SHADER_CACHE_MAX_SIZE = "16G";
     NIXOS_OZONE_WL = "1";
     DISABLE_VK_LAYER_VALVE_steam_overlay_1 = "1";
