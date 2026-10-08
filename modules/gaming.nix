@@ -68,6 +68,17 @@ in {
     "vm.dirty_ratio" = 10;
   };
 
+  # ==========================================
+  # 1. OpenTabletDriver & uinput (osu!)
+  # ==========================================
+  hardware.opentabletdriver = {
+    enable = true;
+    daemon.enable = true; # Launches otd-daemon as a systemd user service
+  };
+
+  # Required for OpenTabletDriver to inject virtual tablet events in Wayland
+  hardware.uinput.enable = true;
+
   # ---------------------------------------------------------------------------
   # STEAM & PROTON RUNTIME PIPELINE
   # ---------------------------------------------------------------------------

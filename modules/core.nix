@@ -87,7 +87,7 @@
     # beacons (this AP advertises DTIM 2 / 100 ms beacons, so ~200 ms of sleep),
     # which leaves an inbound server tick sitting in the AP's buffer until the
     # next wake-up instead of landing on arrival.
-    wifi.backend = "wpa_supplicant";
+    wifi.backend = "iwd";
     wifi.powersave = false;
     wifi.macAddress = "permanent";
     dns = "systemd-resolved";
@@ -196,7 +196,7 @@
   ];
 
   networking.wireless.iwd = {
-    enable = false;
+    enable = true;
     settings = {
       Rank = {
         # Boost 6GHz and 5GHz ranking over 2.4GHz
@@ -247,7 +247,13 @@
   #
   # If bufferbloat ever does need addressing, it wants a measured `bandwidth`
   # ceiling on egress, applied deliberately -- not a default_qdisc change.
-  boot.kernelModules = ["tcp_bbr" "cake" "ntsync"];
+  boot.kernelModules = [
+    "tcp_bbr"
+    "cake"
+    "ntsync"
+    "uinput"
+    "ath12k_pci"
+  ];
   boot.kernelParams = [ "8250.nr_uarts=0" ];
   boot.kernel.sysctl = {
     # Prioritize interactive UDP game packets over bulk TCP traffic. Note this
@@ -318,6 +324,7 @@
   # ---------------------------------------------------------------------------
   # THUNDERBOLT 4 / USB4 & UDEV HARDWARE ISOLATION
   # ---------------------------------------------------------------------------
+  hardware.enableRedistributableFirmware = true;
   services.hardware.bolt.enable = true;
   services.power-profiles-daemon.enable = false;
   systemd.tmpfiles.rules = [
