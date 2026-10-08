@@ -130,6 +130,8 @@ in {
     # --- PRESENTATION & FRAME QUEUE LATENCY ---
     # Disables internal swapchain tear-free buffering and VSync
     dxvk.numCompilerThreads = 8
+    dxvk.enableAsync = true
+    d3d9.enableAsync = true
     dxvk.syncInterval = 0
     dxvk.tearFree = False
     dxgi.syncInterval = 0
