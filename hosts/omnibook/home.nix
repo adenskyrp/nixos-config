@@ -1009,9 +1009,9 @@ xdg.desktopEntries = {
     "grimoire" = {
       name = "Grimoire";
       genericName = "Deadlock Mod Manager";
-      comment = "Mod manager for Deadlock";
-      exec = "grimoire";
+      exec = "${pkgs.nix}/bin/nix run github:Slush97/grimoire --";
       terminal = false;
+      categories = [ "Game" "Utility" ];
     };
   };
 

@@ -11,9 +11,6 @@
     # Chaotic Nyx: CachyOS BORE Kernel, git Mesa, and performance overlays
     chaotic.url = "github:chaotic-cx/nyx/nyxpkgs-unstable";
 
-    # Stupid deadlock mod Sammie made me get
-    grimoire.url = "github:Slush97/grimoire";
-
     # Declarative user-space environment management
     home-manager = {
       url = "github:nix-community/home-manager";
