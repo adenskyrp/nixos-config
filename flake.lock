@@ -35,6 +35,42 @@
         "url": "https://flakehub.com/f/DeterminateSystems/flake-schemas/%3D0.5.0.tar.gz"
       }
     },
+    "grimoire": {
+      "inputs": {
+        "grimoire-social": "grimoire-social",
+        "nixpkgs": "nixpkgs_2",
+        "vpkmerge": "vpkmerge"
+      },
+      "locked": {
+        "lastModified": 1791534663,
+        "narHash": "sha256-DFbiZ0t/LaPf8QZU7WoO+ks7uUPOh5YoiGMLs1uwII4=",
+        "owner": "Slush97",
+        "repo": "grimoire",
+        "rev": "468b0d1d3298c0412d54a86349250773399aaa21",
+        "type": "github"
+      },
+      "original": {
+        "owner": "Slush97",
+        "repo": "grimoire",
+        "type": "github"
+      }
+    },
+    "grimoire-social": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1785648456,
+        "narHash": "sha256-AR2rTNDuge19t+VAqL/I6dmB8f5niIqINmNnRL70k94=",
+        "owner": "Slush97",
+        "repo": "grimoire-social",
+        "rev": "e97a59d7cd55fc1ae1e11a56ca2fde5305de9c4f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "Slush97",
+        "repo": "grimoire-social",
+        "type": "github"
+      }
+    },
     "home-manager": {
       "inputs": {
         "nixpkgs": [
@@ -107,6 +143,22 @@
     },
     "nixpkgs_2": {
       "locked": {
+        "lastModified": 1787070829,
+        "narHash": "sha256-vXNVDVtvfiQuXthP0NHPFdNvvMTkGpx0UP8oddIWbNk=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "0ae2bc1419c3f345984c2629e72e7a631820fa4d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs_3": {
+      "locked": {
         "lastModified": 1791456040,
         "narHash": "sha256-H83yz/do+hjOO0uujHyH8RgtIQP2v7Mw+cLwcZK/xKc=",
         "owner": "nixos",
@@ -124,9 +176,27 @@
     "root": {
       "inputs": {
         "chaotic": "chaotic",
+        "grimoire": "grimoire",
         "home-manager": "home-manager_2",
         "nix-flatpak": "nix-flatpak",
-        "nixpkgs": "nixpkgs_2"
+        "nixpkgs": "nixpkgs_3"
+      }
+    },
+    "vpkmerge": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1791527573,
+        "narHash": "sha256-Df1nNxqh2rX6Xn4uVjrXEEhP60bfEGd9XLRmi4Aqwl0=",
+        "owner": "Slush97",
+        "repo": "vpkmerge",
+        "rev": "beb03ebfc9842929905d631b86f09a67eecb87dd",
+        "type": "github"
+      },
+      "original": {
+        "owner": "Slush97",
+        "ref": "v0.21.0",
+        "repo": "vpkmerge",
+        "type": "github"
       }
     }
   },

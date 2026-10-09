@@ -957,7 +957,8 @@
     };
   };
 
-  xdg.desktopEntries = {
+  
+xdg.desktopEntries = {
     firefox = {
       name = "Firefox";
       genericName = "Web Browser";
@@ -1004,6 +1005,13 @@
       terminal = false;
       categories = [ "Game" ];
       mimeType = [ "x-scheme-handler/roblox" "x-scheme-handler/roblox-player" ];      
+    };
+    "grimoire" = {
+      name = "Grimoire";
+      genericName = "Deadlock Mod Manager";
+      comment = "Mod manager for Deadlock";
+      exec = "grimoire";
+      terminal = false;
     };
   };
 
