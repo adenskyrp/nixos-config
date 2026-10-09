@@ -960,14 +960,14 @@
     firefox = {
       name = "Firefox";
       genericName = "Web Browser";
-      exec = "${pkgs.util-linux}/bin/taskset -c 8-19 firefox %U";
+      exec = "${pkgs.coreutils}/bin/nice -n 0 ${pkgs.util-linux}/bin/taskset -c 8-19 firefox %U";
       terminal = false;
       type = "Application";
       icon = "firefox";
-    };
+    };    
     "com.github.th-ch.youtube-music" = {
       name = "Pear Desktop";
-      exec = "${pkgs.util-linux}/bin/taskset -c 8-19 ${pkgs.pear-desktop}/bin/pear-desktop %U";
+      exec = "${pkgs.coreutils}/bin/nice -n 0 ${pkgs.util-linux}/bin/taskset -c 8-19 ${pkgs.pear-desktop}/bin/pear-desktop %U";
       terminal = false;
       type = "Application";
       icon = "pear-desktop";
