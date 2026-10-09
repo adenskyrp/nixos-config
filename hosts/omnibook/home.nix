@@ -841,7 +841,6 @@
     en-croissant
     stockfish
     grimoire
-    spotify
 
     (writeShellApplication {
       name = "update-proton-cachyos";
