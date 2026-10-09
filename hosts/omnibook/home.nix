@@ -840,6 +840,7 @@
     blender
     en-croissant
     stockfish
+    grimoire
 
     (writeShellApplication {
       name = "update-proton-cachyos";
