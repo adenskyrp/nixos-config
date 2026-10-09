@@ -45,7 +45,7 @@
         -- eDP-1 is explicitly disabled when docked to free APU display engine
         -- bandwidth.
         monitor = {
-          "DP-1, 1920x1080@498.93, 0x0, 1",
+          "DP-1, 1920x1080@599.94, 0x0, 1",
           "eDP-1, disable",
         },
 
@@ -841,6 +841,7 @@
     en-croissant
     stockfish
     grimoire
+    spotify
 
     (writeShellApplication {
       name = "update-proton-cachyos";
@@ -920,7 +921,7 @@
             }
             {
               criteria = "BNQ XL2586X+ EB3CR02979SL0";
-              mode = "1920x1080@498.93Hz";
+              mode = "1920x1080@599.94Hz";
               position = "0,0";
               scale = 1.0;
               status = "enable";
