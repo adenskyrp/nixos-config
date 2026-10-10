@@ -87,7 +87,7 @@
     # beacons (this AP advertises DTIM 2 / 100 ms beacons, so ~200 ms of sleep),
     # which leaves an inbound server tick sitting in the AP's buffer until the
     # next wake-up instead of landing on arrival.
-    wifi.backend = "wpa_supplicant";
+    wifi.backend = "iwd";
     wifi.powersave = false;
     wifi.macAddress = "permanent";
     dns = "systemd-resolved";
@@ -196,7 +196,7 @@
   ];
 
   networking.wireless.iwd = {
-    enable = false;
+    enable = true;
     settings = {
       Rank = {
         # Boost 6GHz and 5GHz ranking over 2.4GHz
