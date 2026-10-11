@@ -841,7 +841,9 @@
     en-croissant
     stockfish
     grimoire
-
+    bitwig-studio
+    yabridge
+    yabridgectl
     (writeShellApplication {
       name = "update-proton-cachyos";
       runtimeInputs = [ curl jq nix ];
