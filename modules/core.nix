@@ -75,10 +75,6 @@
   # ---------------------------------------------------------------------------
   # COMPETITIVE NETWORKING & STRICT DoT ROUTING
   # ---------------------------------------------------------------------------
-  networking.nameservers = [
-    "9.9.9.9"
-    "1.1.1.1"
-  ];
 
   networking.networkmanager = {
     enable = true;
@@ -97,22 +93,6 @@
         # A fresh MAC per scan cycle makes the AP treat us as an unknown station,
         # costing a full association + 4-way handshake on every reconnect.
         "wifi.scan-rand-mac-address" = "yes";
-      };
-
-      # --- GLOBAL DNS OVERRIDE ---
-      # Overrides the resolver list each connection learns over DHCP. Without it
-      # NetworkManager registers the router's leased servers on the default-route
-      # link, and systemd-resolved prefers those link-scoped servers over the
-      # global DoT servers configured below — so the encrypted path is bypassed,
-      # and a dead entry in the lease (this network hands out one) stalls the
-      # first lookup for the full resolver timeout before it rotates off.
-      #
-      # Declared with the DoT URI form so resolved still receives the TLS
-      # servername it needs to validate the certificate. A [global-dns-domain-*]
-      # section implies an empty [global-dns] section, and that is what makes the
-      # override authoritative over per-connection settings.
-      "global-dns-domain-*" = {
-        servers = "dns+tls://9.9.9.9#dns.quad9.net,dns+tls://1.1.1.1#cloudflare-dns.com";
       };
     };
   };
@@ -194,23 +174,6 @@
     "rds" # Reliable Datagram Sockets
     "tipc" # Transparent Inter-Process Communication
   ];
-
-  services.resolved = {
-    enable = true;
-    settings = {
-      Resolve = {
-        DNS = "9.9.9.9#dns.quad9.net 1.1.1.1#cloudflare-dns.com";
-        FallbackDNS = "149.112.112.112#dns.quad9.net 1.0.0.1#cloudflare-dns.com";
-        DNSSEC = "true";
-        DNSOverTLS = "yes";
-        Domains = "~.";
-        Cache = "yes";
-        CacheFromLocalhost = "no";
-	LLMNR = "false";
-        MulticastDNS = "false";
-      };
-    };
-  };
 
   # --- KERNEL NETWORK TUNING (FQ PACING + BBR) ---
   # sch_cake IS DELIBERATELY ABSENT -- removed 2026-09-12.
