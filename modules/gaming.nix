@@ -128,6 +128,7 @@ in {
     MESA_SHADER_CACHE_MAX_SIZE = "16G";
     NIXOS_OZONE_WL = "1";
     DISABLE_VK_LAYER_VALVE_steam_overlay_1 = "1";
+    VK_DRIVER_FILES = "/run/opengl-driver/share/vulkan/icd.d/radeon_icd.x86_64.json";
     SDL_JOYSTICK_HIDAPI = "0";
     SDL_GAMECONTROLLERCONFIG = "";
     HSA_OVERRIDE_GFX_VERSION = "11.0.0";
