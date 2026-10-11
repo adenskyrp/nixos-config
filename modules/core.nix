@@ -87,7 +87,7 @@
     # beacons (this AP advertises DTIM 2 / 100 ms beacons, so ~200 ms of sleep),
     # which leaves an inbound server tick sitting in the AP's buffer until the
     # next wake-up instead of landing on arrival.
-    wifi.backend = "iwd";
+    wifi.backend = "wpa_supplicant";
     wifi.powersave = false;
     wifi.macAddress = "permanent";
     dns = "systemd-resolved";
@@ -195,22 +195,6 @@
     "tipc" # Transparent Inter-Process Communication
   ];
 
-  networking.wireless.iwd = {
-    enable = true;
-    settings = {
-      Rank = {
-        # Boost 6GHz and 5GHz ranking over 2.4GHz
-        BandModifier6G = 1.3;
-        BandModifier5G = 1.1;
-        BandModifier2_4G = 0.8;
-      };
-      Scan = {
-        # Stop background scans while connected (eliminates gaming jitter)
-        DisablePeriodicScan = true;
-      };
-    };
-  };
-
   services.resolved = {
     enable = true;
     settings = {
@@ -251,9 +235,12 @@
     "tcp_bbr"
     "ntsync"
     "uinput"
-    "ath12k_pci"
+    "ath12k_wifi7_pci"
   ];
-  boot.kernelParams = [ "8250.nr_uarts=0" ];
+  boot.kernelParams = [
+  "8250.nr_uarts=0"
+  "cfg80211.regulatory_country=US"
+  ];
   boot.kernel.sysctl = {
     # Prioritize interactive UDP game packets over bulk TCP traffic. Note this
     # only reaches wired links (Thunderbolt dock / USB ethernet): mac80211
@@ -339,8 +326,11 @@
   };
 
   services.udev.extraRules = ''
-    # Disable PCIe power management for MediaTek MT7925 Wi-Fi
-    ACTION=="add", SUBSYSTEM=="pci", ATTR{vendor}=="0x14c3", ATTR{device}=="0x7925", ATTR{power/control}="on"
+    # Disable PCIe Runtime PM for Qualcomm FastConnect 7800 (17cb:1107) to eliminate bus wake latency
+    ACTION=="add", SUBSYSTEM=="pci", ATTR{vendor}=="0x17cb", ATTR{device}=="0x1107", ATTR{power/control}="on"
+
+    # Enforce radio power_save=off whenever the wireless netdev initializes
+    ACTION=="add", SUBSYSTEM=="net", KERNEL=="wlan*", RUN+="${pkgs.iw}/bin/iw dev %k set power_save off"
 
     # Low-latency NVMe queue scheduler
     ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/scheduler}="none"
