@@ -96,7 +96,7 @@
       device = {
         # A fresh MAC per scan cycle makes the AP treat us as an unknown station,
         # costing a full association + 4-way handshake on every reconnect.
-        "wifi.scan-rand-mac-address" = "no";
+        "wifi.scan-rand-mac-address" = "yes";
       };
 
       # --- GLOBAL DNS OVERRIDE ---
@@ -271,8 +271,8 @@
     # socket, tapped at the netdev layer before the IP stack's RPF check is ever
     # reached. Lease renewal in BOUND state is plain unicast UDP from an
     # already-routable source, which passes strict RPF normally.
-    "net.ipv4.conf.all.rp_filter" = 2;
-    "net.ipv4.conf.default.rp_filter" = 2;
+    "net.ipv4.conf.all.rp_filter" = 1;
+    "net.ipv4.conf.default.rp_filter" = 1;
 
     # Refuse ICMP echo aimed at a broadcast address, which is what makes a host
     # usable as a smurf amplifier by anyone spoofing a victim's source address.
@@ -330,7 +330,7 @@
     ACTION=="add", SUBSYSTEM=="pci", ATTR{vendor}=="0x17cb", ATTR{device}=="0x1107", ATTR{power/control}="on"
 
     # Enforce radio power_save=off whenever the wireless netdev initializes
-    ACTION=="add", SUBSYSTEM=="net", KERNEL=="wlan*", RUN+="${pkgs.iw}/bin/iw dev %k set power_save off"
+    ACTION=="add", SUBSYSTEM=="net", KERNEL=="wlan", RUN+="${pkgs.iw}/bin/iw dev %k set power_save off"
 
     # Low-latency NVMe queue scheduler
     ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/scheduler}="none"
