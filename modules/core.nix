@@ -86,7 +86,7 @@
     wifi.backend = "wpa_supplicant";
     wifi.powersave = false;
     wifi.macAddress = "permanent";
-    dns = "systemd-resolved";
+    dns = "default";
 
     settings = {
       device = {
