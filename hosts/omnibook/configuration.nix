@@ -129,20 +129,20 @@ in {
     # everything else. If the desktop starts swapping while serving, shrink the
     # model or the server's --ctx-size; shrinking this below the model size just
     # converts the symptom into a Vulkan allocation failure.
-    "ttm.pages_limit=4194304"
+    "ttm.pages_limit=6291456"
 
     # TTM's free-page cache, in pages. Defaults to half of RAM. Matching it to
     # pages_limit stops TTM handing pages back to the kernel and re-zeroing them
     # on the next allocation, which is pure overhead for a workload that claims
     # ~20 GiB once and then holds it. Shrinker-backed, so the kernel can still
     # reclaim under pressure.
-    "ttm.page_pool_size=4194304"
+    "ttm.page_pool_size=6291456"
 
     # amdgpu's own GTT ceiling, in MiB, kept in step with the TTM cap. Belt and
     # braces: TTM is the binding constraint today, but amdgpu's internal default
     # has moved between releases, and pinning both means a kernel bump cannot
     # silently shrink the budget underneath the inference server.
-    "amdgpu.gttsize=15258"
+    "amdgpu.gttsize=24576"
 
     # THE `amdttm.pages_limit` LINE THAT USED TO SIT HERE IS GONE, DELIBERATELY.
     # amdttm is the symbol-renamed TTM that ships with AMD's out-of-tree amdgpu
