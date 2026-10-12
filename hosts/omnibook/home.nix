@@ -844,6 +844,7 @@
     bitwig-studio
     yabridge
     yabridgectl
+    (pkgs.llama-cpp.override { vulkanSupport = true; })
     (writeShellApplication {
       name = "update-proton-cachyos";
       runtimeInputs = [ curl jq nix ];
