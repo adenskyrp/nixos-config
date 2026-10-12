@@ -844,6 +844,7 @@
     bitwig-studio
     yabridge
     yabridgectl
+    aria2
     (pkgs.llama-cpp.override { vulkanSupport = true; })
     (writeShellApplication {
       name = "update-proton-cachyos";
