@@ -117,6 +117,7 @@ in {
   # LOW-LATENCY PROTON & DRIVER ENVIRONMENT
   # ---------------------------------------------------------------------------
   environment.sessionVariables = {
+    AQ_NO_MODIFIERS = "1";
     MESA_VK_WSI_PRESENT_MODE = "immediate";
     RADV_PERFTEST = "nggc";
     PROTON_USE_NTSYNC = "1";
@@ -124,7 +125,6 @@ in {
     PROTON_VKD3D_LOWLATENCY = "1";
     PROTON_DXVK_LOWLATENCY = "1";
     DXVK_CONFIG_FILE = "dxvk.conf";
-    DXVK_ASYNC = "1";
     MESA_SHADER_CACHE_MAX_SIZE = "16G";
     NIXOS_OZONE_WL = "1";
     DISABLE_VK_LAYER_VALVE_steam_overlay_1 = "1";
@@ -202,18 +202,5 @@ in {
     evtest
     evhz # USB polling rate verification
     lsof
-
-    (let
-      gamescope-git = gamescope.overrideAttrs (old: {
-        version = "git";
-        src = fetchFromGitHub {
-          owner = "ValveSoftware";
-          repo = "gamescope";
-	  rev = "refs/heads/master";
-	  hash = "sha256-mekHosNBFk/wMCtzVNbo7I5cC+oL6MGICFIG56jCKbY=";
-          fetchSubmodules = true;
-        };
-      });
-    in gamescope-git)
   ];
 }
