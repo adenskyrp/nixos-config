@@ -180,7 +180,7 @@
         workspace = 5,
       })
       hl.window_rule({
-	match = { class = "steam_app_0" },
+	match = { class = "steam_app_default" },
 	immediate = true,
 	no_anim = true,
 	fullscreen_state = "2 2",
