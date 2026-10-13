@@ -119,6 +119,7 @@ in {
   environment.sessionVariables = {
     AQ_NO_MODIFIERS = "1";
     MESA_VK_WSI_PRESENT_MODE = "immediate";
+    SDL_VIDEO_WAYLAND_ALLOW_TEARING = "1";
     RADV_PERFTEST = "nggc";
     PROTON_USE_NTSYNC = "1";
     PROTON_NO_ESYNC = "1";
