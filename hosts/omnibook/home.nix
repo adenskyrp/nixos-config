@@ -54,6 +54,7 @@ let
     export STEAM_COMPAT_CLIENT_INSTALL_PATH="$HOME/.local/share/Steam"
     export SteamAppId="0"
 
+    export PROTON_USE_WOW64=1
     export PROTONFIXES_DISABLE=1
     export PROTON_NO_XALIA=1
     export PROTON_FSR4_UPGRADE=0
