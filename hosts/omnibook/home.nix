@@ -5,6 +5,8 @@
 }: let
   # Define the launcher script inside your existing let block
   osuStableLauncher = pkgs.writeShellScriptBin "osu-stable" ''
+    export PATH="${pkgs.lib.makeBinPath [ pkgs.python3 pkgs.fd pkgs.fuzzel pkgs.libnotify pkgs.gamemode pkgs.util-linux ]}:$PATH"
+
     COMPAT_DATA="/home/crazycat/Games/Heroic/Prefixes/osu"
 
     if [ -d "$COMPAT_DATA/drive_c" ] && [ ! -e "$COMPAT_DATA/pfx" ]; then
