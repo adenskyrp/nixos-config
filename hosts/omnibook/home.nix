@@ -28,48 +28,50 @@ let
     OSU_DIR="$COMPAT_DATA/pfx/drive_c/users/steamuser/AppData/Local/osu!"
     OSU_EXE="$OSU_DIR/osu!.exe"
 
+    # 1. Run fuzzel FIRST (before unsetting WAYLAND_DISPLAY, since fuzzel needs Wayland!)
+    if [ "''${1:-}" != "--install" ] && [ -f "$OSU_EXE" ]; then
+      if [ -z "''${1:-}" ]; then
+        SERVER=$(printf "Bancho (Official)\nakatsuki.gg\ngatari.pw\nripple.moe\ntitanic.sh" | \
+          ${pkgs.fuzzel}/bin/fuzzel --dmenu --prompt="osu! server > ")
+
+        [ -z "$SERVER" ] && exit 0
+      else
+        SERVER="$1"
+      fi
+
+      ARGS=()
+      if [ "$SERVER" != "Bancho (Official)" ]; then
+        ARGS+=("-devserver" "$SERVER")
+      fi
+    fi
+
+    # 2. Now set Proton / XWayland environment variables
     export STEAM_COMPAT_DATA_PATH="$COMPAT_DATA"
     export STEAM_COMPAT_CLIENT_INSTALL_PATH="$HOME/.local/share/Steam"
     export SteamAppId="0"
 
-    # Disable ProtonFixes unit-test warnings & Xalia gamepad polling
     export PROTONFIXES_DISABLE=1
     export PROTON_NO_XALIA=1
     export WINEDLLOVERRIDES="xalia.exe=d"
 
-    # Low-latency audio
     export PIPEWIRE_LATENCY="64/48000"
     export PULSE_LATENCY_MSEC=2
 
-    # Force X11 / XWayland & disable VSync
     unset WAYLAND_DISPLAY
     export SDL_VIDEODRIVER=x11
     export vblank_mode=0
 
-    # Auto-install if osu!.exe is missing or '--install' is passed
+    # 3. Installer mode: Run as osu!install.exe so it downloads all DLLs and creates osu!.exe
     if [ "''${1:-}" = "--install" ] || [ ! -f "$OSU_EXE" ]; then
       echo "Installing osu!stable into $OSU_DIR..."
       mkdir -p "$OSU_DIR"
-      ${pkgs.curl}/bin/curl -L "https://m1.ppy.sh/r/osu!install.exe" -o "$OSU_DIR/osu!.exe"
+      rm -f "$OSU_EXE"
+      ${pkgs.curl}/bin/curl -L "https://m1.ppy.sh/r/osu!install.exe" -o "$OSU_DIR/osu!install.exe"
       cd "$OSU_DIR" || exit 1
       exec ${osuFhs}/bin/steam-run bash -c '
         "${pkgs.proton-cachyos}/proton" waitforexitandrun "$1"
         WINEPREFIX="$STEAM_COMPAT_DATA_PATH/pfx" "${pkgs.proton-cachyos}/files/bin/wineserver" -w
-      ' -- "$OSU_EXE"
-    fi
-
-    if [ -z "''${1:-}" ]; then
-      SERVER=$(printf "Bancho (Official)\nakatsuki.gg\ngatari.pw\nripple.moe\ntitanic.sh" | \
-        ${pkgs.fuzzel}/bin/fuzzel --dmenu --prompt="osu! server > ")
-
-      [ -z "$SERVER" ] && exit 0
-    else
-      SERVER="$1"
-    fi
-
-    ARGS=()
-    if [ "$SERVER" != "Bancho (Official)" ]; then
-      ARGS+=("-devserver" "$SERVER")
+      ' -- "$OSU_DIR/osu!install.exe"
     fi
 
     cd "$OSU_DIR" || exit 1
