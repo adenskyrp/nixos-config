@@ -56,28 +56,31 @@ let
     export STEAM_COMPAT_CLIENT_INSTALL_PATH="$HOME/.local/share/Steam"
     export SteamAppId="0"
 
-    # Disable ProtonFixes & unnecessary DX12/FSR4 checks for faster startup
+    # Disable Xalia (fixes WM_GETCONTROLTYPE 0 and Xalia.Win32.AccessibleProvider crash)
+    export PROTON_NO_XALIA=1
+    export WINEDLLOVERRIDES="xalia.exe=d"
+
+    # Disable ProtonFixes & FSR4 overhead
     export PROTONFIXES_DISABLE=1
     export PROTON_FSR4_UPGRADE=0
-
-    # Silence Wine console logging (prevents stdout I/O stutters during gameplay)
-    export WINEDEBUG=-all
 
     # Low-latency audio
     export PIPEWIRE_LATENCY="64/48000"
     export PULSE_LATENCY_MSEC=2
-    export STAGING_AUDIO_DURATION=2000
 
-    # Display / Input
     unset WAYLAND_DISPLAY
     export SDL_VIDEODRIVER=x11
     export vblank_mode=0
 
     cd "$OSU_DIR" || exit 1
 
+    # Run proton AND wait for wineserver inside the same steam-run FHS container
+    # so forking/restarting osu!.exe doesn't kill the container prematurely
     exec ${pkgs.util-linux}/bin/taskset -c 0-7 \
-      ${osuFhs}/bin/steam-run \
-      ${pkgs.proton-cachyos}/proton waitforexitandrun "$OSU_EXE" "''${ARGS[@]}"
+      ${osuFhs}/bin/steam-run bash -c '
+        "${pkgs.proton-cachyos}/proton" waitforexitandrun "$@"
+        WINEPREFIX="$STEAM_COMPAT_DATA_PATH/pfx" "${pkgs.proton-cachyos}/files/bin/wineserver" -w
+      ' -- "$OSU_EXE" "''${ARGS[@]}"
   '';
 in
 {
