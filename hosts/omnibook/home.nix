@@ -49,8 +49,19 @@ let
     ARGS=()
     if [ "$SERVER" != "Bancho (Official)" ]; then
       ARGS+=("-devserver" "$SERVER")
+      # Move Bancho's osu!auth.dll aside on private servers so it doesn't trip WoW64 test-signing checks
+      if [ -f "$OSU_DIR/osu!auth.dll" ]; then
+        mv -f "$OSU_DIR/osu!auth.dll" "$OSU_DIR/osu!auth.dll.bancho"
+      fi
+      # Also wipe cached Bancho auth logs
+      rm -f "$OSU_DIR/Logs/"*auth*.log 2>/dev/null || true
+      export WINEDLLOVERRIDES="mscoree=n;xalia.exe=d;osu!auth.dll=d"
+    else
+      if [ -f "$OSU_DIR/osu!auth.dll.bancho" ] && [ ! -f "$OSU_DIR/osu!auth.dll" ]; then
+        mv -f "$OSU_DIR/osu!auth.dll.bancho" "$OSU_DIR/osu!auth.dll"
+      fi
+      export WINEDLLOVERRIDES="mscoree=n;xalia.exe=d"
     fi
-
     # 2. Proton environment
     export STEAM_COMPAT_DATA_PATH="$COMPAT_DATA"
     export STEAM_COMPAT_CLIENT_INSTALL_PATH="$HOME/.local/share/Steam"
