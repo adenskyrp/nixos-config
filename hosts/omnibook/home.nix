@@ -7,6 +7,8 @@
 let
   osuFhs = (pkgs.steam.override {
     extraPkgs = pkgs: with pkgs; [
+      gnutls
+      cacert
       freetype
       fontconfig
       corefonts
