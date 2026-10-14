@@ -103,11 +103,14 @@ let
 
     cd "$OSU_DIR" || exit 1
 
+    echo "Launching with args: $OSU_EXE ''${ARGS[@]}"
+
     exec ${pkgs.util-linux}/bin/taskset -c 0-7 \
-      ${osuFhs}/bin/steam-run bash -c '
-        "${pkgs.proton-cachyos}/proton" waitforexitandrun "$@"
-        WINEPREFIX="$STEAM_COMPAT_DATA_PATH/pfx" "${pkgs.proton-cachyos}/files/bin/wineserver" -w
-	' -- "$OSU_EXE" "''$@"
+     ${pkgs.steam-run}/bin/steam-run bash -c '
+      echo "Inside steam-run, running: $@"
+      "${pkgs.proton-cachyos}/proton" waitforexitandrun "$@"
+      WINEPREFIX="$STEAM_COMPAT_DATA_PATH/pfx" "${pkgs.proton-cachyos}/files/bin/wineserver" -w
+     ' -- "$OSU_EXE" "''${ARGS[@]}"
   '';
 in
 
