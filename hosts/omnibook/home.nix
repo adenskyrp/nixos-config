@@ -2,18 +2,16 @@
   config,
   pkgs,
   ...
-}: let
-  # Define the launcher script inside your existing let block
+}: 
+let
   osuStableLauncher = pkgs.writeShellScriptBin "osu-stable" ''
-    export PATH="${pkgs.lib.makeBinPath [ pkgs.python3 pkgs.fd pkgs.fuzzel pkgs.libnotify pkgs.gamemode pkgs.util-linux pkgs.vulkan-loader pkgs.mesa ]}:$PATH"
-    export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath [ pkgs.vulkan-loader pkgs.mesa ]}:$LD_LIBRARY_PATH"
     COMPAT_DATA="/home/crazycat/Games/Heroic/Prefixes/osu"
 
     if [ -d "$COMPAT_DATA/drive_c" ] && [ ! -e "$COMPAT_DATA/pfx" ]; then
       ln -s . "$COMPAT_DATA/pfx"
     fi
 
-    OSU_EXE=$(${pkgs.fd}/bin/fd -HI --max-results 1 '^osu!\.exe$' "$COMPAT_DATA" "$HOME/Games/Heroic" 2>/dev/null)
+    OSU_EXE=$(fd -HI --max-results 1 '^osu!\.exe$' "$COMPAT_DATA" "$HOME/Games/Heroic" 2>/dev/null)
 
     if [ -z "$OSU_EXE" ]; then
       notify-send -u critical "osu!stable Error" "Could not find osu!.exe in $COMPAT_DATA"
@@ -24,8 +22,8 @@
 
     if [ -z "$1" ]; then
       SERVER=$(printf "Bancho (Official)\nakatsuki.gg\ngatari.pw\nripple.moe\ntitanic.sh" | \
-        ${pkgs.fuzzel}/bin/fuzzel --dmenu --prompt="osu! server > ")
-
+        fuzzel --dmenu --prompt="osu! server > ")
+      
       [ -z "$SERVER" ] && exit 0
     else
       SERVER="$1"
@@ -39,16 +37,22 @@
     export STEAM_COMPAT_DATA_PATH="$COMPAT_DATA"
     export STEAM_COMPAT_CLIENT_INSTALL_PATH="$HOME/.local/share/Steam"
 
-    export PIPEWIRE_LATENCY="128/48000"
+    export PIPEWIRE_LATENCY="64/48000"
     export PULSE_LATENCY_MSEC=2
+
+    unset WAYLAND_DISPLAY
+    export SDL_VIDEODRIVER=x11
+    export vblank_mode=0
 
     cd "$OSU_DIR" || exit 1
 
-    exec ${pkgs.util-linux}/bin/taskset -c 0-7 \
+    # Use steam-run to provide the exact FHS container environment that Proton-CachyOS expects
+      exec taskset -c 0-7 \
       ${pkgs.steam-run}/bin/steam-run \
-      ${pkgs.proton-cachyos}/proton run "$OSU_EXE" "''${ARGS[@]}"
+      ${pkgs.proton-cachyos}/proton run "$OSU_EXE" ''${ARGS[*]:-}
   '';
-in {
+in
+{
   # ---------------------------------------------------------------------------
   # HYPRLAND: NATIVE LUA COMPOSITOR CONFIGURATION
   # ---------------------------------------------------------------------------
@@ -900,6 +904,7 @@ in {
     yabridgectl
     aria2
     osuStableLauncher
+    google-cloud-sdk
     (pkgs.llama-cpp.override {vulkanSupport = true;})
     (writeShellApplication {
       name = "update-proton-cachyos";
