@@ -4,12 +4,30 @@
   ...
 }: 
 let
+  osuFhs = (pkgs.steam.override {
+    extraPkgs = pkgs: with pkgs; [
+      freetype
+      fontconfig
+      corefonts
+    ];
+    extraLibraries = pkgs: with pkgs; [
+      freetype
+      fontconfig
+    ];
+  }).run;
+
   osuStableLauncher = pkgs.writeShellScriptBin "osu-stable" ''
-    COMPAT_DATA="/home/crazycat/Games/Heroic/Prefixes/Title"
+    COMPAT_DATA="$HOME/Games/Heroic/Prefixes/Title"
+
+    # Ensure Proton's 'pfx' subdirectory points to your existing Heroic prefix
+    if [ ! -e "$COMPAT_DATA/pfx" ]; then
+      ln -s . "$COMPAT_DATA/pfx"
+    fi
+
     OSU_EXE="$COMPAT_DATA/drive_c/users/steamuser/AppData/Local/osu!/osu!.exe"
 
-    if [ -z "$OSU_EXE" ]; then
-      echo "osu!stable Error: Could not find osu!.exe in $COMPAT_DATA" >&2
+    if [ ! -f "$OSU_EXE" ]; then
+      echo "osu!stable Error: Could not find osu!.exe at $OSU_EXE" >&2
       exit 1
     fi
 
@@ -17,8 +35,8 @@ let
 
     if [ -z "$1" ]; then
       SERVER=$(printf "Bancho (Official)\nakatsuki.gg\ngatari.pw\nripple.moe\ntitanic.sh" | \
-        fuzzel --dmenu --prompt="osu! server > ")
-      
+        ${pkgs.fuzzel}/bin/fuzzel --dmenu --prompt="osu! server > ")
+
       [ -z "$SERVER" ] && exit 0
     else
       SERVER="$1"
@@ -31,6 +49,7 @@ let
 
     export STEAM_COMPAT_DATA_PATH="$COMPAT_DATA"
     export STEAM_COMPAT_CLIENT_INSTALL_PATH="$HOME/.local/share/Steam"
+    export SteamAppId="0"
 
     export PIPEWIRE_LATENCY="64/48000"
     export PULSE_LATENCY_MSEC=2
@@ -41,10 +60,9 @@ let
 
     cd "$OSU_DIR" || exit 1
 
-    # Use steam-run to provide the exact FHS container environment that Proton-CachyOS expects
-      exec taskset -c 0-7 \
-      ${pkgs.steam-run}/bin/steam-run \
-      ${pkgs.proton-cachyos}/proton run "$OSU_EXE" ''${ARGS[*]:-}
+    exec ${pkgs.util-linux}/bin/taskset -c 0-7 \
+      ${osuFhs}/bin/steam-run \
+      ${pkgs.proton-cachyos}/proton run "$OSU_EXE" "''${ARGS[@]}"
   '';
 in
 {
