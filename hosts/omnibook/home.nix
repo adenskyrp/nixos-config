@@ -91,6 +91,13 @@ let
 
     # Ensure native OpenGL is used instead of ANGLE D3D9 fallback
     sed -i 's/CompatibilityContext = 1/CompatibilityContext = 0/g' "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
+    # Ensure native OpenGL is used instead of ANGLE D3D9 fallback
+    sed -i 's/CompatibilityContext = 1/CompatibilityContext = 0/g' "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
+
+    # Force osu! internal config to exclusive Fullscreen so it doesn't un-fullscreen itself after splash
+    sed -i 's/^Fullscreen = 0/Fullscreen = 1/g' "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
+    sed -i 's/^WidthFullscreen = .*/WidthFullscreen = 1920/g' "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
+    sed -i 's/^HeightFullscreen = .*/HeightFullscreen = 1080/g' "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
 
     # Restore .NET 4.8 mscoree.dll in case a Proton update overwrote it with Wine Mono
     if [ -f "$COMPAT_DATA/dotnet-backup/mscoree32.dll" ]; then
@@ -286,28 +293,30 @@ in
              workspace = 5,
            })
            hl.window_rule({
-      match = { class = "steam_app_default" },
-      immediate = true,
-      no_anim = true,
-      fullscreen_state = "2 2",
-      tile = true,
-      workspace = 5,
+             match = { class = "steam_app_default" },
+             immediate = true,
+             no_anim = true,
+             fullscreen_state = "2 2",
+             tile = true,
+             workspace = 5,
            })
            hl.window_rule({
-      match = { class = "steam_app_0" },
-      immediate = true,
-      no_anim = true,
-      fullscreen_state = "2 2",
-      tile = true,
-      workspace = 5,
+             match = { class = "steam_app_0" },
+             immediate = true,
+             no_anim = true,
+             fullscreen = true,
+             fullscreen_state = "2 2",
+	     suppress_event = "fullscreen maximize",
+             tile = true,
+             workspace = 5,
            })
            hl.window_rule({
-      match = { class = "steam_app_980610" },
-      immediate = true,
-      no_anim = true,
-      fullscreen_state = "2 2",
-      tile = true,
-      workspace = 5,
+             match = { class = "steam_app_980610" },
+             immediate = true,
+             no_anim = true,
+             fullscreen_state = "2 2",
+             tile = true,
+             workspace = 5,
            })
            -- osu! (Wine Staging / Direct Latency Pipeline)
            hl.window_rule({
@@ -343,9 +352,9 @@ in
              workspace = 5,
            })
            hl.window_rule({
-      match = { class = "steam_app_2073850" },
-      immediate = true,
-      no_anim = true,
+             match = { class = "steam_app_2073850" },
+             immediate = true,
+             no_anim = true,
              fullscreen_state = "2 2",
              tile = true,
              workspace = 5,
