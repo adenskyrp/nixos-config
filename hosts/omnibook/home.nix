@@ -107,7 +107,7 @@ let
       ${osuFhs}/bin/steam-run bash -c '
         "${pkgs.proton-cachyos}/proton" waitforexitandrun "$@"
         WINEPREFIX="$STEAM_COMPAT_DATA_PATH/pfx" "${pkgs.proton-cachyos}/files/bin/wineserver" -w
-      ' -- "$OSU_EXE" "''${ARGS[@]}"
+	' -- "$OSU_EXE" "''$@"
   '';
 in
 
