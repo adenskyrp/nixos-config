@@ -19,7 +19,6 @@ let
   osuStableLauncher = pkgs.writeShellScriptBin "osu-stable" ''
     COMPAT_DATA="$HOME/Games/Heroic/Prefixes/Title"
 
-    # Ensure Proton's 'pfx' subdirectory points to your existing Heroic prefix
     if [ ! -e "$COMPAT_DATA/pfx" ]; then
       ln -s . "$COMPAT_DATA/pfx"
     fi
@@ -51,9 +50,19 @@ let
     export STEAM_COMPAT_CLIENT_INSTALL_PATH="$HOME/.local/share/Steam"
     export SteamAppId="0"
 
+    # Disable ProtonFixes & unnecessary DX12/FSR4 checks for faster startup
+    export PROTONFIXES_DISABLE=1
+    export PROTON_FSR4_UPGRADE=0
+
+    # Silence Wine console logging (prevents stdout I/O stutters during gameplay)
+    export WINEDEBUG=-all
+
+    # Low-latency audio
     export PIPEWIRE_LATENCY="64/48000"
     export PULSE_LATENCY_MSEC=2
+    export STAGING_AUDIO_DURATION=2000
 
+    # Display / Input
     unset WAYLAND_DISPLAY
     export SDL_VIDEODRIVER=x11
     export vblank_mode=0
