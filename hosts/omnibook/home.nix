@@ -25,54 +25,57 @@ let
 
   osuStableLauncher = pkgs.writeShellScriptBin "osu-stable" ''
     COMPAT_DATA="$HOME/Games/osu-stable"
-    OSU_DIR="$COMPAT_DATA/pfx/drive_c/users/steamuser/AppData/Local/osu!"
+    PFX="$COMPAT_DATA/pfx"
+    OSU_DIR="$PFX/drive_c/users/steamuser/AppData/Local/osu!"
     OSU_EXE="$OSU_DIR/osu!.exe"
 
-    # 1. Run fuzzel FIRST (before unsetting WAYLAND_DISPLAY, since fuzzel needs Wayland!)
-    if [ "''${1:-}" != "--install" ] && [ -f "$OSU_EXE" ]; then
-      if [ -z "''${1:-}" ]; then
-        SERVER=$(printf "Bancho (Official)\nakatsuki.gg\ngatari.pw\nripple.moe\ntitanic.sh" | \
-          ${pkgs.fuzzel}/bin/fuzzel --dmenu --prompt="osu! server > ")
-
-        [ -z "$SERVER" ] && exit 0
-      else
-        SERVER="$1"
-      fi
-
-      ARGS=()
-      if [ "$SERVER" != "Bancho (Official)" ]; then
-        ARGS+=("-devserver" "$SERVER")
-      fi
+    if [ ! -f "$OSU_EXE" ]; then
+      echo "osu!stable Error: Could not find osu!.exe at $OSU_EXE" >&2
+      exit 1
     fi
 
-    # 2. Now set Proton / XWayland environment variables
+    # 1. Server selection menu (runs before unsetting WAYLAND_DISPLAY)
+    if [ -z "''${1:-}" ]; then
+      SERVER=$(printf "Bancho (Official)\nakatsuki.gg\ngatari.pw\nripple.moe\ntitanic.sh" | \
+        ${pkgs.fuzzel}/bin/fuzzel --dmenu --prompt="osu! server > ")
+
+      [ -z "$SERVER" ] && exit 0
+    else
+      SERVER="$1"
+    fi
+
+    ARGS=()
+    if [ "$SERVER" != "Bancho (Official)" ]; then
+      ARGS+=("-devserver" "$SERVER")
+    fi
+
+    # 2. Proton environment
     export STEAM_COMPAT_DATA_PATH="$COMPAT_DATA"
     export STEAM_COMPAT_CLIENT_INSTALL_PATH="$HOME/.local/share/Steam"
     export SteamAppId="0"
 
-    export PROTON_USE_WOW64=1
     export PROTONFIXES_DISABLE=1
     export PROTON_NO_XALIA=1
+    export PROTON_FSR4_UPGRADE=0
     export WINEDLLOVERRIDES="xalia.exe=d"
+    export WINEDEBUG=-all
 
+    # 3. Low-latency audio & display
     export PIPEWIRE_LATENCY="64/48000"
     export PULSE_LATENCY_MSEC=2
+    export STAGING_AUDIO_DURATION=2000
 
     unset WAYLAND_DISPLAY
     export SDL_VIDEODRIVER=x11
     export vblank_mode=0
 
-    # 3. Installer mode: Run as osu!install.exe so it downloads all DLLs and creates osu!.exe
-    if [ "''${1:-}" = "--install" ] || [ ! -f "$OSU_EXE" ]; then
-      echo "Installing osu!stable into $OSU_DIR..."
-      mkdir -p "$OSU_DIR"
-      rm -f "$OSU_EXE"
-      ${pkgs.curl}/bin/curl -L "https://m1.ppy.sh/r/osu!install.exe" -o "$OSU_DIR/osu!install.exe"
-      cd "$OSU_DIR" || exit 1
-      exec ${osuFhs}/bin/steam-run bash -c '
-        "${pkgs.proton-cachyos}/proton" waitforexitandrun "$1"
-        WINEPREFIX="$STEAM_COMPAT_DATA_PATH/pfx" "${pkgs.proton-cachyos}/files/bin/wineserver" -w
-      ' -- "$OSU_DIR/osu!install.exe"
+    # Ensure native OpenGL is used instead of ANGLE D3D9 fallback
+    sed -i 's/CompatibilityContext = 1/CompatibilityContext = 0/g' "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
+
+    # Restore .NET 4.8 mscoree.dll in case a Proton update overwrote it with Wine Mono
+    if [ -f "$COMPAT_DATA/dotnet-backup/mscoree32.dll" ]; then
+      cp -f "$COMPAT_DATA/dotnet-backup/mscoree64.dll" "$PFX/drive_c/windows/system32/mscoree.dll"
+      cp -f "$COMPAT_DATA/dotnet-backup/mscoree32.dll" "$PFX/drive_c/windows/syswow64/mscoree.dll"
     fi
 
     cd "$OSU_DIR" || exit 1
@@ -84,7 +87,6 @@ let
       ' -- "$OSU_EXE" "''${ARGS[@]}"
   '';
 in
-
 
 {
   # ---------------------------------------------------------------------------
