@@ -9,10 +9,16 @@ let
       freetype
       fontconfig
       corefonts
+      libpulseaudio
+      alsa-lib
+      alsa-plugins
     ];
     extraLibraries = pkgs: with pkgs; [
       freetype
       fontconfig
+      libpulseaudio
+      alsa-lib
+      alsa-plugins
     ];
   }).run;
 
