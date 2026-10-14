@@ -58,13 +58,29 @@ let
     export PROTONFIXES_DISABLE=1
     export PROTON_NO_XALIA=1
     export PROTON_FSR4_UPGRADE=0
-    export WINEDLLOVERRIDES="xalia.exe=d"
+
+    # Ensure Wine version is NOT hidden (hiding it triggers osu!auth test-signing checks)
+    unset WINE_BLOCK_GET_VERSION
+    sed -i '/"HideWineExports"/d' "$PFX/user.reg" "$PFX/system.reg" 2>/dev/null || true
+
+    # Force native .NET 4.8 mscoree.dll so Proton doesn't load builtin Wine Mono
+    export WINEDLLOVERRIDES="mscoree=n;xalia.exe=d"
+
+    # Expose NixOS CA bundle to GnuTLS inside steam-run so WinVerifyTrust succeeds
+    export SSL_CERT_FILE="/etc/ssl/certs/ca-bundle.crt"
+    export NIX_SSL_CERT_FILE="/etc/ssl/certs/ca-bundle.crt"
 
     # 3. Low-latency audio & display
     export PIPEWIRE_LATENCY="128/48000"
 
     # Ensure native OpenGL is used instead of ANGLE D3D9 fallback
     sed -i 's/CompatibilityContext = 1/CompatibilityContext = 0/g' "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
+
+    # Move stuck osu! updates out of _pending so osu!auth.dll is never mismatched
+    if [ -d "$OSU_DIR/_pending" ] && [ -n "$(ls -A "$OSU_DIR/_pending" 2>/dev/null)" ]; then
+      cp -rf "$OSU_DIR/_pending/"* "$OSU_DIR/"
+      rm -rf "$OSU_DIR/_pending"
+    fi
 
     # Restore .NET 4.8 mscoree.dll in case a Proton update overwrote it with Wine Mono
     if [ -f "$COMPAT_DATA/dotnet-backup/mscoree32.dll" ]; then
