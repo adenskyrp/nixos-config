@@ -286,11 +286,17 @@ in {
   ];
 
   # --- ASYMMETRIC CPU ISOLATION (ZEN 5C SYSTEM & AUDIO DAEMONS) ---
-  systemd.slices."system".sliceConfig.AllowedCPUs = "8-19";
-  systemd.user.services.pipewire.serviceConfig.CPUAffinity = "8-19";
-  systemd.user.services.pipewire-pulse.serviceConfig.CPUAffinity = "8-19";
-  systemd.user.services.wireplumber.serviceConfig.CPUAffinity = "8-19";
+  # 1. Default PID 1 and all system services to CCX 1 (Zen 5c: CPUs 8-19)
+  systemd.settings.Manager = {
+    CPUAffinity = "8-19";
+  };
 
+  # 2. Default all user services, Hyprland, shells, and desktop apps to CCX 1 (CPUs 8-19)
+  systemd.user.settings.Manager = {
+    CPUAffinity = "8-19";
+  };
+  # 3. Also keep system.slice hard-capped to CCX 1 so root background daemons never touch CCX 0
+  systemd.slices."system".sliceConfig.AllowedCPUs = "8-19";
   # ---------------------------------------------------------------------------
   # CPUIDLE C-STATE CEILING
   # ---------------------------------------------------------------------------
@@ -374,7 +380,7 @@ in {
     enable = true;
     settings = {
       default_session = {
-        command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --cmd '${pkgs.util-linux}/bin/taskset -c 0-7 start-hyprland'";
+        command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --cmd '${pkgs.util-linux}/bin/taskset -c 8-19 start-hyprland'";
         user = "crazycat";
       };
     };
