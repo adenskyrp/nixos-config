@@ -32,37 +32,43 @@ let
     OSU_EXE="$OSU_DIR/osu!.exe"
 
     if [ ! -f "$OSU_EXE" ]; then
-      echo "osu!stable Error: Could not find osu!.exe at $OSU_EXE" >&2
-      exit 1
+     echo "osu!stable Error: Could not find osu!.exe at $OSU_EXE" >&2
+     exit 1
     fi
 
-    # 1. Server selection menu (runs before unsetting WAYLAND_DISPLAY)
-    if [ -z "''${1:-}" ]; then
-      SERVER=$(printf "Bancho (Official)\nakatsuki.gg\ngatari.pw\nripple.moe\ntitanic.sh" | \
-        ${pkgs.fuzzel}/bin/fuzzel --dmenu --prompt="osu! server > ")
+    # 1. Move stuck osu! updates out of _pending FIRST before touching auth files
+    if [ -d "$OSU_DIR/_pending" ] && [ -n "$(ls -A "$OSU_DIR/_pending" 2>/dev/null)" ]; then
+     cp -rf "$OSU_DIR/_pending/"* "$OSU_DIR/"
+     rm -rf "$OSU_DIR/_pending"
+    fi
 
-      [ -z "$SERVER" ] && exit 0
+    # Restore backup if a previous run moved osu!auth.dll away (missing file causes osu! to self-restart and drop -devserver!)
+    if [ -f "$OSU_DIR/osu!auth.dll.bancho" ] && [ ! -f "$OSU_DIR/osu!auth.dll" ]; then
+     mv -f "$OSU_DIR/osu!auth.dll.bancho" "$OSU_DIR/osu!auth.dll"
+    fi
+
+    # 2. Server selection menu
+    if [ -z "''${1:-}" ]; then
+     SERVER=$(printf "Bancho (Official)\nakatsuki.gg\ngatari.pw\nripple.moe\ntitanic.sh" | \
+      ${pkgs.fuzzel}/bin/fuzzel --dmenu --prompt="osu! server > ")
+
+     [ -z "$SERVER" ] && exit 0
     else
-      SERVER="$1"
+     SERVER="$1"
     fi
 
     ARGS=()
     if [ "$SERVER" != "Bancho (Official)" ]; then
-      ARGS+=("-devserver" "$SERVER")
-      # Move Bancho's osu!auth.dll aside on private servers so it doesn't trip WoW64 test-signing checks
-      if [ -f "$OSU_DIR/osu!auth.dll" ]; then
-        mv -f "$OSU_DIR/osu!auth.dll" "$OSU_DIR/osu!auth.dll.bancho"
-      fi
-      # Also wipe cached Bancho auth logs
-      rm -f "$OSU_DIR/Logs/"*auth*.log 2>/dev/null || true
-      export WINEDLLOVERRIDES="mscoree=n;xalia.exe=d;osu!auth.dll=d"
+     ARGS+=("-devserver" "$SERVER")
+     # Set CredentialEndpoint in user cfg so even an in-game restart stays on the custom server
+     sed -i "s/^CredentialEndpoint.*/CredentialEndpoint = $SERVER/g" "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
+     export WINEDLLOVERRIDES="mscoree=n;xalia.exe=d;osu!auth.dll=d"
     else
-      if [ -f "$OSU_DIR/osu!auth.dll.bancho" ] && [ ! -f "$OSU_DIR/osu!auth.dll" ]; then
-        mv -f "$OSU_DIR/osu!auth.dll.bancho" "$OSU_DIR/osu!auth.dll"
-      fi
-      export WINEDLLOVERRIDES="mscoree=n;xalia.exe=d"
+     sed -i "s/^CredentialEndpoint.*/CredentialEndpoint =/g" "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
+     export WINEDLLOVERRIDES="mscoree=n;xalia.exe=d"
     fi
-    # 2. Proton environment
+
+    # 3. Proton environment
     export STEAM_COMPAT_DATA_PATH="$COMPAT_DATA"
     export STEAM_COMPAT_CLIENT_INSTALL_PATH="$HOME/.local/share/Steam"
     export SteamAppId="0"
@@ -76,38 +82,26 @@ let
     unset WINE_BLOCK_GET_VERSION
     sed -i '/"HideWineExports"/d' "$PFX/user.reg" "$PFX/system.reg" 2>/dev/null || true
 
-    # Force native .NET 4.8 mscoree.dll so Proton doesn't load builtin Wine Mono
-    export WINEDLLOVERRIDES="mscoree=n;xalia.exe=d"
-
     # Expose NixOS CA bundle to GnuTLS inside steam-run so WinVerifyTrust succeeds
     export SSL_CERT_FILE="/etc/ssl/certs/ca-bundle.crt"
     export NIX_SSL_CERT_FILE="/etc/ssl/certs/ca-bundle.crt"
 
-    # 3. Low-latency audio & display
+    # 4. Low-latency audio & display
     export PIPEWIRE_LATENCY="128/48000"
 
     # Ensure native OpenGL is used instead of ANGLE D3D9 fallback
     sed -i 's/CompatibilityContext = 1/CompatibilityContext = 0/g' "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
 
-    # Move stuck osu! updates out of _pending so osu!auth.dll is never mismatched
-    if [ -d "$OSU_DIR/_pending" ] && [ -n "$(ls -A "$OSU_DIR/_pending" 2>/dev/null)" ]; then
-      cp -rf "$OSU_DIR/_pending/"* "$OSU_DIR/"
-      rm -rf "$OSU_DIR/_pending"
-    fi
-
     # Restore .NET 4.8 mscoree.dll in case a Proton update overwrote it with Wine Mono
     if [ -f "$COMPAT_DATA/dotnet-backup/mscoree32.dll" ]; then
-      cp -f "$COMPAT_DATA/dotnet-backup/mscoree64.dll" "$PFX/drive_c/windows/system32/mscoree.dll"
-      cp -f "$COMPAT_DATA/dotnet-backup/mscoree32.dll" "$PFX/drive_c/windows/syswow64/mscoree.dll"
+     cp -f "$COMPAT_DATA/dotnet-backup/mscoree64.dll" "$PFX/drive_c/windows/system32/mscoree.dll"
+     cp -f "$COMPAT_DATA/dotnet-backup/mscoree32.dll" "$PFX/drive_c/windows/syswow64/mscoree.dll"
     fi
 
     cd "$OSU_DIR" || exit 1
 
-    echo "Launching with args: $OSU_EXE ''${ARGS[@]}"
-
     exec ${pkgs.util-linux}/bin/taskset -c 0-7 \
      ${pkgs.steam-run}/bin/steam-run bash -c '
-      echo "Inside steam-run, running: $@"
       "${pkgs.proton-cachyos}/proton" waitforexitandrun "$@"
       WINEPREFIX="$STEAM_COMPAT_DATA_PATH/pfx" "${pkgs.proton-cachyos}/files/bin/wineserver" -w
      ' -- "$OSU_EXE" "''${ARGS[@]}"
