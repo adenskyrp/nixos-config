@@ -14,7 +14,7 @@ let
     OSU_EXE=$(fd -HI --max-results 1 '^osu!\.exe$' "$COMPAT_DATA" "$HOME/Games/Heroic" 2>/dev/null)
 
     if [ -z "$OSU_EXE" ]; then
-      notify-send -u critical "osu!stable Error" "Could not find osu!.exe in $COMPAT_DATA"
+      echo "osu!stable Error: Could not find osu!.exe in $COMPAT_DATA" >&2
       exit 1
     fi
 
