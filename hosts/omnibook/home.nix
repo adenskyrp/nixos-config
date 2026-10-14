@@ -58,16 +58,9 @@ let
     export PROTON_NO_XALIA=1
     export PROTON_FSR4_UPGRADE=0
     export WINEDLLOVERRIDES="xalia.exe=d"
-    export WINEDEBUG=-all
 
     # 3. Low-latency audio & display
-    export PIPEWIRE_LATENCY="64/48000"
-    export PULSE_LATENCY_MSEC=2
-    export STAGING_AUDIO_DURATION=2000
-
-    unset WAYLAND_DISPLAY
-    export SDL_VIDEODRIVER=x11
-    export vblank_mode=0
+    export PIPEWIRE_LATENCY="128/48000"
 
     # Ensure native OpenGL is used instead of ANGLE D3D9 fallback
     sed -i 's/CompatibilityContext = 1/CompatibilityContext = 0/g' "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
