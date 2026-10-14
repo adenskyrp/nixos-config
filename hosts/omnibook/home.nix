@@ -11,7 +11,7 @@
       ln -s . "$COMPAT_DATA/pfx"
     fi
 
-    OSU_EXE=$(fd -HI --max-results 1 '^osu!\.exe$' "$COMPAT_DATA" "$HOME/Games/Heroic" 2>/dev/null)
+    OSU_EXE=$(${pkgs.fd}/bin/fd -HI --max-results 1 '^osu!\.exe$' "$COMPAT_DATA" "$HOME/Games/Heroic" 2>/dev/null)
 
     if [ -z "$OSU_EXE" ]; then
       notify-send -u critical "osu!stable Error" "Could not find osu!.exe in $COMPAT_DATA"
@@ -22,7 +22,7 @@
 
     if [ -z "$1" ]; then
       SERVER=$(printf "Bancho (Official)\nakatsuki.gg\ngatari.pw\nripple.moe\ntitanic.sh" | \
-        fuzzel --dmenu --prompt="osu! server > ")
+        ${pkgs.fuzzel}/bin/fuzzel --dmenu --prompt="osu! server > ")
 
       [ -z "$SERVER" ] && exit 0
     else
@@ -42,7 +42,7 @@
 
     cd "$OSU_DIR" || exit 1
 
-     exec taskset -c 0-7 \
+    exec ${pkgs.util-linux}/bin/taskset -c 0-7 \
       ${pkgs.proton-ge-bin.steamcompattool}/proton run "$OSU_EXE" "''${ARGS[@]}"
   '';
 in {
