@@ -3,6 +3,7 @@
   pkgs,
   ...
 }: 
+
 let
   osuFhs = (pkgs.steam.override {
     extraPkgs = pkgs: with pkgs; [
@@ -23,22 +24,41 @@ let
   }).run;
 
   osuStableLauncher = pkgs.writeShellScriptBin "osu-stable" ''
-    COMPAT_DATA="$HOME/Games/Heroic/Prefixes/Title"
+    COMPAT_DATA="$HOME/Games/osu-stable"
+    OSU_DIR="$COMPAT_DATA/pfx/drive_c/users/steamuser/AppData/Local/osu!"
+    OSU_EXE="$OSU_DIR/osu!.exe"
 
-    if [ ! -e "$COMPAT_DATA/pfx" ]; then
-      ln -s . "$COMPAT_DATA/pfx"
+    export STEAM_COMPAT_DATA_PATH="$COMPAT_DATA"
+    export STEAM_COMPAT_CLIENT_INSTALL_PATH="$HOME/.local/share/Steam"
+    export SteamAppId="0"
+
+    # Disable ProtonFixes unit-test warnings & Xalia gamepad polling
+    export PROTONFIXES_DISABLE=1
+    export PROTON_NO_XALIA=1
+    export WINEDLLOVERRIDES="xalia.exe=d"
+
+    # Low-latency audio
+    export PIPEWIRE_LATENCY="64/48000"
+    export PULSE_LATENCY_MSEC=2
+
+    # Force X11 / XWayland & disable VSync
+    unset WAYLAND_DISPLAY
+    export SDL_VIDEODRIVER=x11
+    export vblank_mode=0
+
+    # Auto-install if osu!.exe is missing or '--install' is passed
+    if [ "''${1:-}" = "--install" ] || [ ! -f "$OSU_EXE" ]; then
+      echo "Installing osu!stable into $OSU_DIR..."
+      mkdir -p "$OSU_DIR"
+      ${pkgs.curl}/bin/curl -L "https://m1.ppy.sh/r/osu!install.exe" -o "$OSU_DIR/osu!.exe"
+      cd "$OSU_DIR" || exit 1
+      exec ${osuFhs}/bin/steam-run bash -c '
+        "${pkgs.proton-cachyos}/proton" waitforexitandrun "$1"
+        WINEPREFIX="$STEAM_COMPAT_DATA_PATH/pfx" "${pkgs.proton-cachyos}/files/bin/wineserver" -w
+      ' -- "$OSU_EXE"
     fi
 
-    OSU_EXE="$COMPAT_DATA/drive_c/users/steamuser/AppData/Local/osu!/osu!.exe"
-
-    if [ ! -f "$OSU_EXE" ]; then
-      echo "osu!stable Error: Could not find osu!.exe at $OSU_EXE" >&2
-      exit 1
-    fi
-
-    OSU_DIR=$(dirname "$OSU_EXE")
-
-    if [ -z "$1" ]; then
+    if [ -z "''${1:-}" ]; then
       SERVER=$(printf "Bancho (Official)\nakatsuki.gg\ngatari.pw\nripple.moe\ntitanic.sh" | \
         ${pkgs.fuzzel}/bin/fuzzel --dmenu --prompt="osu! server > ")
 
@@ -52,30 +72,8 @@ let
       ARGS+=("-devserver" "$SERVER")
     fi
 
-    export STEAM_COMPAT_DATA_PATH="$COMPAT_DATA"
-    export STEAM_COMPAT_CLIENT_INSTALL_PATH="$HOME/.local/share/Steam"
-    export SteamAppId="0"
-
-    # Disable Xalia (fixes WM_GETCONTROLTYPE 0 and Xalia.Win32.AccessibleProvider crash)
-    export PROTON_NO_XALIA=1
-    export WINEDLLOVERRIDES="xalia.exe=d"
-
-    # Disable ProtonFixes & FSR4 overhead
-    export PROTONFIXES_DISABLE=1
-    export PROTON_FSR4_UPGRADE=0
-
-    # Low-latency audio
-    export PIPEWIRE_LATENCY="64/48000"
-    export PULSE_LATENCY_MSEC=2
-
-    unset WAYLAND_DISPLAY
-    export SDL_VIDEODRIVER=x11
-    export vblank_mode=0
-
     cd "$OSU_DIR" || exit 1
 
-    # Run proton AND wait for wineserver inside the same steam-run FHS container
-    # so forking/restarting osu!.exe doesn't kill the container prematurely
     exec ${pkgs.util-linux}/bin/taskset -c 0-7 \
       ${osuFhs}/bin/steam-run bash -c '
         "${pkgs.proton-cachyos}/proton" waitforexitandrun "$@"
@@ -83,6 +81,8 @@ let
       ' -- "$OSU_EXE" "''${ARGS[@]}"
   '';
 in
+
+
 {
   # ---------------------------------------------------------------------------
   # HYPRLAND: NATIVE LUA COMPOSITOR CONFIGURATION
