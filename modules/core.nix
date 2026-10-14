@@ -700,5 +700,6 @@
     fastfetch
     acpi
     ripgrep
+    fd
   ];
 }

@@ -5,13 +5,8 @@
 }: 
 let
   osuStableLauncher = pkgs.writeShellScriptBin "osu-stable" ''
-    COMPAT_DATA="/home/crazycat/Games/Heroic/Prefixes/osu"
-
-    if [ -d "$COMPAT_DATA/drive_c" ] && [ ! -e "$COMPAT_DATA/pfx" ]; then
-      ln -s . "$COMPAT_DATA/pfx"
-    fi
-
-    OSU_EXE=$(fd -HI --max-results 1 '^osu!\.exe$' "$COMPAT_DATA" "$HOME/Games/Heroic" 2>/dev/null)
+    COMPAT_DATA="/home/crazycat/Games/Heroic/Prefixes/Title"
+    OSU_EXE="$COMPAT_DATA/drive_c/users/steamuser/AppData/Local/osu!/osu!.exe"
 
     if [ -z "$OSU_EXE" ]; then
       echo "osu!stable Error: Could not find osu!.exe in $COMPAT_DATA" >&2
