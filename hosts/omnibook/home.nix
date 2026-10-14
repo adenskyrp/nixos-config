@@ -77,7 +77,7 @@ let
 
     exec ${pkgs.util-linux}/bin/taskset -c 0-7 \
       ${osuFhs}/bin/steam-run \
-      ${pkgs.proton-cachyos}/proton run "$OSU_EXE" "''${ARGS[@]}"
+      ${pkgs.proton-cachyos}/proton waitforexitandrun "$OSU_EXE" "''${ARGS[@]}"
   '';
 in
 {
