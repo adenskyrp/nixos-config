@@ -45,7 +45,8 @@
     cd "$OSU_DIR" || exit 1
 
     exec ${pkgs.util-linux}/bin/taskset -c 0-7 \
-      ${pkgs.proton-ge-bin.steamcompattool}/proton run "$OSU_EXE" "''${ARGS[@]}"
+      ${pkgs.steam-run}/bin/steam-run \
+      ${pkgs.proton-cachyos}/proton run "$OSU_EXE" "''${ARGS[@]}"
   '';
 in {
   # ---------------------------------------------------------------------------
