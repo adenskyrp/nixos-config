@@ -1138,6 +1138,7 @@ in
       name = "Grimoire";
       genericName = "Deadlock Mod Manager";
       exec = "${pkgs.grimoire}/bin/grimoire";
+      icon = "grimoire";
       terminal = false;
       categories = ["Game" "Utility"];
     };
