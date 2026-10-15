@@ -198,6 +198,7 @@
     "tcp_bbr"
     "ntsync"
     "uinput"
+    "cake"
     "ath12k_wifi7_pci"
   ];
   boot.kernelParams = [
@@ -209,7 +210,7 @@
     # only reaches wired links (Thunderbolt dock / USB ethernet): mac80211
     # installs "noqueue" on the Wi-Fi netdev and runs its own per-station
     # fq_codel with airtime fairness, so no qdisc can attach there.
-    "net.core.default_qdisc" = "fq";
+    "net.core.default_qdisc" = "cake";
     "net.ipv4.tcp_congestion_control" = "bbr";
 
     # Expand buffer ceilings for high-tick-rate UDP streams
@@ -219,6 +220,10 @@
     "net.core.wmem_default" = 262144;
     "net.ipv4.tcp_low_latency" = 1;
     "net.ipv4.tcp_fastopen" = 3;
+    "net.ipv4.tcp_rmem" = "4096 87380 16777216";
+    "net.ipv4.tcp_wmem" = "4096 65536 16777216";
+    "net.core.netdev_max_backlog" = 10000;
+    "net.ipv4.tcp_window_scaling" = 1;
     # --- ANTI-SPOOFING / ANTI-AMPLIFICATION ---
     # Strict reverse-path filtering, set on BOTH `all` and `default` deliberately:
     # the kernel's effective value per interface is max(all.rp_filter,
