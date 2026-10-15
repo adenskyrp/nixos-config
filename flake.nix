@@ -11,6 +11,8 @@
     # Chaotic Nyx: CachyOS BORE Kernel, git Mesa, and performance overlays
     chaotic.url = "github:chaotic-cx/nyx/nyxpkgs-unstable";
 
+    grimoire.url = "github:Slush97/grimoire";
+
     # Declarative user-space environment management
     home-manager = {
       url = "github:nix-community/home-manager";
@@ -39,9 +41,11 @@
   # FLAKE OUTPUTS (SYSTEM COMPILATION MATRICES)
   # ---------------------------------------------------------------------------
   outputs = {
+    self,
     nixpkgs,
     chaotic,
     home-manager,
+    grimoire,
     nix-flatpak,
     ...
   } @ inputs: {
@@ -53,6 +57,13 @@
           # Expose inputs to all downstream modules via specialArgs
           specialArgs = {inherit inputs;};
           modules = [
+
+	    {
+               nixpkgs.overlays = [
+	         grimoire.overlays.default
+ 	       ];
+	    }
+
             # Chaotic Nyx repository overlay (provides linuxPackages_cachyos and mesa-git)
             chaotic.nixosModules.default
 
