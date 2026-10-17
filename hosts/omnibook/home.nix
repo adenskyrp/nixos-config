@@ -117,9 +117,6 @@ in
 
 {
 
-  nixpkgs.config.permittedInsecurePackages = [
-    "electron-40.10.5"
-  ];
 
   # ---------------------------------------------------------------------------
   # HYPRLAND: NATIVE LUA COMPOSITOR CONFIGURATION
