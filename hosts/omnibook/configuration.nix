@@ -170,6 +170,7 @@ in {
     "split_lock_detect=off"
     "threadirqs"
     "nowatchdog"
+    "nmi_watchdog=0"
     "tsc=reliable"
     "idle=poll"
     "clocksource=tsc"
@@ -287,7 +288,7 @@ in {
     "w /sys/devices/system/cpu/cpu[0-9]/cpufreq/energy_performance_preference - - - - performance"
     "w /sys/devices/system/cpu/cpu1[0-9]/cpufreq/scaling_governor - - - - performance"
     "w /sys/devices/system/cpu/cpu1[0-9]/cpufreq/energy_performance_preference - - - - performance"
-    "w /sys/class/drm/card*/device/power_dpm_force_performance_level - - - - ${gpuDpmLevel}"
+    "w /sys/class/drm/card*/device/power_dpm_force_performance_level - - - - high"
   ];
 
   # --- ASYMMETRIC CPU ISOLATION (ZEN 5C SYSTEM & AUDIO DAEMONS) ---
