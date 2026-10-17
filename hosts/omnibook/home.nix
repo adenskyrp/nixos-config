@@ -971,6 +971,7 @@ in
     yabridgectl
     aria2
     osuStableLauncher
+    vesktop
     google-cloud-sdk
     (pkgs.llama-cpp.override {vulkanSupport = true;})
     (writeShellApplication {
@@ -1010,11 +1011,6 @@ in
 
          echo "Updated $JSON_FILE to $VERSION ($HASH)"
       '';
-    })
-
-    (discord.override {
-      withVencord = true;
-      withOpenASAR = true;
     })
 
     (writeShellScriptBin "screenshot-region" ''
