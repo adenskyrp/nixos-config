@@ -191,7 +191,7 @@ in
              -- scanout drop on those keypresses; that is acceptable and not worth
              -- fixing.
              render = {
-               direct_scanout = 1,
+               direct_scanout = 0,
              },
 
              -- HARDWARE CURSORS ARE KEPT ON, AND THIS CONFLICTS WITH TEARING. Read
@@ -246,7 +246,7 @@ in
                disable_hyprland_logo = true,
                disable_splash_rendering = true,
                force_default_wallpaper = 0,
-        vrr = 0,
+               vrr = 0,
                background_color = 0x000000,
              },
 
