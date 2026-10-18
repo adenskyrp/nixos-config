@@ -124,6 +124,7 @@ in {
     RADV_PERFTEST = "nggc";
     PROTON_USE_NTSYNC = "1";
     PROTON_NO_ESYNC = "1";
+    PROTON_USE_SDL = "1";
     PROTON_VKD3D_LOWLATENCY = "1";
     PROTON_DXVK_LOWLATENCY = "1";
     DXVK_CONFIG_FILE = "dxvk.conf";
