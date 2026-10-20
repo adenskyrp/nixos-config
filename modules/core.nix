@@ -118,7 +118,7 @@
     # ---------------------------------------------------------------------------
     networking.networkmanager = {
       enable = true;
-      wifi.backend = "wpa_supplicant";
+      wifi.backend = "iwd";
       wifi.powersave = false;
       wifi.macAddress = "permanent";
       dns = "default";
