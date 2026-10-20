@@ -112,11 +112,18 @@ in {
     "amdgpu.ppfeaturemask=0xffffffff"
     "pcie_aspm=off"
 
+    # Route all unmanaged/platform IRQs (I2C, ACPI, RTC, speaker amp) and RCU
+    # offload threads to background Zen 5c cores (8-9,14-17), keeping Zen 5
+    # game cores (0-7) and dedicated USB/Wi-Fi 7 IRQ cores (10-13,18-19) clean.
+    "irqaffinity=8-9,14-17"
+    "rcu_nocbs=0-7,10-13,18-19"
+
+    # Memory latency: disable zswap (zram is used) and restrict THP to explicit
+    # madvise() calls so background khugepaged scans never stall LPDDR5X.
+    "zswap.enabled=0"
+    "transparent_hugepage=madvise"
+
     # Interrupt & Clock Optimization
-    # Note: idle=poll and processor.max_cstate=1 are deliberately omitted so
-    # cpu-idle-limit.service (cpupower idle-set -D 350) can allow C2 (18 us)
-    # clock-gating on idle Zen 5c cores while blocking C3 (350 us), preserving
-    # shared APU thermal/wattage boost headroom for Zen 5 + Radeon 880M.
     "split_lock_detect=off"
     "threadirqs"
     "nowatchdog"
@@ -133,7 +140,6 @@ in {
     # --- DISPLAY SCATTER-GATHER: OFF (CANDIDATE FIX FOR MST 600Hz SCANOUT) ---
     "amdgpu.sg_display=0"
   ];
-
   # ---------------------------------------------------------------------------
   # WI-FI RADIO LINK (MediaTek MT7925 / Filogic 360, 2x2 802.11be)
   # ---------------------------------------------------------------------------
@@ -163,7 +169,12 @@ in {
     "w /sys/devices/system/cpu/cpu1[0-9]/cpufreq/scaling_governor - - - - performance"
     "w /sys/devices/system/cpu/cpu1[0-9]/cpufreq/energy_performance_preference - - - - performance"
     "w /sys/class/drm/card*/device/power_dpm_force_performance_level - - - - ${gpuDpmLevel}"
+    # Confine all unbound kernel workqueues (ttm, gfx, events_unbound, writeback)
+    # to CPUs 8-9,14-17 (0x3c300), off both game cores (0-7) and IRQ cores (10-13,18-19).
+    "w /sys/devices/virtual/workqueue/cpumask - - - - 3c300"
     "w /sys/bus/workqueue/devices/writeback/cpumask - - - - 3c300"
+    # Never stall on synchronous THP compaction
+    "w /sys/kernel/mm/transparent_hugepage/khugepaged/defrag - - - - 0"
   ];
   # --- ASYMMETRIC CPU ISOLATION (ZEN 5C SYSTEM & AUDIO DAEMONS: CPUs 8-19) ---
   systemd.settings.Manager = {
