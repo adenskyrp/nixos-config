@@ -130,6 +130,22 @@
       };
     };
 
+    networking.wireless.iwd = {
+      enable = true;
+      settings = {
+        General = {
+          EnableNetworkConfiguration = true;
+        };
+        Network = {
+          EnableIPv6 = true;
+        };
+        Scan = {
+          # Prevents background periodic scans that cause in-game lag spikes
+          DisablePeriodicScan = true;
+        };
+      };
+    };
+
     # --- 802.11v BSS TRANSITION MANAGEMENT (ROAM STEERING) ---
     hardware.wirelessRegulatoryDatabase = true;
     networking.wireless.extraConfig = ''
