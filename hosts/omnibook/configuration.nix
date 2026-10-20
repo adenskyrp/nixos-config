@@ -201,7 +201,7 @@ in {
     enable = true;
     settings = {
       default_session = {
-        command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --cmd 'start-hyprland'";
+        command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --cmd '${pkgs.util-linux}/bin/taskset -c 14-17 start-hyprland'";
         user = "crazycat";
       };
     };
