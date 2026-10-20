@@ -118,6 +118,13 @@
         echo "hardware-irq-pin: kthread pid $pid ($(cat /proc/$pid/comm 2>/dev/null || echo ?)) pinned to cpu ${config.local.hardware.backgroundCores}"
       fi
     done
+
+    for pid in $(${pkgs.procps}/bin/ps -eo pid,comm --no-headers | "$awk_bin" '$2 ~ /^card[0-9]+-crtc/ {print $1}'); do
+      if ${pkgs.util-linux}/bin/taskset -pc 8-9 "$pid" >/dev/null 2>&1; then
+        echo "hardware-irq-pin: DRM worker pid $pid ($(cat /proc/$pid/comm 2>/dev/null || echo ?)) pinned to cpu 8-9"
+      fi
+    done
+
     exit "$fail"
   '';
 
