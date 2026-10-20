@@ -113,10 +113,11 @@
       devicePins
     )}
 
-    for pid in $(${pkgs.procps}/bin/pgrep -f '^(jbd2/|kswapd|kcompactd|khugepaged|ksmd|kauditd|psimon|hwrng|watchdogd|usb-storage|scsi_eh_)'); do
-      ${pkgs.util-linux}/bin/taskset -pc ${config.local.hardware.backgroundCores} "$pid" >/dev/null 2>&1 || true
+    for pid in $(${pkgs.procps}/bin/ps -eo pid,comm --no-headers | "$awk_bin" '$2 ~ /^(jbd2\/|kswapd|kcompactd|khugepaged|ksmd|kauditd|khungtaskd|psimon|hwrng|watchdogd|usb-storage|scsi_eh_|kdevtmpfs)/ {print $1}'); do
+      if ${pkgs.util-linux}/bin/taskset -pc ${config.local.hardware.backgroundCores} "$pid" >/dev/null 2>&1; then
+        echo "hardware-irq-pin: kthread pid $pid ($(cat /proc/$pid/comm 2>/dev/null || echo ?)) pinned to cpu ${config.local.hardware.backgroundCores}"
+      fi
     done
-
     exit "$fail"
   '';
 
