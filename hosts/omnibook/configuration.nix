@@ -35,7 +35,7 @@ in {
   local.hardware = {
     gameCores = "0-7";
     gameCoresNoSmt = "0,2,4,6";
-    backgroundCores = "14-17";
+    backgroundCores = "8-9,14-17";
   };
   networking.hostName = "omnibook";
 
@@ -113,7 +113,6 @@ in {
     # offload threads to background Zen 5c cores (8-9,14-17), keeping Zen 5
     # game cores (0-7) and dedicated USB/Wi-Fi 7 IRQ cores (10-13,18-19) clean.
     "irqaffinity=14-17"
-    "rcu_nocbs=0-13,18-19"
 
     # Memory latency: disable zswap (zram is used) and restrict THP to explicit
     # madvise() calls so background khugepaged scans never stall LPDDR5X.
