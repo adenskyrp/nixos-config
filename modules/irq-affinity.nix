@@ -9,12 +9,12 @@
   # ---------------------------------------------------------------------------
   devicePins = {
     # xHCI / USB Controllers
-    "0000:c5:00.0" = 8;  # usb3/4 -- GameSir G7 Pro, Synaptics fprint, MTK BT
+    "0000:c5:00.0" = 8; # usb3/4 -- GameSir G7 Pro, Synaptics fprint, MTK BT
     "0000:c5:00.4" = 10; # usb7/8 -- Anker dock: mouse dongle, ATK kbd, Yeti, RTL8153
-    
+
     # Network
     "0000:c2:00.0" = 12; # MediaTek MT7925 802.11be Wi-Fi
-    
+
     # Audio Subsystem
     "0000:c3:00.6" = 14; # AMD Ryzen HD Audio Controller
     "0000:c3:00.1" = 16; # Radeon HD Audio Controller (HDMI/DP)

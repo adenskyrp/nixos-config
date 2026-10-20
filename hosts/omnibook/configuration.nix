@@ -6,13 +6,10 @@
   ...
 }: let
   # GPU DPM level, applied at boot and re-applied on resume.
-  # "auto" lets the SMU shift the shared 65-75W envelope toward the CPU when the
-  # iGPU is not the bottleneck (Rocket League at 1080p is CPU/netcode-bound).
-  # "high" pins maximum GPU clocks instead, at the cost of CPU thermal headroom.
   gpuDpmLevel = "high";
 
+  ryzenadjCmd = "${pkgs.ryzenadj}/bin/ryzenadj -a 45000 -b 57000 -c 45000 -f 100 --vrm-current=70000 --vrmmax-current=70000 --stapm-time=0xffffffff --slow-time=0xffffffff --max-performance";
 in {
-
   nixpkgs.config.permittedInsecurePackages = [
     "electron-40.10.5"
   ];
@@ -28,36 +25,38 @@ in {
     ../../modules/sober.nix
     ../../modules/diagnostics.nix
     ../../modules/llm.nix
-
-    # Pixel-as-webcam: v4l2loopback sink fed by scrcpy over adb. Host-independent
-    # behaviour, so it is a shared module rather than inline here -- but note it
-    # reads boot.kernelPackages (set below) to build the out-of-tree loopback
-    # module against this machine's CachyOS kernel rather than nixpkgs' default.
     ../../modules/webcam.nix
-
-    # xHCI interrupt affinity pin (Zen5 cores). Imported here rather than from
-    # flake.nix because it names this machine's PCI addresses -- it is host
-    # hardware, not host-independent behaviour. Deleting this one line is the
-    # full revert: it also un-masks core.nix's xhci-irq-unpin baseline.
     ../../modules/irq-affinity.nix
   ];
 
-  boot.blacklistedKernelModules = [ "amd_pmf" "amdxdna" ];
-
-  systemd.services.ryzenadj-tdp-unlock = {
-    description = "Unlock APU Power Limits";
-    serviceConfig = {
-      Type = "oneshot";
-	ExecStart = "${pkgs.ryzenadj}/bin/ryzenadj -a 45000 -b 57000 -c 45000 -f 100 --vrm-current=70000 --vrmmax-current=70000 --stapm-time=0xffffffff --slow-time=0xffffffff --max-performance";
-    };
+  # ---------------------------------------------------------------------------
+  # HOST CPU TOPOLOGY (Ryzen AI 9 365: 4x Zen 5 [0-7] + 6x Zen 5c [8-19])
+  # ---------------------------------------------------------------------------
+  local.hardware = {
+    gameCores = "0-7";
+    gameCoresNoSmt = "0,2,4,6";
+    backgroundCores = "8-19";
   };
 
-  systemd.timers.ryzenadj-tdp-unlock = {
-    description = "Constantly re-apply Ryzen TDP limits";
-    wantedBy = [ "timers.target" ];
-    timerConfig = {
-      OnBootSec = "10s";
-      OnUnitActiveSec = "10s"; # Fires every 10 seconds permanently
+  networking.hostName = "omnibook";
+
+  # ---------------------------------------------------------------------------
+  # APU POWER ENVELOPE (ONESHOOT AT BOOT & RESUME -- NO 10s SMU POLLING)
+  # ---------------------------------------------------------------------------
+  # Calling ryzenadj every 10s via a timer contended with the SMU mailbox
+  # mid-game. Because --stapm-time=0xffffffff and --slow-time=0xffffffff pin
+  # the time constants permanently, we apply once at boot and re-apply on
+  # s2idle resume via powerManagement.resumeCommands.
+  boot.blacklistedKernelModules = ["amd_pmf" "amdxdna"];
+
+  systemd.services.ryzenadj-tdp-unlock = {
+    description = "Unlock APU Power Limits (boot & resume)";
+    wantedBy = ["multi-user.target"];
+    after = ["systemd-modules-load.service"];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = ryzenadjCmd;
     };
   };
 
@@ -66,279 +65,130 @@ in {
     ethtool
   ];
 
+  # Thunderbolt 4 / USB4 daemon for the Anker dock
+  services.hardware.bolt.enable = true;
+
   systemd.services.optimize-nic = {
     description = "Tune USB Ethernet adapter for competitive gaming latency";
-    after = [ "network.target" ];
-    wantedBy = [ "multi-user.target" ];
+    after = ["network.target"];
+    wantedBy = ["multi-user.target"];
     serviceConfig = {
       Type = "oneshot";
       ExecStart = pkgs.writeShellScript "tune-nic" ''
         IFACE="eth0"
-      
-        # Driver-safe 15us coalescing to prevent USB FIFO overflows
-        ${pkgs.ethtool}/bin/ethtool -C $IFACE rx-usecs 15000 || true
-      
-        # Disable Energy Efficient Ethernet (EEE)
-        ${pkgs.ethtool}/bin/ethtool --set-eee $IFACE eee off || true
-      
-        # Disable packet aggregation (GRO) for instant UDP frame dispatch
-        ${pkgs.ethtool}/bin/ethtool -K $IFACE gro off || true
-      
-        # Disable USB 3 Link Power Management on the parent device
-        USB_DEV=$(readlink -f /sys/class/net/$IFACE/device)
-        echo 0 > "$USB_DEV/power/usb3_lpm_u1_permit" 2>/dev/null || true
-        echo 0 > "$USB_DEV/power/usb3_lpm_u2_permit" 2>/dev/null || true
+        if [ -d "/sys/class/net/$IFACE" ]; then
+          ${pkgs.ethtool}/bin/ethtool -C $IFACE rx-usecs 15000 || true
+          ${pkgs.ethtool}/bin/ethtool --set-eee $IFACE eee off || true
+          ${pkgs.ethtool}/bin/ethtool -K $IFACE gro off || true
+          USB_DEV=$(readlink -f /sys/class/net/$IFACE/device)
+          echo 0 > "$USB_DEV/power/usb3_lpm_u1_permit" 2>/dev/null || true
+          echo 0 > "$USB_DEV/power/usb3_lpm_u2_permit" 2>/dev/null || true
+        fi
       '';
     };
   };
 
-  # Synchronize hostname with flake output schema
-  networking.hostName = "omnibook";
-
   # ---------------------------------------------------------------------------
-  # BOOTLOADER & CACHYOS BORE KERNEL
+  # BOOTLOADER & CACHYOS BORE KERNEL (BINARY CACHE HIT)
   # ---------------------------------------------------------------------------
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
-  # CachyOS kernel with BORE (Burst-Oriented Response Enhancer) scheduler
-  boot.kernelPackages = pkgs.linuxPackages_cachyos.cachyOverride {
-    cachyVars = pkgs.linuxPackages_cachyos.kernel.cachyConfig.cachyVars // {
-      # This forces GCC to strip generic compatibility and compile specifically 
-      # for the Zen 4/Zen 5 AVX-512 execution pipeline.
-      "_processor_opt" = "ZEN4"; 
-      
-      # Optional: Explicitly ensure the BORE scheduler is the chosen default 
-      # (though CachyOS defaults to this anyway).
-      "_cpusched" = "bore";
-    };
-  };
-  # Low-latency kernel parameters mapped to Zen 5 & RDNA 3.5 APU silicon
+  # Uses pre-built Chaotic-Nyx BORE kernel directly from the binary cache
+  # instead of .cachyOverride (which invalidated the binary cache and forced a
+  # full local kernel compile on every flake update).
+  boot.kernelPackages = pkgs.linuxPackages_cachyos;
+
   boot.kernelParams = [
-    # --- APU DYNAMIC VRAM (GTT) SIZING ---
-    # There is no meaningful VRAM carveout on this machine: the BIOS hands
-    # amdgpu a 512 MB UMA aperture ("VRAM: 512M ... 512M used" in dmesg) and
-    # every other buffer the iGPU touches is GTT -- ordinary LPDDR5X mapped
-    # through the GART. GTT *is* the VRAM budget here, so it is what caps how
-    # large a model llama.cpp's Vulkan backend can hold resident.
-    #
-    # amdgpu sizes GTT as min(its own default, ttm_tt_pages_limit()), which is
-    # why the previous 4194304 produced exactly "16384M of GTT memory ready":
-    # 4194304 * 4 KiB = 16 GiB, the TTM cap, not an amdgpu decision. 6291456
-    # pages = 24 GiB, sized to hold a ~20 GiB Q4_K_M MoE plus its KV cache and
-    # compute buffers.
-    #
-    # 24 of 30.65 GiB usable is aggressive, and it is a ceiling rather than a
-    # reservation -- nothing leaves the system until the GPU actually allocates
-    # it. But a fully resident 20 GiB model does leave only ~7 GiB for
-    # everything else. If the desktop starts swapping while serving, shrink the
-    # model or the server's --ctx-size; shrinking this below the model size just
-    # converts the symptom into a Vulkan allocation failure.
+    # --- APU DYNAMIC VRAM (GTT) SIZING (24 GiB ceiling for 32 GB RAM) ---
     "ttm.pages_limit=6291456"
-
-    # TTM's free-page cache, in pages. Defaults to half of RAM. Matching it to
-    # pages_limit stops TTM handing pages back to the kernel and re-zeroing them
-    # on the next allocation, which is pure overhead for a workload that claims
-    # ~20 GiB once and then holds it. Shrinker-backed, so the kernel can still
-    # reclaim under pressure.
     "ttm.page_pool_size=6291456"
-
-    # amdgpu's own GTT ceiling, in MiB, kept in step with the TTM cap. Belt and
-    # braces: TTM is the binding constraint today, but amdgpu's internal default
-    # has moved between releases, and pinning both means a kernel bump cannot
-    # silently shrink the budget underneath the inference server.
     "amdgpu.gttsize=24576"
-
-    # THE `amdttm.pages_limit` LINE THAT USED TO SIT HERE IS GONE, DELIBERATELY.
-    # amdttm is the symbol-renamed TTM that ships with AMD's out-of-tree amdgpu
-    # (the DKMS/ROCm packaging). This kernel uses the in-tree driver: `lsmod`
-    # shows a plain `ttm` bound to amdgpu, and /sys/module/amdttm does not
-    # exist. The parameter was parsed and discarded on every boot. Restore it
-    # only if boot.kernelPackages ever moves to a kernel that builds amdttm.
 
     # Driver Performance: Active autonomous CPPC power scaling
     "amd_pstate=active"
     "amdgpu.ppfeaturemask=0xffffffff"
     "pcie_aspm=off"
-    # Interrupt & Clock Optimization: Eliminate scheduler jitter and polling latency
-    # split_lock_mitigate is Intel-only and was being rejected outright ("Unknown
-    # kernel command line parameters", visible in dmesg on every boot) -- it is
-    # dropped. split_lock_detect is kept: it parses on x86 generally and on Zen 5
-    # gates the bus-lock detector this CPU does advertise (bus_lock_detect in
-    # /proc/cpuinfo flags), where a trap on a misaligned locked access would cost
-    # a hard #DB round trip mid-frame.
+
+    # Interrupt & Clock Optimization
+    # Note: idle=poll and processor.max_cstate=1 are deliberately omitted so
+    # cpu-idle-limit.service (cpupower idle-set -D 350) can allow C2 (18 us)
+    # clock-gating on idle Zen 5c cores while blocking C3 (350 us), preserving
+    # shared APU thermal/wattage boost headroom for Zen 5 + Radeon 880M.
     "split_lock_detect=off"
     "threadirqs"
     "nowatchdog"
     "nmi_watchdog=0"
     "tsc=reliable"
-    "idle=poll"
     "clocksource=tsc"
     "usbcore.autosuspend=-1"
     "iomem=relaxed"
     "reboot=pci"
-    "processor.max_cstate=1"
-    "intel_idle.max_cstate=1"
-    # --- SPECULATIVE EXECUTION MITIGATIONS: OFF ---
-    # THIS IS A SECURITY TRADE, MADE KNOWINGLY. Stated plainly so a future
-    # reader sees a decision and not an oversight:
-    #
-    # `mitigations=off` disables the Spectre/Meltdown-class mitigations
-    # wholesale -- IBPB/IBRS/STIBP, retpolines, the various store-bypass and
-    # MDS/TAA buffer clears, and whatever else the umbrella covers on a given
-    # kernel. This machine runs Firefox, Discord and tor-browser. Turning these
-    # off re-opens speculative side channels to ANY local process, and the
-    # realistic attacker here is not a local login, it is JavaScript in a tab.
-    #
-    # It is also a blunt switch by construction: it covers vulnerabilities this
-    # CPU may not even have, and it will silently cover future ones the same
-    # way, because it is defined as "off by default for everything" rather than
-    # as a list. The granular form (`spectre_v2=off retbleed=off
-    # spec_store_bypass_disable=off` and so on) exists if that is ever wanted;
-    # deliberately not doing that now.
-    #
-    # Revert is deleting this one line and rebooting. Audit the current state
-    # with:  grep . /sys/devices/system/cpu/vulnerabilities/*
-    #
-    # HYPOTHESIS, NOT MEASURED HERE: 2-8% on CPU-bound workloads on Zen 5.
-    # Rocket League is single-thread/netcode bound, which is where mitigation
-    # overhead concentrates (syscall and context-switch paths), so this is
-    # expected to land on the critical path rather than on throughput. Nothing
-    # on this machine has been A/B'd yet -- that is what Change 1's MangoHud
-    # frametime capture is for.
+
+    # --- SPECULATIVE EXECUTION MITIGATIONS: OFF (KNOWN SECURITY TRADE-OFF) ---
     "mitigations=off"
 
-    # --- DISPLAY SCATTER-GATHER: OFF (UNVERIFIED WORKAROUND) ---
-    # HYPOTHESIS ONLY. This is a candidate for the OPEN, UNEXPLAINED frame-drop
-    # investigation and has NOT been shown to fix anything on this machine. Do
-    # not let a later reader mistake it for a diagnosed fix.
-    #
-    # sg_display=0 forces the display engine's framebuffer into a physically
-    # contiguous allocation instead of letting it scatter-gather across system
-    # pages. Default here is -1 (auto), confirmed from
-    # /sys/module/amdgpu/parameters/sg_display before the change.
-    #
-    # The reason it is worth trying on THIS machine specifically: scatter-gather
-    # display makes the scanout engine's fetch latency depend on page-table
-    # walks through GTT, and this panel leaves no slack to absorb a late fetch.
-    # The link is already at its ceiling -- 4 lanes @ HBR3, i.e.
-    # `link_settings: Current: 4 0x1e 0`, ~25.92 Gbps effective against roughly
-    # 32 Gbps for 1920x1080 @ 599.94 Hz 24bpp -- so the stream is DSC-compressed
-    # and arrives over an MST branch in a USB-C dock. An underflow there is a
-    # display-engine event, not a rendering one, which is consistent with a
-    # symptom that looks like the picture dropping rather than the game hitching.
-    #
-    # Note this interacts with GTT sizing: a contiguous display buffer is
-    # allocated from a memory pool this config now also asks to hold ~20 GiB of
-    # LLM weights. If the display comes up wrong or the allocation fails, that
-    # interaction is the first thing to suspect.
-    #
-    # Revert is deleting this one line and rebooting.
+    # --- DISPLAY SCATTER-GATHER: OFF (CANDIDATE FIX FOR MST 600Hz SCANOUT) ---
+    "amdgpu.sg_display=0"
   ];
+
   boot.extraModulePackages = with config.boot.kernelPackages; [
     acpi_call
   ];
-  boot.kernelModules = [ "acpi_call" ];
+  boot.kernelModules = ["acpi_call"];
+
   # ---------------------------------------------------------------------------
   # WI-FI RADIO LINK (MediaTek MT7925 / Filogic 360, 2x2 802.11be)
   # ---------------------------------------------------------------------------
-  # PCIe ASPM lets the radio drop the link into L1/L1.2 between packets. The
-  # mt76 driver has to re-arm its DMA rings on every exit, so on an otherwise
-  # idle link — precisely the traffic shape of a game's 60 Hz UDP tick — the
-  # first packet after each idle gap eats the wake-up penalty and shows up as a
-  # sporadic multi-millisecond spike. This part is also the one the mt7921/7925
-  # family's ASPM firmware hangs are attributed to. Pin the link awake; the
-  # sub-watt cost is noise against the SMU envelope set in the `let` above.
-  #
-  # CORRECTION (2026-09-12): this paragraph used to end "...and a performance
-  # governor that already forbids deep C-states". That was simply wrong, and it
-  # is the kind of wrong that hides a real cost -- cpufreq governors select
-  # P-states (voltage/frequency); C-states belong to cpuidle, an independent
-  # subsystem the governor does not touch. With `performance` active this
-  # machine was still entering C3 tens of millions of times per boot. That is
-  # now capped explicitly; see CPUIDLE C-STATE CEILING below.
-  #
-  # CLC (Country Location Control) is MediaTek's own regulatory gate, layered on
-  # top of cfg80211's. It is evaluated when the driver registers the wiphy —
-  # which happens while cfg80211 is still on the "00" world domain — and the
-  # result is that all 60 channels of band 4 come up permanently `(disabled)`,
-  # even after the domain is later corrected to US. This card is 802.11be 2x2 and
-  # the AP here beacons a 6 GHz BSS (operating class 134, channel 101), so the
-  # band is worth having: it is uncontended and has no 2.4/5 GHz legacy traffic
-  # to share airtime with. cfg80211's US rules still bound transmit power.
   boot.extraModprobeConfig = ''
     options mt7925e disable_aspm=1
     options mt7925_common disable_clc=1
   '';
 
   # ---------------------------------------------------------------------------
-  # CPU & GPU POWER STATE GOVERNOR
+  # POWER MANAGEMENT & S2IDLE RESUME HOOKS
   # ---------------------------------------------------------------------------
+  # MUST be true so NixOS generates post-resume.service and executes
+  # powerManagement.resumeCommands (for hardware-irq-pin and ryzenadj).
   powerManagement = {
-    enable = false;
+    enable = true;
+    resumeCommands = ''
+      ${ryzenadjCmd} || true
+      ${config.boot.kernelPackages.cpupower}/bin/cpupower idle-set -D 350 || true
+    '';
   };
 
   # ---------------------------------------------------------------------------
   # DECLARATIVE SYSFS REGISTER INJECTION (tmpfiles.rules)
   # ---------------------------------------------------------------------------
-  # Writes register values to sysfs during early boot before services launch.
-  # Replaces multiple conflicting bash services.
   systemd.tmpfiles.rules = [
+    "w /sys/firmware/acpi/platform_profile - - - - performance"
     "w /sys/devices/system/cpu/cpu[0-9]/cpufreq/scaling_governor - - - - performance"
     "w /sys/devices/system/cpu/cpu[0-9]/cpufreq/energy_performance_preference - - - - performance"
     "w /sys/devices/system/cpu/cpu1[0-9]/cpufreq/scaling_governor - - - - performance"
     "w /sys/devices/system/cpu/cpu1[0-9]/cpufreq/energy_performance_preference - - - - performance"
-    "w /sys/class/drm/card*/device/power_dpm_force_performance_level - - - - high"
+    "w /sys/class/drm/card*/device/power_dpm_force_performance_level - - - - ${gpuDpmLevel}"
   ];
 
-  # --- ASYMMETRIC CPU ISOLATION (ZEN 5C SYSTEM & AUDIO DAEMONS) ---
-  # 1. Default PID 1 and all system services to CCX 1 (Zen 5c: CPUs 8-19)
+  # --- ASYMMETRIC CPU ISOLATION (ZEN 5C SYSTEM & AUDIO DAEMONS: CPUs 8-19) ---
   systemd.settings.Manager = {
-    CPUAffinity = "8-19";
+    CPUAffinity = config.local.hardware.backgroundCores;
   };
-
-  # 2. Default all user services, Hyprland, shells, and desktop apps to CCX 1 (CPUs 8-19)
   systemd.user.settings.Manager = {
-    CPUAffinity = "8-19";
+    CPUAffinity = config.local.hardware.backgroundCores;
   };
-  # 3. Also keep system.slice hard-capped to CCX 1 so root background daemons never touch CCX 0
-  systemd.slices."system".sliceConfig.AllowedCPUs = "8-19";
+  systemd.slices."system".sliceConfig.AllowedCPUs = config.local.hardware.backgroundCores;
+
   # ---------------------------------------------------------------------------
-  # CPUIDLE C-STATE CEILING
+  # CPUIDLE C-STATE CEILING (ALLOW C2 @ 18us, DISABLE C3 @ 350us)
   # ---------------------------------------------------------------------------
-  # cpufreq and cpuidle are independent. `cpuFreqGovernor = "performance"` above
-  # pins P-states and has no bearing whatsoever on C-states, which is why this
-  # needs its own mechanism. Measured with the performance governor active:
-  #
-  #   state2  C2  latency  18 us   usage 106,107,508
-  #   state3  C3  latency 350 us   usage  34,036,190
-  #
-  # C3 is being entered tens of millions of times per boot, and its 350 us exit
-  # latency is 21% of the 1.667 ms frame budget at 599.94 Hz. A wake-up that
-  # lands on the wrong side of a frame boundary is a dropped frame.
-  #
-  # -D 350 disables every state whose exit latency is >= 350 us, which on this
-  # CPU is C3 and only C3 -- C2 at 18 us survives, so cores still clock-gate
-  # between frames and this is not a "disable idle entirely" hammer. The
-  # threshold is chosen to sit under the frame budget and nothing else: re-derive
-  # it if the refresh rate changes, rather than treating 350 as magic.
-  #
-  # THIS IS A MICRO-STUTTER FIX AND NOTHING MORE. 350 us cannot explain the
-  # multi-second black-and-recover symptom in the open frame-drop investigation;
-  # that is a different bug and this change must not be credited with it.
   systemd.services.cpu-idle-limit = {
     description = "Cap cpuidle at C2 (C3 exit latency 350us vs 1.667ms frame)";
     wantedBy = ["multi-user.target"];
     after = ["systemd-modules-load.service"];
-
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
-
-      # cpupower MUST come from boot.kernelPackages. Verified against this
-      # flake.lock: `pkgs.cpupower` does not exist at all (nix suggests
-      # "upower"), and `pkgs.linuxPackages.cpupower` resolves to a 6.18.51 build
-      # -- the wrong kernel for a machine running CachyOS 7.2.4.
       ExecStart = "${config.boot.kernelPackages.cpupower}/bin/cpupower idle-set -D 350";
     };
   };
@@ -350,51 +200,27 @@ in {
   hardware.graphics = {
     enable = true;
     enable32Bit = true;
-    extraPackages = with pkgs; [
-    ];
-    extraPackages32 = with pkgs; [
-    ];
   };
 
   # ---------------------------------------------------------------------------
-  # PERIPHERALS & LAPTOP HARDWARE GUARDS
+  # PERIPHERALS & GREETD / TUIGREET COMPOSITOR LAUNCHER
   # ---------------------------------------------------------------------------
   services.udev.packages = [pkgs.swayosd];
 
-  # FINGERPRINT READER (fprintd) IS DELIBERATELY ABSENT -- removed 2026-08-30.
-  #
-  # It used to be enabled here with an ExecStartPre guard that refused to start
-  # the daemon while the lid was shut or eDP-1 was disabled. That is the normal
-  # state on this machine -- it runs docked, driving DP-1 with the internal panel
-  # off -- so the guard fired on every boot and the unit sat permanently
-  # `failed`. Fingerprint auth was already dead in practice, not just unused.
-  #
-  # Nothing has to be deleted on the PAM side to finish unwinding this. nixpkgs
-  # declares (nixos/modules/security/pam.nix)
-  #     security.pam.services.<name>.fprintAuth.default = services.fprintd.enable;
-  # so dropping the line above retracts `auth sufficient pam_fprintd.so` from
-  # every generated stack on its own. `sufficient` is the load-bearing word: the
-  # fprintd entry could only ever ADD a way to authenticate, never gate one, so
-  # pam_unix.so was already the fallback everywhere and is now the sole auth
-  # module ahead of pam_deny.so. Password auth for login/greetd/sudo/su/polkit
-  # is unaffected. Do not re-add without also re-checking those five stacks.
-
-  # ---------------------------------------------------------------------------
-  # GREETD / TUIGREET COMPOSITOR LAUNCHER
-  # ---------------------------------------------------------------------------
   services.greetd = {
     enable = true;
     settings = {
       default_session = {
-        command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --cmd '${pkgs.util-linux}/bin/taskset -c 8-19 start-hyprland'";
+        command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --cmd '${pkgs.util-linux}/bin/taskset -c ${config.local.hardware.backgroundCores} start-hyprland'";
         user = "crazycat";
       };
     };
   };
   systemd.services.greetd = {
-    wants = lib.mkForce [ ];
-    after = lib.mkForce [ "systemd-user-sessions.service" ];
+    wants = lib.mkForce [];
+    after = lib.mkForce ["systemd-user-sessions.service"];
   };
+
   hardware.bluetooth = {
     enable = true;
     powerOnBoot = false;
@@ -403,33 +229,16 @@ in {
       FastConnectable = true;
     };
   };
+
   environment.etc."ssl/certs/ca-certificates.crt".source = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
   services.avahi.enable = true;
   services.gnome.gnome-keyring.enable = true;
   security.pam.services.login.enableGnomeKeyring = true;
-  # If using a display manager (e.g., greetd, sddm, gdm):
   security.pam.services.greetd.enableGnomeKeyring = true;
+
   # ---------------------------------------------------------------------------
-  # STUTTER INVESTIGATION HARNESS (TEMPORARY, OPENED 2026-08-27)
+  # STUTTER INVESTIGATION HARNESS
   # ---------------------------------------------------------------------------
-  # Installs stutter-trace / psi-watch / perf for the intermittent-frame-hitch
-  # measurement. Purely additive -- no scheduling, power or I/O behaviour
-  # changes -- so it is safe to leave on across the investigation. Turn it off
-  # once the cause is bucketed rather than letting the tooling become permanent
-  # system state.
-  #
-  # REOPENED 2026-09-12. The seven-commit tuning series went live in a single
-  # switch (generation 242) instead of the planned batch-at-a-time, and the
-  # flake.lock bump rode along with it, so no frametime delta can be attributed
-  # to an individual commit any more. That makes these samplers more
-  # load-bearing, not less: the frame-drop bug is now the only thing left to
-  # measure directly, and amdgpu.sg_display=0 -- its candidate fix -- is already
-  # running, so this harness is how we learn whether it did anything.
-  #
-  # unsafeTracing is left off deliberately: it drops perf_event_paranoid to -1
-  # and kptr_restrict to 0, which weakens KASLR and opens the PMU to every local
-  # process. Switch it on only for the duration of a perf session that actually
-  # needs kernel symbols, then switch it back.
   local.diagnostics = {
     enable = false;
     unsafeTracing = false;

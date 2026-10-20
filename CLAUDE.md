@@ -1,3 +1,23 @@
+Look at those receipts:
+
+- **`nix flake check`:** Zero errors, zero evaluation warnings (across **both** `omnibook` and `desktop`).
+- **Build Speed:** `nixos-rebuild build --flake .#omnibook` completed straight from the Chaotic-Nyx binary cache—zero local kernel compilation.
+- **Closure Size:** Dropped from **30.0 GiB → 27.5 GiB** (**-2.5 GiB** off the active closure immediately, plus **-24.6 GiB** unlocked by removing the stale September `./result` symlink).
+- **Codebase Footprint:** `898 insertions(+), 1217 deletions(-)`—net reduction of over 300 lines while adding an entire second host (`hosts/desktop/`).
+
+*(Curious what makes up the remaining 27.5 GiB? Run `nix path-info -rSh /nix/store/fiynny8mcfjl892zal0nwpk70bks5m9l-nixos-system-omnibook-26.11.20261015.fe13242 | sort -h | tail -n 20` anytime—most of it will be `blender`, `bitwig-studio`, `google-cloud-sdk`, `wineWow64Packages.staging`, `proton-cachyos`, and the two JDK 21 distributions in `minecraft.nix`.)*
+
+---
+
+### Final Polish Before Switching: Update `CLAUDE.md`
+To keep your repository's documentation 100% truthful to the new architecture, update `CLAUDE.md` so any future session (human or AI) knows:
+1. `hosts/desktop/` is now a real, evaluated host configuration (Ryzen 5 5600X + RX 6650 XT + ASRock B550M-HDV + Intel BE200).
+2. `local.hardware` (`gameCores`, `gameCoresNoSmt`, `backgroundCores`) in `modules/core.nix` is the single source of truth for per-host CPU topology, consumed by `modules/gaming.nix`, `hosts/*/configuration.nix`, and `hosts/*/home.nix`.
+3. `pkgs.proton-cachyos-slr` is exposed via an overlay in `modules/gaming.nix` from `modules/proton-cachyos.json`.
+
+Here is the updated `CLAUDE.md` you can drop in:
+
+```markdown
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
@@ -5,87 +25,79 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## What this is
 
 A personal NixOS flake configuration for adenskyrp's machines, tuned aggressively for low-latency
-desktop/gaming use (Hyprland on Wayland, CachyOS BORE kernel, RDNA 3.5 Mesa-git, PipeWire realtime
+desktop/gaming use (Hyprland on Wayland, CachyOS BORE kernel, Mesa-git RADV, PipeWire realtime
 audio, per-game Hyprland/DXVK rules). There is no application code, build system, or test suite —
 this repo *is* the system and home-manager configuration, evaluated by `nix`.
 
+## Hosts
+
+- **`omnibook`** — HP OmniBook Ultra 14 laptop (AMD Ryzen AI 9 365: 4x Zen 5 `0-7` + 6x Zen 5c
+  `8-19`, Radeon 880M `gfx1150` RDNA 3.5 iGPU with 24 GiB GTT ceiling, 32 GB LPDDR5X, MediaTek
+  MT7925 Wi-Fi 7).
+- **`desktop`** — Custom AM4 desktop rig (AMD Ryzen 5 5600X: 6x Zen 3 `0-11` in a unified 32 MB L3
+  CCX, Radeon RX 6650 XT `gfx1032` RDNA 2 8 GB dGPU, ASRock B550M-HDV, 16 GB Samsung B-Die DDR4,
+  Intel BE200NGW Wi-Fi 7). Note: `hosts/desktop/hardware-configuration.nix` uses label-based disk
+  stubs (`/dev/disk/by-label/nixos` and `/dev/disk/by-label/BOOT`) until physical OS installation.
+
 ## Commands
 
-Rebuild and switch the running system (host is `omnibook`, the only host with a real config today):
+Rebuild and switch the running system (auto-detects current hostname via `sysdeploy`, or run
+manually):
 
 ```fish
-sudo nixos-rebuild switch --flake .#omnibook
+sudo nixos-rebuild switch --no-write-lock-file --flake .#(hostname)
 ```
 
-There is a fish shell function `sysdeploy` (defined in `hosts/omnibook/home.nix`, installed for the
-`crazycat` user) that wraps the full loop: `cd ~/nixos-config`, `git add .`, rebuild, and on success
-commit + `git push origin main` (on rebuild failure it aborts before committing). It takes an
-optional commit message argument, e.g. `sysdeploy "tune pipewire quantum"`.
+There is a fish shell function `sysdeploy` (defined in `hosts/omnibook/home.nix`, shared by both
+hosts) that wraps the full loop: `cd ~/nixos-config`, `git add .`, updates/verifies `flake.lock` as
+the normal user (so `sudo` never writes root-owned objects into `.git/objects`), rebuilds with
+`--no-write-lock-file`, and on success commits + `git push origin main`. It takes an optional commit
+message argument, e.g. `sysdeploy "tune pipewire quantum"`.
 
 Other useful commands:
 
 ```fish
-nix flake check                      # evaluate the flake / catch eval errors without switching
-nix flake update                     # bump flake.lock (nixpkgs, chaotic, home-manager)
-nixos-rebuild build --flake .#omnibook   # build without activating, e.g. to sanity-check a change
-alejandra <file>.nix                 # format a .nix file (also runs automatically on save in the
-                                      # configured Neovim via nixd, see hosts/omnibook/home.nix)
+nix flake check                            # evaluate both omnibook and desktop / catch eval errors
+nix flake update                           # bump flake.lock (nixpkgs, chaotic, grimoire, home-manager)
+nixos-rebuild build --flake .#omnibook --no-link # build without leaving a ./result GC root
+alejandra .                                # format all .nix files (also runs on save in Neovim)
 ```
-
-There are no unit/integration tests. "Testing" a change means `nix flake check` / `nixos-rebuild
-build` succeeding, and ultimately `nixos-rebuild switch` + reboot/relogin to confirm behavior.
 
 ## Architecture
 
 - **`flake.nix`** — entry point. Inputs: `nixpkgs` (nixos-unstable), `chaotic` (Chaotic-Nyx overlay,
-  provides `linuxPackages_cachyos` and `mesa-git`), `home-manager` (following nixpkgs). Defines
-  `nixosConfigurations.omnibook` and — conditionally — `nixosConfigurations.desktop`. **Note:**
-  `desktop` points at `./hosts/desktop/configuration.nix`, which does not exist in this tree yet —
-  it's a stub for a second machine, not a bug to "fix" by removing. It is wrapped in
-  `lib.optionalAttrs (builtins.pathExists ...)` so that `nix flake check` can still pass: the check
-  evaluates every `nixosConfiguration`, so an unconditional stub made it fail permanently. The
-  output reappears on its own once that file is created.
+  provides cached `linuxPackages_cachyos` and `mesa-git`), `grimoire` (following `nixpkgs`),
+  `home-manager` (following `nixpkgs`), and `nix-flatpak` (pinned release tag, zero inputs). Uses a
+  unified `mkHost` builder to construct `nixosConfigurations.omnibook` and
+  `nixosConfigurations.desktop`.
 - **`hosts/<host>/configuration.nix`** — per-host root. Imports that host's
-  `hardware-configuration.nix` (machine-generated, never hand-edit) plus the shared modules under
-  `modules/`, then layers host-specific stuff: hostname, bootloader/kernel params, power/thermal
-  tuning (e.g. `ryzenadj` SMU limits via a oneshot systemd service), GPU driver flags, greetd/login,
-  bluetooth, `system.stateVersion`.
-- **`hosts/<host>/home.nix`** — that host's home-manager profile for user `crazycat`, wired in from
-  `flake.nix` via `home-manager.users.crazycat`. Owns anything user-session-scoped: Hyprland config
-  (written in Lua via `configType = "lua"`, not the usual keybinds.conf/hyprland.conf string style —
-  check this file before assuming Hyprland options live elsewhere), fish functions, fuzzel/ironbar,
-  Neovim (LSP via `nixd`, format-on-save via `alejandra`), Firefox policies/prefs, kanshi output
-  profiles, per-app packages, XDG mime associations. `home.stateVersion` lives here, independent of
-  the system's `stateVersion`.
-- **`modules/*.nix`** — shared NixOS modules imported by host configs, not home-manager modules:
-  - `core.nix` — base system: nix settings/GC/optimise, DNS
-    (DoT via systemd-resolved, Quad9/Cloudflare), network queueing (`fq` pacing + `bbr`), udev rules
-    (NVMe scheduler, Thunderbolt auto-auth, HID access), PipeWire/WirePlumber low-latency tuning
-    (64-sample quantum, realtime priorities), PAM rtprio/memlock/nice limits, user account
-    definition, base system packages.
-  - `gaming.nix` — Steam + Proton-GE, VM/sysctl tuning for Esync/Fsync, global env vars
-    (`PROTON_USE_NTSYNC`, `MESA_SHADER_CACHE_MAX_SIZE`, `MANGOHUD_CONFIG`, ...), the `zen5` /
-    `zen5-nosmt` CCX-pinning launch wrappers, and a declarative `/etc/dxvk.conf` applied to all
-    DX9/DX11 titles. Note it sets neither `RADV_PERFTEST` nor `WINE_FSYNC` — this file used to
-    claim both, and neither has ever appeared in the repo.
-  - `minecraft.nix` — Prism Launcher with multiple JDKs and `taskset` exposed on its PATH via
-    `additionalPrograms` (not a wrapper script — nothing here wraps the launch), patched GLFW
-    for Wayland. `gamemode` was removed 2026-09-12: it was a no-op without
-    `programs.gamemode.enable`, and is unwanted — see the comment in that file.
-  - `llm.nix` — local inference: `llama-cpp` built with `vulkanSupport` for the gfx1150 iGPU
-    (RADV, deliberately not ROCm), a model store at `/var/lib/llama/models` outside the Nix
-    store, and a manual-start `llama-server` user unit on loopback.
-  - New host-independent system behavior should generally become a new file here and get imported
-    from the relevant `hosts/*/configuration.nix`, following the existing style (a commented
-    section-header banner per logical group, values pulled into named `let` bindings when they
-    carry hardware-specific meaning like the SMU wattage constants in `configuration.nix`).
-
-## Conventions specific to this repo
-
-- Every `.nix` file uses banner-style comments (`# --- SECTION ---`) to delineate logical groups,
-  and inline comments explain *why* a low-level tunable is set (thermal envelope, latency rationale,
-  hardware quirk), not just what it does. Match this density in new code — it's what makes the
-  aggressive kernel/sysctl/PipeWire tuning maintainable.
-- Formatting is `alejandra` (invoked on save from Neovim, and available as a plain CLI command).
-- Per-game/app tuning (Hyprland window rules, launcher wrapper scripts) lives in `home.nix` next to
-  the thing it configures rather than in a separate directory per app.
+  `hardware-configuration.nix` plus shared modules under `modules/`, defines `local.hardware`
+  (`gameCores`, `gameCoresNoSmt`, `backgroundCores`) for the machine's CPU topology, and layers
+  host-specific kernel parameters, Wi-Fi module options, power/thermal tuning (`ryzenadj` oneshot on
+  boot/resume for `omnibook`), `cpupower idle-set -D 350`, and `greetd`.
+- **`hosts/<host>/home.nix`** — Home Manager profile for `crazycat`. `hosts/omnibook/home.nix` holds
+  the primary user-session configuration (Hyprland native Lua config via `configType = "lua"`,
+  `osuStableLauncher`, `ironbar`, `fuzzel`, Neovim with `nixd`/`alejandra`, Firefox policies, and
+  `xdg.desktopEntries` parameterized via `osConfig.local.hardware`). `hosts/desktop/home.nix`
+  imports `../omnibook/home.nix` and disables laptop-specific `kanshi` `eDP-1` dock profiles.
+- **`modules/*.nix`** — shared NixOS modules imported by host configs:
+  - `core.nix` — defines `options.local.hardware` (`gameCores`, `gameCoresNoSmt`,
+    `backgroundCores`), Nix settings/GC/optimise (`persistent = false` to avoid boot I/O storms),
+    `fq` + `bbr` network sysctls, udev rules (NVMe scheduler, USB power, priority-60 `hidraw`
+    `uaccess`), PipeWire/WirePlumber low-latency config (256/48000 = 5.33 ms), PAM realtime limits,
+    and base system packages.
+  - `gaming.nix` — exposes `pkgs.proton-cachyos-slr` (from `modules/proton-cachyos.json`) via an
+    overlay shared by Steam `extraCompatPackages` and `osuStableLauncher`, configures OpenTabletDriver,
+    sets low-latency Proton/Mesa session variables, writes `/etc/dxvk.conf`, and builds the `zen5` /
+    `zen5-nosmt` launch wrappers bound to `config.local.hardware.gameCores`.
+  - `minecraft.nix` — Prism Launcher with Temurin 21, Zulu 21, and `util-linux` (`taskset`), plus
+    Wayland-patched GLFW.
+  - `sober.nix` — declarative Flatpak setup for Sober (`org.vinegarhq.Sober`) and `xdg-desktop-portal`
+    (`hyprland` + `gtk`).
+  - `webcam.nix` — Pixel-as-webcam pipeline via `v4l2loopback` (`/dev/video10`, `exclusive_caps=1`)
+    and `scrcpy`/`adb`.
+  - `diagnostics.nix` — opt-in (`local.diagnostics.enable`) frametime/PSI telemetry (`stutter-trace`,
+    `psi-calibrate`, `psi-watch`, `perf`).
+  - `llm.nix` (`omnibook` only) — local Vulkan/RADV `llama-cpp` server using `/var/lib/llama/models`.
+  - `irq-affinity.nix` (`omnibook` only) — pins `omnibook` PCI peripheral IRQs to Zen 5c cores (`8-19`).
+```

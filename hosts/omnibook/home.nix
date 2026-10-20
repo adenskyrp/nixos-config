@@ -1,29 +1,35 @@
 {
   config,
   pkgs,
+  lib,
+  osConfig,
   ...
-}: 
+}: let
+  gameCores = osConfig.local.hardware.gameCores;
+  bgCores = osConfig.local.hardware.backgroundCores;
 
-let
-  osuFhs = (pkgs.steam.override {
-    extraPkgs = pkgs: with pkgs; [
-      gnutls
-      cacert
-      freetype
-      fontconfig
-      corefonts
-      libpulseaudio
-      alsa-lib
-      alsa-plugins
-    ];
-    extraLibraries = pkgs: with pkgs; [
-      freetype
-      fontconfig
-      libpulseaudio
-      alsa-lib
-      alsa-plugins
-    ];
-  }).run;
+  osuFhs =
+    (pkgs.steam.override {
+      extraPkgs = pkgs:
+        with pkgs; [
+          gnutls
+          cacert
+          freetype
+          fontconfig
+          corefonts
+          libpulseaudio
+          alsa-lib
+          alsa-plugins
+        ];
+      extraLibraries = pkgs:
+        with pkgs; [
+          freetype
+          fontconfig
+          libpulseaudio
+          alsa-lib
+          alsa-plugins
+        ];
+    }).run;
 
   osuStableLauncher = pkgs.writeShellScriptBin "osu-stable" ''
     COMPAT_DATA="$HOME/Games/osu-stable"
@@ -32,40 +38,39 @@ let
     OSU_EXE="$OSU_DIR/osu!.exe"
 
     if [ ! -f "$OSU_EXE" ]; then
-     echo "osu!stable Error: Could not find osu!.exe at $OSU_EXE" >&2
-     exit 1
+      echo "osu!stable Error: Could not find osu!.exe at $OSU_EXE" >&2
+      exit 1
     fi
 
     # 1. Move stuck osu! updates out of _pending FIRST before touching auth files
     if [ -d "$OSU_DIR/_pending" ] && [ -n "$(ls -A "$OSU_DIR/_pending" 2>/dev/null)" ]; then
-     cp -rf "$OSU_DIR/_pending/"* "$OSU_DIR/"
-     rm -rf "$OSU_DIR/_pending"
+      cp -rf "$OSU_DIR/_pending/"* "$OSU_DIR/"
+      rm -rf "$OSU_DIR/_pending"
     fi
 
-    # Restore backup if a previous run moved osu!auth.dll away (missing file causes osu! to self-restart and drop -devserver!)
+    # Restore backup if a previous run moved osu!auth.dll away
     if [ -f "$OSU_DIR/osu!auth.dll.bancho" ] && [ ! -f "$OSU_DIR/osu!auth.dll" ]; then
-     mv -f "$OSU_DIR/osu!auth.dll.bancho" "$OSU_DIR/osu!auth.dll"
+      mv -f "$OSU_DIR/osu!auth.dll.bancho" "$OSU_DIR/osu!auth.dll"
     fi
 
     # 2. Server selection menu
     if [ -z "''${1:-}" ]; then
-     SERVER=$(printf "Bancho (Official)\nakatsuki.gg\ngatari.pw\nripple.moe\ntitanic.sh" | \
+      SERVER=$(printf "Bancho (Official)\nakatsuki.gg\ngatari.pw\nripple.moe\ntitanic.sh" | \
       ${pkgs.fuzzel}/bin/fuzzel --dmenu --prompt="osu! server > ")
 
-     [ -z "$SERVER" ] && exit 0
+      [ -z "$SERVER" ] && exit 0
     else
-     SERVER="$1"
+      SERVER="$1"
     fi
 
     ARGS=()
     if [ "$SERVER" != "Bancho (Official)" ]; then
-     ARGS+=("-devserver" "$SERVER")
-     # Set CredentialEndpoint in user cfg so even an in-game restart stays on the custom server
-     sed -i "s/^CredentialEndpoint.*/CredentialEndpoint = $SERVER/g" "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
-     export WINEDLLOVERRIDES="mscoree=n;xalia.exe=d;osu!auth.dll=d"
+      ARGS+=("-devserver" "$SERVER")
+      sed -i "s/^CredentialEndpoint.*/CredentialEndpoint = $SERVER/g" "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
+      export WINEDLLOVERRIDES="mscoree=n;xalia.exe=d;osu!auth.dll=d"
     else
-     sed -i "s/^CredentialEndpoint.*/CredentialEndpoint =/g" "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
-     export WINEDLLOVERRIDES="mscoree=n;xalia.exe=d"
+      sed -i "s/^CredentialEndpoint.*/CredentialEndpoint =/g" "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
+      export WINEDLLOVERRIDES="mscoree=n;xalia.exe=d"
     fi
 
     # 3. Proton environment
@@ -78,11 +83,9 @@ let
     export PROTON_NO_XALIA=1
     export PROTON_FSR4_UPGRADE=0
 
-    # Ensure Wine version is NOT hidden (hiding it triggers osu!auth test-signing checks)
     unset WINE_BLOCK_GET_VERSION
     sed -i '/"HideWineExports"/d' "$PFX/user.reg" "$PFX/system.reg" 2>/dev/null || true
 
-    # Expose NixOS CA bundle to GnuTLS inside steam-run so WinVerifyTrust succeeds
     export SSL_CERT_FILE="/etc/ssl/certs/ca-bundle.crt"
     export NIX_SSL_CERT_FILE="/etc/ssl/certs/ca-bundle.crt"
 
@@ -91,33 +94,26 @@ let
 
     # Ensure native OpenGL is used instead of ANGLE D3D9 fallback
     sed -i 's/CompatibilityContext = 1/CompatibilityContext = 0/g' "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
-    # Ensure native OpenGL is used instead of ANGLE D3D9 fallback
-    sed -i 's/CompatibilityContext = 1/CompatibilityContext = 0/g' "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
 
-    # Force osu! internal config to exclusive Fullscreen so it doesn't un-fullscreen itself after splash
+    # Force osu! internal config to exclusive Fullscreen
     sed -i 's/^Fullscreen = 0/Fullscreen = 1/g' "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
     sed -i 's/^WidthFullscreen = .*/WidthFullscreen = 1920/g' "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
     sed -i 's/^HeightFullscreen = .*/HeightFullscreen = 1080/g' "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
 
-    # Restore .NET 4.8 mscoree.dll in case a Proton update overwrote it with Wine Mono
     if [ -f "$COMPAT_DATA/dotnet-backup/mscoree32.dll" ]; then
-     cp -f "$COMPAT_DATA/dotnet-backup/mscoree64.dll" "$PFX/drive_c/windows/system32/mscoree.dll"
-     cp -f "$COMPAT_DATA/dotnet-backup/mscoree32.dll" "$PFX/drive_c/windows/syswow64/mscoree.dll"
+      cp -f "$COMPAT_DATA/dotnet-backup/mscoree64.dll" "$PFX/drive_c/windows/system32/mscoree.dll"
+      cp -f "$COMPAT_DATA/dotnet-backup/mscoree32.dll" "$PFX/drive_c/windows/syswow64/mscoree.dll"
     fi
 
     cd "$OSU_DIR" || exit 1
 
-    exec ${pkgs.util-linux}/bin/taskset -c 0-7 \
-     ${pkgs.steam-run}/bin/steam-run bash -c '
-      "${pkgs.proton-cachyos}/proton" waitforexitandrun "$@"
-      WINEPREFIX="$STEAM_COMPAT_DATA_PATH/pfx" "${pkgs.proton-cachyos}/files/bin/wineserver" -w
-     ' -- "$OSU_EXE" "''${ARGS[@]}"
+    exec ${pkgs.util-linux}/bin/taskset -c ${gameCores} \
+      ${osuFhs}/bin/steam-run bash -c '
+      "${pkgs.proton-cachyos-slr}/proton" waitforexitandrun "$@"
+      WINEPREFIX="$STEAM_COMPAT_DATA_PATH/pfx" "${pkgs.proton-cachyos-slr}/files/bin/wineserver" -w
+      ' -- "$OSU_EXE" "''${ARGS[@]}"
   '';
-in
-
-{
-
-
+in {
   # ---------------------------------------------------------------------------
   # HYPRLAND: NATIVE LUA COMPOSITOR CONFIGURATION
   # ---------------------------------------------------------------------------
@@ -191,7 +187,7 @@ in
              -- scanout drop on those keypresses; that is acceptable and not worth
              -- fixing.
              render = {
-               direct_scanout = 0,
+               direct_scanout = 1,
              },
 
              -- HARDWARE CURSORS ARE KEPT ON, AND THIS CONFLICTS WITH TEARING. Read
@@ -308,7 +304,7 @@ in
              no_anim = true,
              fullscreen = true,
              fullscreen_state = "2 2",
-	     suppress_event = "fullscreen maximize",
+      suppress_event = "fullscreen maximize",
              tile = true,
              workspace = 5,
            })
@@ -511,11 +507,20 @@ in
         cd ~/nixos-config
 
         git add .
-        echo "--> Initiating declarative system rebuild..."
-        if sudo nixos-rebuild switch --flake .#omnibook
-          set -l commit_msg $argv
+        echo "--> Verifying flake evaluation & lockfile as user..."
+        if not nix flake lock
+          echo "--> Lockfile update failed. Aborting."
+          cd $current_dir
+          return 1
+        end
+        git add flake.lock
+
+        set -l target_host (hostname)
+        echo "--> Initiating declarative system rebuild for host: $target_host..."
+        if sudo nixos-rebuild switch --no-write-lock-file --flake .#$target_host
+          set -l commit_msg "$argv"
           if test -z "$commit_msg"
-            set commit_msg "chore: automated system state update"
+            set commit_msg "chore($target_host): automated system state update"
           end
           git commit -m "$commit_msg"
           echo "--> Pushing new generation to GitHub..."
@@ -770,7 +775,7 @@ in
       # memory bus is shared with the CPU. Measured headroom for doing it on the
       # CPU instead: 28 MiB peak RSS and 491 ms of CPU over two minutes.
       Environment = ["GSK_RENDERER=cairo"];
-      CPUAffinity = "8-19";
+      CPUAffinity = bgCores;
     };
     Install = {
       WantedBy = ["hyprland-session.target"];
@@ -789,8 +794,6 @@ in
     withRuby = false;
 
     extraPackages = with pkgs; [
-      nixd
-      alejandra
       ripgrep
       fd
     ];
@@ -1088,37 +1091,39 @@ in
     firefox = {
       name = "Firefox";
       genericName = "Web Browser";
-      exec = "${pkgs.coreutils}/bin/nice -n 0 ${pkgs.util-linux}/bin/taskset -c 8-19 firefox %U";
+      exec = "${pkgs.coreutils}/bin/nice -n 0 ${pkgs.util-linux}/bin/taskset -c ${bgCores} firefox %U";
       terminal = false;
       type = "Application";
       icon = "firefox";
     };
     "com.github.th-ch.youtube-music" = {
       name = "Pear Desktop";
-      exec = "${pkgs.coreutils}/bin/nice -n 0 ${pkgs.util-linux}/bin/taskset -c 8-19 ${pkgs.pear-desktop}/bin/pear-desktop %U";
+      exec = "${pkgs.coreutils}/bin/nice -n 0 ${pkgs.util-linux}/bin/taskset -c ${bgCores} ${pkgs.pear-desktop}/bin/pear-desktop %U";
       terminal = false;
       type = "Application";
       icon = "pear-desktop";
     };
-    discord = {
-      name = "Discord";
+    vesktop = {
+      name = "Vesktop (Discord)";
       genericName = "Internet Messenger";
-      exec = "${pkgs.util-linux}/bin/taskset -c 8-19 discord %U";
+      exec = "${pkgs.util-linux}/bin/taskset -c ${bgCores} ${pkgs.vesktop}/bin/vesktop %U";
       terminal = false;
       type = "Application";
-      icon = "discord";
+      icon = "vesktop";
     };
     steam = {
       name = "Steam";
       genericName = "Application Store";
-      exec = "${pkgs.util-linux}/bin/taskset -c 8-19 steam %U";
+      # Do NOT wrap Steam in taskset -c bgCores: child game processes inherit
+      # Steam's CPU affinity mask across fork/exec!
+      exec = "steam %U";
       terminal = false;
       type = "Application";
       icon = "steam";
     };
     "osu!" = {
       name = "osu!";
-      exec = "${pkgs.util-linux}/bin/taskset -c 0-7 osu! %U";
+      exec = "${pkgs.util-linux}/bin/taskset -c ${gameCores} osu! %U";
       terminal = false;
       type = "Application";
       icon = "osu";
@@ -1126,7 +1131,7 @@ in
     };
     "org.vinegarhq.Sober" = {
       name = "Sober";
-      exec = "${pkgs.util-linux}/bin/taskset -c 0-7 flatpak run org.vinegarhq.Sober %U";
+      exec = "${pkgs.util-linux}/bin/taskset -c ${gameCores} flatpak run org.vinegarhq.Sober %U";
       icon = "org.vinegarhq.Sober";
       terminal = false;
       categories = ["Game"];
