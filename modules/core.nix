@@ -704,6 +704,7 @@
     sshfs
     fastfetch
     acpi
+    appimage-run
     ripgrep
     fd
   ];
