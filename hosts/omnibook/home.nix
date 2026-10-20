@@ -972,6 +972,8 @@ in {
     unrar
     zip
     ark
+    scrcpy
+    android-tools
     pear-desktop
     blender
     en-croissant
