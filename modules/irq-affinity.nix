@@ -1,3 +1,4 @@
+# modules/irq-affinity.nix
 {
   config,
   pkgs,
@@ -5,30 +6,40 @@
   ...
 }: let
   # ---------------------------------------------------------------------------
-  # PIN TABLE: PCI FUNCTION -> ZEN 5C LOGICAL CPU (CPUs 8-19)
+  # PIN TABLE: PCI FUNCTION -> ZEN 5C LOGICAL CPU(S) (CPUs 8-19)
   # ---------------------------------------------------------------------------
+  # Values may be a single CPU int or a list of CPU ints. When a list is given,
+  # multi-vector MSI-X devices (like ath12k's 15 BHI/MHI/CE/DP_EXT_IRQ rings)
+  # are striped round-robin across the listed physical cores so parallel TX/RX
+  # NAPI rings do not serialize on a single Zen 5c thread under Wi-Fi 7 load.
   devicePins = {
     # xHCI / USB Controllers
-    "0000:c5:00.0" = 8; # usb3/4 -- GameSir G7 Pro, Synaptics fprint, MTK BT
-    "0000:c5:00.4" = 10; # usb7/8 -- Anker dock: mouse dongle, ATK kbd, Yeti, RTL8153
+    "0000:c5:00.0" = [8]; # usb3/4 -- GameSir G7 Pro, Synaptics fprint, BT
+    "0000:c5:00.4" = [10]; # usb7/8 -- Anker dock: 8kHz mouse, ATK kbd, Yeti
 
-    # Network
-    "0000:c2:00.0" = 12; # MediaTek MT7925 802.11be Wi-Fi
+
+    # Network (Qualcomm WCN785x / FastConnect 7800 Wi-Fi 7, 15 MSI-X vectors)
+    # Striped across two dedicated Zen 5c physical cores (CPU 12 and CPU 18).
+    "0000:c2:00.0" = [12 18];
+
 
     # Audio Subsystem
-    "0000:c3:00.6" = 14; # AMD Ryzen HD Audio Controller
-    "0000:c3:00.1" = 16; # Radeon HD Audio Controller (HDMI/DP)
+    "0000:c3:00.6" = [14]; # AMD Ryzen HD Audio Controller
+    "0000:c3:00.1" = [16]; # Radeon HD Audio Controller (HDMI/DP)
   };
+
 
   scriptPrologue = ''
     set -u
     grep_bin=${pkgs.gnugrep}/bin/grep
     awk_bin=${pkgs.gawk}/bin/awk
 
+
     vectors_of() {
       "$grep_bin" -F -- "$1" /proc/interrupts \
         | "$awk_bin" -F: '{gsub(/ /, "", $1); print $1}'
     }
+
 
     effective_cpu() {
       local eff
@@ -40,26 +51,39 @@
     }
   '';
 
+
   pinScript = pkgs.writeShellScript "hardware-irq-pin" ''
     ${scriptPrologue}
     fail=0
 
+
     pin() {
-      local pci=$1 cpu=$2 found=0 irq eff
+      local pci=$1
+      shift
+      local cpus=("$@")
+      local n_cpus=''${#cpus[@]}
+      local idx=0 found=0 irq cpu eff
+
 
       for irq in $(vectors_of "$pci"); do
         found=1
+        cpu=''${cpus[$((idx % n_cpus))]}
+        idx=$((idx + 1))
+
+
         if [ ! -e "/proc/irq/$irq/smp_affinity_list" ]; then
           echo "hardware-irq-pin: $pci: irq $irq has no smp_affinity_list" >&2
           fail=1
           continue
         fi
 
+
         if ! echo "$cpu" > "/proc/irq/$irq/smp_affinity_list"; then
           echo "hardware-irq-pin: $pci: irq $irq REJECTED write of cpu$cpu, still delivering to cpu$(effective_cpu "$irq")" >&2
           fail=1
           continue
         fi
+
 
         eff=$(effective_cpu "$irq")
         if [ "$eff" = "$cpu" ]; then
@@ -70,20 +94,32 @@
         fi
       done
 
+
       if [ "$found" -eq 0 ]; then
         echo "hardware-irq-pin: $pci: no vector in /proc/interrupts -- absent or renamed" >&2
         fail=1
       fi
     }
 
-    ${lib.concatStringsSep "\n" (lib.mapAttrsToList (pci: cpu: ''pin "${pci}" ${toString cpu}'') devicePins)}
+
+    ${lib.concatStringsSep "\n" (
+      lib.mapAttrsToList (
+        pci: cpus: let
+          cpuList = lib.toList cpus;
+        in ''pin "${pci}" ${lib.concatMapStringsSep " " toString cpuList}''
+      )
+      devicePins
+    )}
+
 
     exit "$fail"
   '';
 
+
   unpinScript = pkgs.writeShellScript "hardware-irq-unpin" ''
     ${scriptPrologue}
     read -r online < /sys/devices/system/cpu/online
+
 
     unpin() {
       local pci=$1 irq
@@ -96,6 +132,7 @@
       done
     }
 
+
     ${lib.concatStringsSep "\n" (lib.mapAttrsToList (pci: _: ''unpin "${pci}"'') devicePins)}
     exit 0
   '';
@@ -103,10 +140,12 @@ in {
   services.irqbalance.enable = false;
   systemd.services.xhci-irq-unpin.enable = false;
 
+
   systemd.services.hardware-irq-pin = {
-    description = "Pin peripheral IRQs (USB, NVMe, Net, Audio) to Zen 5c cores";
+    description = "Pin peripheral IRQs (USB, Wi-Fi 7, Audio) to Zen 5c cores";
     wantedBy = ["multi-user.target"];
     after = ["systemd-modules-load.service"];
+
 
     serviceConfig = {
       Type = "oneshot";
@@ -115,6 +154,7 @@ in {
       ExecStop = unpinScript;
     };
   };
+
 
   powerManagement.resumeCommands = ''
     ${pkgs.systemd}/bin/systemctl restart hardware-irq-pin.service || true

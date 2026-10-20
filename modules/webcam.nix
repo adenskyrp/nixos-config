@@ -53,8 +53,9 @@
   # this line and the in-tree module takes over with no other change -- confirm
   # with `modinfo v4l2loopback | head -2` after, which prints the loaded file's
   # path.
-  boot.extraModulePackages = [config.boot.kernelPackages.v4l2loopback];
-
+  boot.extraModulePackages = lib.optional (
+    !(lib.hasInfix "cachyos" config.boot.kernelPackages.kernel.version)
+  ) config.boot.kernelPackages.v4l2loopback;
   # Load at boot rather than leaving it to on-demand autoloading. There is no
   # hardware event that would ever trigger a loopback module -- the device it
   # creates is the reason to load it, not a consequence of something appearing

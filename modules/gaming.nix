@@ -33,11 +33,15 @@ in {
         };
 
         nativeBuildInputs = [final.xz final.gnutar];
-
+      
         buildCommand = ''
           mkdir -p $out
           tar -xf $src -C $out --strip-components=1
-          sed -i 's/threads = os.cpu_count().*/threads = 4/' $out/proton
+          if ! grep -q 'threads = os.cpu_count()' "$out/proton"; then
+            echo "ERROR: proton-cachyos upstream changed 'threads = os.cpu_count()' in $out/proton; sed patch would be a silent no-op!" >&2
+            exit 1
+          fi
+          sed -i 's/threads = os.cpu_count().*/threads = 4/' "$out/proton"
         '';
       };
     })
@@ -104,7 +108,7 @@ in {
   # ---------------------------------------------------------------------------
   environment.etc."dxvk.conf".text = ''
     # --- PRESENTATION & FRAME QUEUE LATENCY ---
-    dxvk.numCompilerThreads = 8
+    dxvk.numCompilerThreads = 4
     dxvk.enableAsync = true
     d3d9.enableAsync = true
     dxvk.syncInterval = 0

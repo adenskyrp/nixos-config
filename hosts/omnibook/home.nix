@@ -7,7 +7,7 @@
 }: let
   gameCores = osConfig.local.hardware.gameCores;
   bgCores = osConfig.local.hardware.backgroundCores;
-
+  luaMonitors = lib.concatMapStringsSep ",\n               " (m: ''"${m}"'') osConfig.local.hardware.monitors;
   osuFhs =
     (pkgs.steam.override {
       extraPkgs = pkgs:
@@ -505,15 +505,7 @@ in {
       sysdeploy = ''
         set -l current_dir $PWD
         cd ~/nixos-config
-
         git add .
-        echo "--> Verifying flake evaluation & lockfile as user..."
-        if not nix flake lock
-          echo "--> Lockfile update failed. Aborting."
-          cd $current_dir
-          return 1
-        end
-        git add flake.lock
 
         set -l target_host (hostname)
         echo "--> Initiating declarative system rebuild for host: $target_host..."
@@ -799,7 +791,24 @@ in {
     ];
 
     plugins = with pkgs.vimPlugins; [
-      nvim-treesitter.withAllGrammars
+      (nvim-treesitter.withPlugins (p: [
+        p.bash
+        p.c
+        p.cpp
+        p.css
+        p.fish
+        p.json
+        p.lua
+        p.markdown
+        p.markdown_inline
+        p.nix
+        p.python
+        p.rust
+        p.toml
+        p.vim
+        p.vimdoc
+        p.yaml
+      ]))
       nvim-lspconfig
       telescope-nvim
       plenary-nvim
@@ -976,7 +985,6 @@ in {
     osuStableLauncher
     vesktop
     google-cloud-sdk
-    (pkgs.llama-cpp.override {vulkanSupport = true;})
     (writeShellApplication {
       name = "update-proton-cachyos";
       runtimeInputs = [curl jq nix];

@@ -132,19 +132,12 @@ in {
     "amdgpu.sg_display=0"
   ];
 
-  boot.extraModulePackages = with config.boot.kernelPackages; [
-    acpi_call
-  ];
-  boot.kernelModules = ["acpi_call"];
-
   # ---------------------------------------------------------------------------
   # WI-FI RADIO LINK (MediaTek MT7925 / Filogic 360, 2x2 802.11be)
   # ---------------------------------------------------------------------------
-  boot.extraModprobeConfig = ''
-    options mt7925e disable_aspm=1
-    options mt7925_common disable_clc=1
+  services.udev.extraRules = ''
+    ACTION=="add", SUBSYSTEM=="pci", ATTR{vendor}=="0x17cb", ATTR{device}=="0x1107", ATTR{power/control}="on"
   '';
-
   # ---------------------------------------------------------------------------
   # POWER MANAGEMENT & S2IDLE RESUME HOOKS
   # ---------------------------------------------------------------------------
@@ -178,20 +171,6 @@ in {
     CPUAffinity = config.local.hardware.backgroundCores;
   };
   systemd.slices."system".sliceConfig.AllowedCPUs = config.local.hardware.backgroundCores;
-
-  # ---------------------------------------------------------------------------
-  # CPUIDLE C-STATE CEILING (ALLOW C2 @ 18us, DISABLE C3 @ 350us)
-  # ---------------------------------------------------------------------------
-  systemd.services.cpu-idle-limit = {
-    description = "Cap cpuidle at C2 (C3 exit latency 350us vs 1.667ms frame)";
-    wantedBy = ["multi-user.target"];
-    after = ["systemd-modules-load.service"];
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-      ExecStart = "${config.boot.kernelPackages.cpupower}/bin/cpupower idle-set -D 350";
-    };
-  };
 
   # ---------------------------------------------------------------------------
   # GRAPHICS & BLEEDING-EDGE MESA STACK

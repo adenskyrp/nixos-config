@@ -39,8 +39,12 @@ in {
     gameCores = "0-11";
     gameCoresNoSmt = "0,2,4,6,8,10";
     backgroundCores = "0-11";
+    # Match the BenQ XL2586X+ by description or explicit connector so connector
+    # renumbering across RX 6650 XT DP ports cannot drop you to 60Hz.
+    monitors = [
+      "desc:BNQ XL2586X+ EB3CR02979SL0, 1920x1080@599.94, 0x0, 1"
+    ];
   };
-
   networking.hostName = "desktop";
 
   # ---------------------------------------------------------------------------
@@ -111,18 +115,6 @@ in {
     "w /sys/devices/system/cpu/cpu1[0-1]/cpufreq/energy_performance_preference - - - - performance"
     "w /sys/class/drm/card*/device/power_dpm_force_performance_level - - - - ${gpuDpmLevel}"
   ];
-
-  # Cap cpuidle at C2 on Zen 3 as well (prevents deep C6/PC6 exit latency spikes)
-  systemd.services.cpu-idle-limit = {
-    description = "Cap cpuidle at C2 on Zen 3 5600X";
-    wantedBy = ["multi-user.target"];
-    after = ["systemd-modules-load.service"];
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-      ExecStart = "${config.boot.kernelPackages.cpupower}/bin/cpupower idle-set -D 350";
-    };
-  };
 
   # ---------------------------------------------------------------------------
   # GRAPHICS (Radeon RX 6650 XT / RDNA 2 / Mesa-git RADV)

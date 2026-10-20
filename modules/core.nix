@@ -1,3 +1,4 @@
+# modules/core.nix
 {
   config,
   pkgs,
@@ -26,9 +27,45 @@
       default = "8-19";
       description = "Logical CPU list for background daemons, browsers, and desktop UI.";
     };
+    monitors = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [
+        "DP-1, 1920x1080@599.94, 0x0, 1"
+        "eDP-1, disable"
+      ];
+      description = "Hyprland monitor rules injected into hyprland.lua.";
+    };
+    capCstates = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Disable C-states with exit latency >= 350us (C3/C6) at boot and resume.";
+    };
   };
 
   config = {
+    # ---------------------------------------------------------------------------
+    # CPUIDLE C-STATE CEILING & RESUME HOOKS
+    # ---------------------------------------------------------------------------
+    systemd.services.cpu-idle-limit = lib.mkIf config.local.hardware.capCstates {
+      description = "Cap cpuidle at C2 (disable states with exit latency >= 350us)";
+      wantedBy = ["multi-user.target"];
+      after = ["systemd-modules-load.service"];
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        ExecStart = "${config.boot.kernelPackages.cpupower}/bin/cpupower idle-set -D 350";
+      };
+    };
+
+    powerManagement.resumeCommands = lib.mkMerge [
+      (lib.mkIf config.systemd.services.xhci-irq-unpin.enable ''
+        ${pkgs.systemd}/bin/systemctl restart xhci-irq-unpin.service || true
+      '')
+      (lib.mkIf config.local.hardware.capCstates ''
+        ${config.boot.kernelPackages.cpupower}/bin/cpupower idle-set -D 350 || true
+      '')
+    ];
+
     # ---------------------------------------------------------------------------
     # CPU SCHEDULER
     # ---------------------------------------------------------------------------
@@ -102,7 +139,7 @@
 
     # --- REGULATORY DOMAIN (6 GHz UNLOCK) ---
     # Pin regulatory domain at module load so 6 GHz (Wi-Fi 6E/7) is permitted
-    # before mt7925e or iwlwifi evaluates band capabilities.
+    # before ath12k or iwlwifi evaluates band capabilities.
     boot.extraModprobeConfig = ''
       options cfg80211 ieee80211_regdom=US
     '';
@@ -235,10 +272,6 @@
         '';
       };
     };
-
-    powerManagement.resumeCommands = lib.mkIf config.systemd.services.xhci-irq-unpin.enable ''
-      ${pkgs.systemd}/bin/systemctl restart xhci-irq-unpin.service || true
-    '';
 
     # ---------------------------------------------------------------------------
     # LOW-LATENCY AUDIO SUBSYSTEM (PipeWire: 256 realized = 5.33 ms @ 48 kHz)
@@ -457,3 +490,4 @@
     ];
   };
 }
+
