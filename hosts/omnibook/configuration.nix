@@ -35,10 +35,7 @@ in {
   local.hardware = {
     gameCores = "0-7";
     gameCoresNoSmt = "0,2,4,6";
-    # CPUs 10-13 and 18-19 are reserved exclusively for hardware IRQs
-    # (8kHz USB dock on 10, internal USB on 11, Wi-Fi 7 rings on 12 & 18).
-    # Userspace daemons, browsers, and Steam CEF helpers stay on 8-9,14-17.
-    backgroundCores = "8-9,14-17";
+    backgroundCores = "14-17";
   };
   networking.hostName = "omnibook";
 
@@ -115,8 +112,8 @@ in {
     # Route all unmanaged/platform IRQs (I2C, ACPI, RTC, speaker amp) and RCU
     # offload threads to background Zen 5c cores (8-9,14-17), keeping Zen 5
     # game cores (0-7) and dedicated USB/Wi-Fi 7 IRQ cores (10-13,18-19) clean.
-    "irqaffinity=8-9,14-17"
-    "rcu_nocbs=0-7,10-13,18-19"
+    "irqaffinity=14-17"
+    "rcu_nocbs=0-13,18-19"
 
     # Memory latency: disable zswap (zram is used) and restrict THP to explicit
     # madvise() calls so background khugepaged scans never stall LPDDR5X.
@@ -170,9 +167,10 @@ in {
     "w /sys/devices/system/cpu/cpu1[0-9]/cpufreq/energy_performance_preference - - - - performance"
     "w /sys/class/drm/card*/device/power_dpm_force_performance_level - - - - ${gpuDpmLevel}"
     # Confine all unbound kernel workqueues (ttm, gfx, events_unbound, writeback)
-    # to CPUs 8-9,14-17 (0x3c300), off both game cores (0-7) and IRQ cores (10-13,18-19).
-    "w /sys/devices/virtual/workqueue/cpumask - - - - 3c300"
-    "w /sys/bus/workqueue/devices/writeback/cpumask - - - - 3c300"
+    # to CPUs 14-17 (0x3c000), keeping them off Zen 5 game cores (0-7) AND off
+    # dedicated GPU/USB/Wi-Fi 7 IRQ cores (8-13,18-19).
+    "w /sys/devices/virtual/workqueue/cpumask - - - - 3c000"
+    "w /sys/bus/workqueue/devices/writeback/cpumask - - - - 3c000"
     # Never stall on synchronous THP compaction
     "w /sys/kernel/mm/transparent_hugepage/khugepaged/defrag - - - - 0"
   ];

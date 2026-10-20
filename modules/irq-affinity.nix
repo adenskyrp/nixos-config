@@ -13,17 +13,22 @@
   # are striped round-robin across the listed physical cores so parallel TX/RX
   # NAPI rings do not serialize on a single Zen 5c thread under Wi-Fi 7 load.
   devicePins = {
-    # xHCI / USB Controllers (Dedicated physical core 10,11)
+    # Graphics / Display Engine (600Hz vblank + RADV fence completions)
+    # Dedicated physical core (8,9) -- isolated from backgroundCores (14-17)
+    "0000:c3:00.0" = [8]; # Radeon 880M (amdgpu)
+    "0000:c3:00.1" = [9]; # Radeon HD Audio Controller (HDMI/DP)
+
+    # xHCI / USB Controllers
+    # Dedicated physical core (10,11) -- isolated from backgroundCores (14-17)
     "0000:c5:00.4" = [10]; # usb7/8 -- Anker dock: 8kHz mouse, ATK kbd, Yeti
     "0000:c5:00.0" = [11]; # usb3/4 -- GameSir G7 Pro, Synaptics fprint, BT
 
     # Network (Qualcomm WCN785x / FastConnect 7800 Wi-Fi 7, 15 MSI-X vectors)
-    # Dedicated physical cores (12,13) and (18,19) -- zero userspace tasks allowed.
+    # Dedicated physical cores (12,13) and (18,19) -- isolated from backgroundCores
     "0000:c2:00.0" = [12 18];
 
     # Audio Subsystem
     "0000:c3:00.6" = [14]; # AMD Ryzen HD Audio Controller
-    "0000:c3:00.1" = [16]; # Radeon HD Audio Controller (HDMI/DP)
   };
 
   scriptPrologue = ''
