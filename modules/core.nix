@@ -705,6 +705,7 @@
     fastfetch
     acpi
     appimage-run
+    gemini-cli
     ripgrep
     fd
   ];
