@@ -5,13 +5,12 @@
   # FLAKE INPUTS (CHANNELS & PACKAGES)
   # ---------------------------------------------------------------------------
   inputs = {
-    # Bleeding-edge rolling packages
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-
     # Chaotic Nyx: CachyOS BORE Kernel, git Mesa, and performance overlays
-    # Deliberately keeps its own nixpkgs so pre-built kernel/Mesa binary cache hits stay intact.
     chaotic.url = "github:chaotic-cx/nyx/nyxpkgs-unstable";
 
+    # Unify root nixpkgs onto Chaotic's exact nixpkgs revision so kernel module
+    # aggregation and Mesa-git never skew ahead of Chaotic's binary cache.
+    nixpkgs.follows = "chaotic/nixpkgs";
     # Deadlock Mod Manager overlay -- unified onto root nixpkgs to avoid evaluating a second nixpkgs tree
     grimoire = {
       url = "github:Slush97/grimoire";

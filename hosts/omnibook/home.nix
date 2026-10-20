@@ -897,6 +897,7 @@ in {
       isDefault = true;
 
       settings = {
+        "media.webspeech.synth.enabled" = false;
         "gfx.webrender.all" = true;
         "gfx.webrender.compositor" = true;
         "gfx.webrender.compositor.force-enabled" = false;

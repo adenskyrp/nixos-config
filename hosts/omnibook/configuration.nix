@@ -35,9 +35,11 @@ in {
   local.hardware = {
     gameCores = "0-7";
     gameCoresNoSmt = "0,2,4,6";
-    backgroundCores = "8-19";
+    # CPUs 10-13 and 18-19 are reserved exclusively for hardware IRQs
+    # (8kHz USB dock on 10, internal USB on 11, Wi-Fi 7 rings on 12 & 18).
+    # Userspace daemons, browsers, and Steam CEF helpers stay on 8-9,14-17.
+    backgroundCores = "8-9,14-17";
   };
-
   networking.hostName = "omnibook";
 
   # ---------------------------------------------------------------------------
@@ -161,8 +163,8 @@ in {
     "w /sys/devices/system/cpu/cpu1[0-9]/cpufreq/scaling_governor - - - - performance"
     "w /sys/devices/system/cpu/cpu1[0-9]/cpufreq/energy_performance_preference - - - - performance"
     "w /sys/class/drm/card*/device/power_dpm_force_performance_level - - - - ${gpuDpmLevel}"
+    "w /sys/bus/workqueue/devices/writeback/cpumask - - - - 3c300"
   ];
-
   # --- ASYMMETRIC CPU ISOLATION (ZEN 5C SYSTEM & AUDIO DAEMONS: CPUs 8-19) ---
   systemd.settings.Manager = {
     CPUAffinity = config.local.hardware.backgroundCores;

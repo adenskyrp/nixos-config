@@ -52,8 +52,12 @@ in {
   # ---------------------------------------------------------------------------
   boot.kernel.sysctl = {
     "vm.max_map_count" = 2147483642;
-    "vm.dirty_background_ratio" = 5;
-    "vm.dirty_ratio" = 10;
+    # Fixed byte thresholds (64 MiB background / 256 MiB synchronous) instead of
+    # 5%/10% ratios (which allowed 1.6 GiB / 3.2 GiB writeback stalls on 32 GB RAM).
+    "vm.dirty_background_bytes" = 67108864;
+    "vm.dirty_bytes" = 268435456;
+    # Reduce per-CPU vmstat shepherd timer wakeups from 1Hz to 0.1Hz (every 10s).
+    "vm.stat_interval" = 10;
   };
 
   # ==========================================
