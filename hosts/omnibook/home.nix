@@ -156,10 +156,8 @@ in {
              -- eDP-1 is explicitly disabled when docked to free APU display engine
              -- bandwidth.
              monitor = {
-               "DP-1, 1920x1080@599.94, 0x0, 1",
-               "eDP-1, disable",
+               ${luaMonitors},
              },
-
              -- Direct scanout hands the client's buffer straight to the display
              -- controller, skipping the compositor's blend pass entirely. Measured
              -- 2026-08-27: with ironbar mapped this output was pulling 8872 MB/s DRAM
