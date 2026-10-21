@@ -135,22 +135,26 @@
       settings = {
         General = {
           EnableNetworkConfiguration = true;
+          # Prevents iwd from auto-roaming between access points/bands
+          RoamThreshold = -100;
+          RoamThreshold5G = -100;
         };
         Network = {
           EnableIPv6 = true;
         };
         Rank = {
-          # 0.0 completely disables scanning and connecting on 2.4 GHz
           BandModifier2_4GHz = 0.0;
-          # Deprioritize 5 GHz relative to 6 GHz
-          BandModifier5GHz = 0.5;
-          # Heavily boost 6 GHz candidate rank
-          BandModifier6GHz = 5.0;
+          BandModifier5GHz = 0.0;
+          BandModifier6GHz = 100.0;
         };
         Scan = {
-          # Prevents background periodic scans that cause lag spikes
           DisablePeriodicScan = true;
           DisableRoamingScan = true;
+        };
+        Blacklist = {
+          # Explicitly block the 2.4 GHz and 5 GHz BSSIDs from association
+          "06:01:be:f6:74:02" = true;
+          "0a:12:be:f6:74:03" = true;
         };
       };
     };
