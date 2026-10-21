@@ -139,9 +139,18 @@
         Network = {
           EnableIPv6 = true;
         };
+        Rank = {
+          # 0.0 completely disables scanning and connecting on 2.4 GHz
+          BandModifier2_4GHz = 0.0;
+          # Deprioritize 5 GHz relative to 6 GHz
+          BandModifier5GHz = 0.5;
+          # Heavily boost 6 GHz candidate rank
+          BandModifier6GHz = 5.0;
+        };
         Scan = {
-          # Prevents background periodic scans that cause in-game lag spikes
+          # Prevents background periodic scans that cause lag spikes
           DisablePeriodicScan = true;
+          DisableRoamingScan = true;
         };
       };
     };
@@ -506,4 +515,3 @@
     ];
   };
 }
-
