@@ -116,20 +116,8 @@
     # ---------------------------------------------------------------------------
     # COMPETITIVE NETWORKING & WI-FI ROAMING / POWERSAVE LOCKOUT
     # ---------------------------------------------------------------------------
-    networking.networkmanager = {
-      enable = true;
-      wifi.backend = "iwd";
-      wifi.powersave = false;
-      wifi.macAddress = "permanent";
-      dns = "default";
-
-      settings = {
-        device = {
-          "wifi.scan-rand-mac-address" = "yes";
-        };
-      };
-    };
-
+    networking.networkmanager.wifi.backend = "iwd";
+    networking.wireless.enable = false;
     networking.wireless.iwd = {
       enable = true;
       settings = {
