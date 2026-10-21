@@ -163,6 +163,31 @@
     # ---------------------------------------------------------------------------
     networking.nftables.enable = true;
 
+    networking.wireguard.interfaces = {
+      rl-ny = {
+        ips = ["10.66.66.2/24"];
+        privateKeyFile = "/etc/wireguard/private.key"; # Or reference your key/file directly
+        mtu = 1420;
+
+        peers = [
+          {
+            publicKey = "1wojKRkZFshHmu2J05dwxnuUQBcgsC1xATzuorShTSg=";
+            endpoint = "207.246.71.83:51820";
+            allowedIPs = [
+              "10.66.66.1/32"
+              "3.0.0.0/8"
+              "18.0.0.0/8"
+              "54.0.0.0/8"
+              "177.71.128.0/17"
+              "18.228.0.0/15"
+              "15.228.0.0/16"
+            ];
+            persistentKeepalive = 25;
+          }
+        ];
+      };
+    };
+
     boot.blacklistedKernelModules = [
       "dccp" # Datagram Congestion Control Protocol
       "sctp" # Stream Control Transmission Protocol
