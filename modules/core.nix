@@ -131,18 +131,13 @@
           EnableIPv6 = true;
         };
         Rank = {
-          BandModifier2_4GHz = 0.0;
-          BandModifier5GHz = 0.0;
-          BandModifier6GHz = 100.0;
+          BandModifier2_4GHz = 0.01;
+          BandModifier5GHz = 0.01;
+          BandModifier6GHz = 99.0;
         };
         Scan = {
           DisablePeriodicScan = true;
           DisableRoamingScan = true;
-        };
-        Blacklist = {
-          # Explicitly block the 2.4 GHz and 5 GHz BSSIDs from association
-          "06:01:be:f6:74:02" = true;
-          "0a:12:be:f6:74:03" = true;
         };
       };
     };
