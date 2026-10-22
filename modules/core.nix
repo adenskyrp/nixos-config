@@ -131,9 +131,9 @@
           EnableIPv6 = true;
         };
         Rank = {
-          BandModifier2_4GHz = 0.01;
-          BandModifier5GHz = 0.01;
-          BandModifier6GHz = 99.0;
+     	 BandModifier2_4GHz = 0.0;
+         BandModifier5GHz = 1.0;
+         BandModifier6GHz = 1.5;
         };
         Scan = {
           DisablePeriodicScan = true;

@@ -200,7 +200,7 @@ in {
     enable = true;
     settings = {
       default_session = {
-	command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --cmd '${pkgs.util-linux}/bin/taskset -c ${config.local.hardware.gameCores} start-hyprland'";
+	command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --cmd '${pkgs.util-linux}/bin/taskset -c ${config.local.hardware.backgroundCores} start-hyprland'";
         user = "crazycat";
       };
     };
