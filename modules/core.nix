@@ -171,7 +171,7 @@
 
         peers = [
           {
-            publicKey = "1wojKRkZFshHmu2J05dwxnuUQBcgsC1xATzuorShTSg=";
+            publicKey = "0xHuaugJTMyXMU9rRvoi7DgumDGousTRyl+nB7ZjLjE=";
             endpoint = "207.246.71.83:51820";
             allowedIPs = [
               "10.66.66.1/32"
