@@ -131,9 +131,9 @@
           EnableIPv6 = true;
         };
         Rank = {
-     	 BandModifier2_4GHz = 0.0;
-         BandModifier5GHz = 1.0;
-         BandModifier6GHz = 1.5;
+          BandModifier2_4GHz = 0.0;
+          BandModifier5GHz = 1.0;
+          BandModifier6GHz = 1.5;
         };
         Scan = {
           DisablePeriodicScan = true;
@@ -162,6 +162,50 @@
     # PACKET FILTER BACKEND & PROTOCOL ATTACK SURFACE
     # ---------------------------------------------------------------------------
     networking.nftables.enable = true;
+
+    networking.wireguard.interfaces = {
+      rl-ny = {
+        ips = ["10.66.66.2/24"];
+        privateKeyFile = "/etc/wireguard/private.key";
+        mtu = 1420;
+        peers = [
+          {
+            publicKey = "G4k/iZVY70TyOD1RaMFR6hjuPmVk2bPNwSBDVigoOnU=";
+            endpoint = "217.69.0.235:51820";
+            allowedIPs = [
+              "10.66.66.1/32"
+              "15.185.0.0/16"
+              "15.184.0.0/16"
+              "16.24.0.0/15"
+              "3.28.0.0/15"
+              "185.179.202.0/23"
+            ];
+            persistentKeepalive = 25;
+          }
+        ];
+      };
+
+      rl-sa = {
+        ips = ["10.66.66.2/24"];
+        privateKeyFile = "/etc/wireguard/private.key";
+        mtu = 1420;
+        peers = [
+          {
+            publicKey = "0xHuaugJTMyXMU9rRvoi7DgumDGousTRyl+nB7ZjLjE=";
+            endpoint = "207.246.71.83:51820";
+            allowedIPs = [
+              "10.66.66.1/32"
+              "177.71.128.0/17"
+              "18.228.0.0/15"
+              "15.228.0.0/16"
+              "54.94.0.0/16"
+              "54.232.0.0/16"
+            ];
+            persistentKeepalive = 25;
+          }
+        ];
+      };
+    };
 
     boot.blacklistedKernelModules = [
       "dccp" # Datagram Congestion Control Protocol
