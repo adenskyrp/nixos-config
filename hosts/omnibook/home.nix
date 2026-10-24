@@ -964,7 +964,6 @@ in {
     celluloid
     claude-code
     tor-browser
-    proton-vpn
     p7zip
     xarchiver
     unzip
