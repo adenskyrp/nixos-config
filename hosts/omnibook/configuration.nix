@@ -62,6 +62,8 @@ in {
   environment.systemPackages = with pkgs; [
     ryzenadj
     ethtool
+    wireguard-tools
+    openresolv
   ];
 
   # Thunderbolt 4 / USB4 daemon for the Anker dock

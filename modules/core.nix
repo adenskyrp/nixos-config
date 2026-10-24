@@ -144,6 +144,7 @@
 
     # --- 802.11v BSS TRANSITION MANAGEMENT (ROAM STEERING) ---
     hardware.wirelessRegulatoryDatabase = true;
+    networking.firewall.checkReversePath = "loose";
     networking.wireless.extraConfig = ''
       disable_btm=1
       country=US
