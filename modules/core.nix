@@ -472,6 +472,7 @@
 
     environment.systemPackages = with pkgs; [
       vim
+      btop
       wget
       ethtool
       git
