@@ -488,6 +488,10 @@ in {
   # ---------------------------------------------------------------------------
   # INTERACTIVE SHELL & REBUILD PIPELINE
   # ---------------------------------------------------------------------------
+  programs.gh = {
+    enable = true;
+    gitCredentialHelper.enable = true;
+  };
   programs.git = {
     enable = true;
     settings.user = {
