@@ -124,7 +124,8 @@
       settings = {
         General = {
           EnableNetworkConfiguration = true;
-          # Prevents iwd from auto-roaming between access points/bands
+	  ManagementFrameProtection = 2;
+	  PairwiseCiphers = "CCMP-128";
           RoamThreshold = -100;
           RoamThreshold5G = -100;
         };
