@@ -44,10 +44,12 @@
         "vpkmerge": "vpkmerge"
       },
       "locked": {
-        "lastModified": 1793048072,
-        "narHash": "sha256-Vd9n683X4TRqrCO/4bykHOwFjSYY64ScIDWTnmBg1J4=",
-        "path": "/home/crazycat/grimoire",
-        "type": "path"
+        "lastModified": 1793048335,
+        "narHash": "sha256-U7rAMev3HnnElr8hFjfF0wOpnmXtsv8e4/fr2OeVGZ4=",
+        "owner": "Slush97",
+        "repo": "grimoire",
+        "rev": "1722ba9ec337b8de9e755645710c2e3fbc506e4c",
+        "type": "github"
       },
       "original": {
         "owner": "Slush97",
