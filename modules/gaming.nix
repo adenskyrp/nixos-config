@@ -33,7 +33,7 @@ in {
         };
 
         nativeBuildInputs = [final.xz final.gnutar];
-      
+
         buildCommand = ''
           mkdir -p $out
           tar -xf $src -C $out --strip-components=1

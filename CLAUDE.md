@@ -11,7 +11,7 @@ Look at those receipts:
 
 ### Final Polish Before Switching: Update `CLAUDE.md`
 To keep your repository's documentation 100% truthful to the new architecture, update `CLAUDE.md` so any future session (human or AI) knows:
-1. `hosts/desktop/` is now a real, evaluated host configuration (Ryzen 5 5600X + RX 6650 XT + ASRock B550M-HDV + Intel BE200).
+1. `hosts/desktop/` is now a real, evaluated host configuration (Ryzen 5 5600X + RX 5700 XT (Navi 10) + ASRock B550M-HDV + Intel BE200).
 2. `local.hardware` (`gameCores`, `gameCoresNoSmt`, `backgroundCores`) in `modules/core.nix` is the single source of truth for per-host CPU topology, consumed by `modules/gaming.nix`, `hosts/*/configuration.nix`, and `hosts/*/home.nix`.
 3. `pkgs.proton-cachyos-slr` is exposed via an overlay in `modules/gaming.nix` from `modules/proton-cachyos.json`.
 
@@ -35,8 +35,8 @@ this repo *is* the system and home-manager configuration, evaluated by `nix`.
   `8-19`, Radeon 880M `gfx1150` RDNA 3.5 iGPU with 24 GiB GTT ceiling, 32 GB LPDDR5X, MediaTek
   MT7925 Wi-Fi 7).
 - **`desktop`** — Custom AM4 desktop rig (AMD Ryzen 5 5600X: 6x Zen 3 `0-11` in a unified 32 MB L3
-  CCX, Radeon RX 6650 XT `gfx1032` RDNA 2 8 GB dGPU, ASRock B550M-HDV, 16 GB Samsung B-Die DDR4,
-  Intel BE200NGW Wi-Fi 7). Note: `hosts/desktop/hardware-configuration.nix` uses label-based disk
+  CCX, Radeon RX 5700 XT `gfx1010` Navi 10 RDNA 1 8 GB dGPU, ASRock B550M-HDV, 16 GB Samsung B-Die DDR4,
+  Qualcomm WCN785x / QCNCM865 Wi-Fi 7 (`ath12k`)). Note: `hosts/desktop/hardware-configuration.nix` uses label-based disk
   stubs (`/dev/disk/by-label/nixos` and `/dev/disk/by-label/BOOT`) until physical OS installation.
 
 ## Commands

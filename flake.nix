@@ -1,6 +1,15 @@
 {
   description = "adenskyrp's Pure Declarative Infrastructure & System Configurations";
 
+  nixConfig = {
+    extra-substituters = [
+      "https://chaotic-nyx.cachix.org/"
+    ];
+    extra-trusted-public-keys = [
+      "chaotic-nyx.cachix.org-1:HfnXSw4pj95iI/n17rIDy40agHj12WfF+Gqk6SonIT8="
+    ];
+  };
+
   # ---------------------------------------------------------------------------
   # FLAKE INPUTS (CHANNELS & PACKAGES)
   # ---------------------------------------------------------------------------
@@ -11,6 +20,7 @@
     # Unify root nixpkgs onto Chaotic's exact nixpkgs revision so kernel module
     # aggregation and Mesa-git never skew ahead of Chaotic's binary cache.
     nixpkgs.follows = "chaotic/nixpkgs";
+
     # Deadlock Mod Manager overlay -- unified onto root nixpkgs to avoid evaluating a second nixpkgs tree
     grimoire = {
       url = "github:Slush97/grimoire";
@@ -69,10 +79,10 @@
       };
   in {
     nixosConfigurations = {
-      # HP OmniBook Ultra 14 (AMD Ryzen AI 9 365 / Radeon 880M)
+      # HP OmniBook Ultra 14 (AMD Ryzen AI 9 365 / Radeon 880M / MediaTek MT7925)
       omnibook = mkHost {hostName = "omnibook";};
 
-      # Custom AM4 Desktop (AMD Ryzen 5 5600X / Radeon RX 6650 XT / ASRock B550M-HDV / Intel BE200)
+      # Custom AM4 Desktop (AMD Ryzen 5 5600X / Radeon RX 5700 XT Navi 10 / ASRock B550M-HDV / Qualcomm WCN785x)
       desktop = mkHost {hostName = "desktop";};
     };
   };

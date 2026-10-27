@@ -30,8 +30,8 @@
     monitors = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = [
-        "DP-1, 1920x1080@599.94, 0x0, 1"
-        "eDP-1, disable"
+        ''hl.monitor({ output = "DP-1", mode = "1920x1080@599.94", position = "0x0", scale = 1, bitdepth = 8, vrr = 0 })''
+        ''hl.monitor({ output = "eDP-1", disabled = true })''
       ];
       description = "Hyprland monitor rules injected into hyprland.lua.";
     };
@@ -80,6 +80,7 @@
 
     nix.settings = {
       experimental-features = ["nix-command" "flakes"];
+      trusted-users = ["root" "@wheel"];
     };
 
     # ---------------------------------------------------------------------------
