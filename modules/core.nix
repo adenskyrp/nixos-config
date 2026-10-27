@@ -117,7 +117,10 @@
     # ---------------------------------------------------------------------------
     # COMPETITIVE NETWORKING & WI-FI ROAMING / POWERSAVE LOCKOUT
     # ---------------------------------------------------------------------------
-    networking.networkmanager.wifi.backend = "wpa_supplicant";
+    networking.networkmanager = {
+      enable = true;
+      wifi.backend = "wpa_supplicant"; # Default, ensures iwd isn't used
+    };
     networking.wireless.enable = true;
 
     # --- 802.11v BSS TRANSITION MANAGEMENT (ROAM STEERING) ---
