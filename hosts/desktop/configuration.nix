@@ -86,6 +86,8 @@ networking.hostName = "desktop";
 
 boot.loader.systemd-boot.enable = true;
 boot.loader.efi.canTouchEfiVariables = true;
+systemd.packages = [ pkgs.lact ];
+systemd.services.lactd.wantedBy = [ "multi-user.target" ];
 boot.kernelPackages = pkgs.linuxPackages_cachyos;
 
 boot.kernelModules = [

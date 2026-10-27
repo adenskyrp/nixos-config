@@ -154,6 +154,7 @@ EOF
   environment.systemPackages = with pkgs; [
     zen5
     zen5-nosmt
+    lact
     heroic
     umu-launcher
     libnotify
