@@ -117,32 +117,8 @@
     # ---------------------------------------------------------------------------
     # COMPETITIVE NETWORKING & WI-FI ROAMING / POWERSAVE LOCKOUT
     # ---------------------------------------------------------------------------
-    networking.networkmanager.wifi.backend = "iwd";
-    networking.wireless.enable = false;
-    networking.wireless.iwd = {
-      enable = true;
-      settings = {
-        General = {
-          EnableNetworkConfiguration = true;
-	  ManagementFrameProtection = 1;
-	  PairwiseCiphers = "CCMP-128";
-          RoamThreshold = -100;
-          RoamThreshold5G = -100;
-        };
-        Network = {
-          EnableIPv6 = true;
-        };
-        Rank = {
-          BandModifier2_4GHz = 0.0;
-          BandModifier5GHz = 1.0;
-          BandModifier6GHz = 1.5;
-        };
-        Scan = {
-          DisablePeriodicScan = true;
-          DisableRoamingScan = true;
-        };
-      };
-    };
+    networking.networkmanager.wifi.backend = "wpa_supplicant";
+    networking.wireless.enable = true;
 
     # --- 802.11v BSS TRANSITION MANAGEMENT (ROAM STEERING) ---
     hardware.wirelessRegulatoryDatabase = true;
