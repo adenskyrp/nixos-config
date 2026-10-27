@@ -124,7 +124,7 @@
       settings = {
         General = {
           EnableNetworkConfiguration = true;
-	  ManagementFrameProtection = 2;
+	  ManagementFrameProtection = 1;
 	  PairwiseCiphers = "CCMP-128";
           RoamThreshold = -100;
           RoamThreshold5G = -100;
