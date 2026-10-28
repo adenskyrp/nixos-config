@@ -986,7 +986,10 @@ in {
     yabridgectl
     aria2
     osuStableLauncher
-    vesktop
+    (discord.override {
+      withOpenASAR = true;
+      withVencord = true;
+    })
     google-cloud-sdk
     (writeShellApplication {
       name = "update-proton-cachyos";
