@@ -1117,10 +1117,10 @@ in {
       type = "Application";
       icon = "pear-desktop";
     };
-    vesktop = {
-      name = "Vesktop (Discord)";
+    "discord" = {
+      name = "discord";
       genericName = "Internet Messenger";
-      exec = "${pkgs.util-linux}/bin/taskset -c ${bgCores} ${pkgs.vesktop}/bin/vesktop %U";
+      exec = "${pkgs.util-linux}/bin/taskset -c ${bgCores} ${pkgs.discord}/bin/discord %U";
       terminal = false;
       type = "Application";
       icon = "vesktop";
