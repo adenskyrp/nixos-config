@@ -34,23 +34,23 @@ in {
 
         nativeBuildInputs = [final.xz final.gnutar];
 
-	buildCommand = ''
-          mkdir -p $out
-          tar -xf $src -C $out --strip-components=1
-          if ! grep -q 'threads = os.cpu_count()' "$out/proton"; then
-            echo "ERROR: proton-cachyos upstream changed 'threads = os.cpu_count()' in $out/proton; sed patch would be a silent no-op!" >&2
-            exit 1
-          fi
-          sed -i 's/threads = os.cpu_count().*/threads = 4/' "$out/proton"
+        buildCommand = ''
+                    mkdir -p $out
+                    tar -xf $src -C $out --strip-components=1
+                    if ! grep -q 'threads = os.cpu_count()' "$out/proton"; then
+                      echo "ERROR: proton-cachyos upstream changed 'threads = os.cpu_count()' in $out/proton; sed patch would be a silent no-op!" >&2
+                      exit 1
+                    fi
+                    sed -i 's/threads = os.cpu_count().*/threads = 4/' "$out/proton"
 
-          # Automatically pin all Proton games to gameCores (0-4,6-10 on desktop)
-          # while keeping Steam/Heroic web helpers confined to backgroundCores (5,11)
-          mv "$out/proton" "$out/.proton-real"
-          cat << 'EOF' > "$out/proton"
-#!/bin/sh
-exec ${final.util-linux}/bin/taskset -c ${config.local.hardware.gameCores} "$(dirname "$0")/.proton-real" "$@"
-EOF
-          chmod +x "$out/proton"
+                    # Automatically pin all Proton games to gameCores (0-4,6-10 on desktop)
+                    # while keeping Steam/Heroic web helpers confined to backgroundCores (5,11)
+                    mv "$out/proton" "$out/.proton-real"
+                    cat << 'EOF' > "$out/proton"
+          #!/bin/sh
+          exec ${final.util-linux}/bin/taskset -c ${config.local.hardware.gameCores} "$(dirname "$0")/.proton-real" "$@"
+          EOF
+                    chmod +x "$out/proton"
         '';
       };
     })
