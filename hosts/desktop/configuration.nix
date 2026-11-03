@@ -157,6 +157,14 @@ in {
     };
   };
 
+  swapDevices = [
+    {
+      device = "/var/lib/swapfile";
+      size = 8 * 1024; # 8 GiB overflow on disk
+      priority = 0;    # Low priority: Only used when ZRAM fills
+    }
+  ];
+
   powerManagement = {
     enable = true;
     resumeCommands = ''
