@@ -960,6 +960,7 @@ in {
     polkit_gnome
     docker-client
     playerctl
+    easyeffects
     overskride
     wineWow64Packages.staging
     winetricks
