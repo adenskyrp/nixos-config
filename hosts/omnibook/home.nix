@@ -313,7 +313,7 @@ in {
              no_anim = true,
              fullscreen = true,
              fullscreen_state = "2 2",
-	     suppress_event = "fullscreen_maximize"
+	     suppress_event = "fullscreen_maximize",
              tile = true,
              workspace = 5,
            })
