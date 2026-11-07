@@ -67,10 +67,10 @@
     ARGS=()
     if [ "$SERVER" != "Bancho (Official)" ]; then
       ARGS+=("-devserver" "$SERVER")
-      sed -i "s/^CredentialEndpoint.*/CredentialEndpoint = $SERVER/g" "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
+      sed -i "s/^CredentialEndpoint[^\r]*/CredentialEndpoint = $SERVER/" "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
       export WINEDLLOVERRIDES="mscoree=n;xalia.exe=d;osu!auth.dll=d"
     else
-      sed -i "s/^CredentialEndpoint.*/CredentialEndpoint =/g" "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
+      sed -i "s/^CredentialEndpoint[^\r]*/CredentialEndpoint =/" "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
       export WINEDLLOVERRIDES="mscoree=n;xalia.exe=d"
     fi
 
@@ -93,16 +93,37 @@
     # 4. Low-latency audio & display
     export PIPEWIRE_LATENCY="128/48000"
 
-    # Ensure native OpenGL is used instead of ANGLE D3D9 fallback
-    sed -i -E 's/^CompatibilityContext\s*=\s*1/CompatibilityContext = 0/g' "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
+    # Exclusive fullscreen (Fullscreen = 1) at the focused output's real mode.
+    # Proton's win32u emulates display-mode changes (EmulateModeset), so osu!'s
+    # fullscreen ChangeDisplaySettings never reaches XRandR/KMS; the old
+    # "borderless so Wine never mode-switches" rationale does not apply.
+    # Matching Width/Height AND RefreshRate to the live mode means the fshack has
+    # nothing to scale and osu! asks for no mode change at all (the cfg shipped
+    # RefreshRate = 60 against a 599.94 Hz panel). Wine rounds 599.94 to 600,
+    # hence `round`. Falls back to 1920x1080 / untouched RefreshRate if
+    # hyprctl is unreachable.
+    MON_W="" MON_H="" MON_HZ=""
+    read -r MON_W MON_H MON_HZ < <(
+      ${config.wayland.windowManager.hyprland.finalPackage}/bin/hyprctl monitors -j 2>/dev/null |
+        ${pkgs.jq}/bin/jq -r '.[] | select(.focused) | "\(.width) \(.height) \(.refreshRate | round)"'
+    ) || true
+    MON_W="''${MON_W:-1920}"
+    MON_H="''${MON_H:-1080}"
 
-    # Run in borderless windowed mode so Wine never triggers XRandR mode switches
-    sed -i -E 's/^Fullscreen\s*=\s*.*/Fullscreen = 0/g' "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
-    sed -i -E 's/^Width\s*=\s*.*/Width = 1920/g' "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
-    sed -i -E 's/^Height\s*=\s*.*/Height = 1080/g' "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
-    sed -i -E 's/^WidthFullscreen\s*=\s*.*/WidthFullscreen = 1920/g' "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
-    sed -i -E 's/^HeightFullscreen\s*=\s*.*/HeightFullscreen = 1080/g' "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
-    sed -i -E 's/^Letterboxing\s*=\s*.*/Letterboxing = 0/g' "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
+    # One pass over the cfg. The file is CRLF: match `[^\r]*`, not `.*`, or
+    # rewritten lines lose their \r. CompatibilityContext = 0 keeps osu! on native
+    # OpenGL (radeonsi) instead of the ANGLE -> D3D9 -> DXVK path.
+    SED_ARGS=(
+      -e 's/^CompatibilityContext\s*=[^\r]*/CompatibilityContext = 0/'
+      -e 's/^Fullscreen\s*=[^\r]*/Fullscreen = 1/'
+      -e "s/^Width\s*=[^\r]*/Width = $MON_W/"
+      -e "s/^Height\s*=[^\r]*/Height = $MON_H/"
+      -e "s/^WidthFullscreen\s*=[^\r]*/WidthFullscreen = $MON_W/"
+      -e "s/^HeightFullscreen\s*=[^\r]*/HeightFullscreen = $MON_H/"
+      -e 's/^Letterboxing\s*=[^\r]*/Letterboxing = 0/'
+    )
+    [ -n "$MON_HZ" ] && SED_ARGS+=(-e "s/^RefreshRate\s*=[^\r]*/RefreshRate = $MON_HZ/")
+    sed -i -E "''${SED_ARGS[@]}" "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
 
     if [ -f "$COMPAT_DATA/dotnet-backup/mscoree32.dll" ]; then
       cp -f "$COMPAT_DATA/dotnet-backup/mscoree64.dll" "$PFX/drive_c/windows/system32/mscoree.dll"
@@ -308,16 +329,6 @@ in {
              workspace = 5,
            })
            hl.window_rule({
-             match = { class = "steam_app_0" },
-             immediate = true,
-             no_anim = true,
-             fullscreen = true,
-             fullscreen_state = "2 2",
-	     suppress_event = "maximize",
-             tile = true,
-             workspace = 5,
-           })
-           hl.window_rule({
              match = { class = "steam_app_980610" },
              immediate = true,
              no_anim = true,
@@ -325,12 +336,25 @@ in {
              tile = true,
              workspace = 5,
            })
-           -- osu! (Wine Staging / Direct Latency Pipeline)
+           -- osu!stable (osuStableLauncher -> Proton winex11, exclusive fullscreen).
+           -- Proton's winex11 names the X11 class steam_app_<id> from the
+           -- launcher's SteamAppId=0, falling back to the exe name, so one rule
+           -- matches both instead of two diverging copies.
            hl.window_rule({
-             match = { class = "osu!\\.exe" },
+             name = "osu-stable",
+             match = { class = "^(steam_app_0|osu!\\.exe)$" },
              immediate = true,
              no_anim = true,
+             fullscreen = true,
              fullscreen_state = "2 2",
+             -- Ignore the client's own fullscreen AND maximize requests; this rule
+             -- already pins it at "2 2". A maximize request demotes mode 2
+             -- (fullscreen) to 1 (maximized), and winex11 can drop
+             -- _NET_WM_STATE_FULLSCREEN while it rewrites window state (its "KWin
+             -- hack"). Either one knocks the window out of solitary/tearing.
+             -- Space-separated list per the v3 rule syntax. SUPER+F (a dispatcher,
+             -- not a client event) still toggles it.
+             suppress_event = "fullscreen maximize",
              tile = true,
              workspace = 5,
            })
