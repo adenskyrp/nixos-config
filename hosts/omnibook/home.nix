@@ -94,7 +94,7 @@
     export PIPEWIRE_LATENCY="128/48000"
 
     # Ensure native OpenGL is used instead of ANGLE D3D9 fallback
-    sed -i 's/CompatibilityContext = 1/CompatibilityContext = 0/g' "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
+    sed -i 's/CompatibilityContext = 0/CompatibilityContext = 0/g' "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
 
     # Force osu! internal config to exclusive Fullscreen
     sed -i 's/^Fullscreen = 0/Fullscreen = 1/g' "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
