@@ -79,6 +79,11 @@
     export STEAM_COMPAT_CLIENT_INSTALL_PATH="$HOME/.local/share/Steam"
     export SteamAppId="0"
 
+    # Old (i386-unix) WoW64, not new WoW64: since the 2026-08-31 update osu!auth.dll
+    # makes native Linux `int $0x80` syscalls from 32-bit code. In a new-WoW64
+    # (64-bit) process Wine's Syscall User Dispatch traps and misdispatches them,
+    # osu!auth's Linux detection fails, and it reports "disable test signing to
+    # submit scores". A true i386 process doesn't use SUD, so the syscalls hit the kernel.
     export PROTON_USE_WOW64=0
     export PROTONFIXES_DISABLE=1
     export PROTON_NO_XALIA=1
@@ -86,6 +91,15 @@
 
     unset WINE_BLOCK_GET_VERSION
     sed -i '/"HideWineExports"/d' "$PFX/user.reg" "$PFX/system.reg" 2>/dev/null || true
+
+    # GrabPointer=N for osu!.exe only. Without it the main thread spins forever
+    # at startup (3M+ set_cursor server calls in 35 s, window frozen): osu! calls
+    # ClipCursor(NULL), win32u's single-monitor fullscreen auto-clip re-clips
+    # (SET_CURSOR_CLIP|FSCLIP), osu! releases again, and so on. Side effect: osu!'s
+    # ConfineMouse does nothing, which doesn't matter for a fullscreen window on one monitor.
+    if ! grep -qF '[Software\\Wine\\AppDefaults\\osu!.exe\\X11 Driver]' "$PFX/user.reg" 2>/dev/null; then
+      printf '\n[Software\\\\Wine\\\\AppDefaults\\\\osu!.exe\\\\X11 Driver]\n"GrabPointer"="N"\n' >> "$PFX/user.reg"
+    fi
 
     export SSL_CERT_FILE="/etc/ssl/certs/ca-bundle.crt"
     export NIX_SSL_CERT_FILE="/etc/ssl/certs/ca-bundle.crt"
