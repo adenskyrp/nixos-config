@@ -96,10 +96,12 @@
     # Ensure native OpenGL is used instead of ANGLE D3D9 fallback
     sed -i -E 's/^CompatibilityContext\s*=\s*1/CompatibilityContext = 0/g' "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
 
-    # Force osu! internal config to exclusive Fullscreen
-    sed -i 's/^Fullscreen = 0/Fullscreen = 1/g' "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
-    sed -i 's/^WidthFullscreen = .*/WidthFullscreen = 1920/g' "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
-    sed -i 's/^HeightFullscreen = .*/HeightFullscreen = 1080/g' "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
+    # Set borderless 1080p instead of exclusive mode-switching
+    sed -i -E 's/^Fullscreen\s*=\s*1/Fullscreen = 0/g' "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
+    sed -i -E 's/^Width\s*=\s*.*/Width = 1920/g' "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
+    sed -i -E 's/^Height\s*=\s*.*/Height = 1080/g' "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
+    sed -i -E 's/^Letterboxing\s*=\s*1/Letterboxing = 0/g' "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
+
 
     if [ -f "$COMPAT_DATA/dotnet-backup/mscoree32.dll" ]; then
       cp -f "$COMPAT_DATA/dotnet-backup/mscoree64.dll" "$PFX/drive_c/windows/system32/mscoree.dll"
