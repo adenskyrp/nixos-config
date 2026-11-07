@@ -36,8 +36,32 @@ in {
     gameCores = "0-7";
     gameCoresNoSmt = "0,2,4,6";
     backgroundCores = "8-9,14-17";
+    allCores = "0-19";
   };
   networking.hostName = "omnibook";
+
+  # ---------------------------------------------------------------------------
+  # IRQ PIN TABLE (modules/irq-affinity.nix) -- ZEN 5C CORES ONLY (CPUs 8-19)
+  # ---------------------------------------------------------------------------
+  # - CPUs 8-9   (Zen 5c Core 1): Radeon 880M, DP Audio, card*-crtc* workers
+  # - CPUs 10-11 (Zen 5c Core 2): 8kHz USB dock (c5:00.4) on 10, internal USB (c5:00.0) on 11
+  # - CPUs 12-13 (Zen 5c Core 3): Wi-Fi 7 (c2:00.0) even MSI-X vectors on 12
+  # - CPUs 14-17 (Zen 5c Cores 4-5): unlisted IRQs, systemd, workqueues, kthreads
+  # - CPUs 18-19 (Zen 5c Core 6): Wi-Fi 7 (c2:00.0) odd MSI-X vectors on 18
+  local.irqAffinity = {
+    enable = true;
+    pins = {
+      "0000:c3:00.0" = [8]; # Radeon 880M (amdgpu)
+      "0000:c3:00.1" = [9]; # Radeon HD Audio Controller (HDMI/DP)
+      "0000:c5:00.4" = [10]; # usb7/8 -- Anker dock: 8kHz mouse, ATK kbd, Yeti
+      "0000:c5:00.0" = [11]; # usb3/4 -- GameSir G7 Pro, Synaptics fprint, BT
+      "0000:c2:00.0" = [12 18]; # Qualcomm WCN785x Wi-Fi 7 (15 MSI-X vectors)
+      "0000:c3:00.6" = [14]; # AMD Ryzen HD Audio Controller
+    };
+    # irqaffinity=14-17 alone still leaves unlisted IRQs on cpu0 (see module).
+    defaultCpus = "14-17";
+    crtcCpus = "8-9";
+  };
 
   # ---------------------------------------------------------------------------
   # APU POWER ENVELOPE (ONESHOOT AT BOOT & RESUME -- NO 10s SMU POLLING)

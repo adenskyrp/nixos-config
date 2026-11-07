@@ -182,12 +182,12 @@ in {
              -- Preconditions, all of which must hold simultaneously: fullscreen (the
              -- osu! window rules set fullscreen_state = "2 2"), a single opaque
              -- surface, and NO mapped layer surface on the output -- which is why
-             -- ironbar has to be stopped, not merely hidden. swayosd-server maps a
+             -- the bar (waybar) has to be stopped, not merely hidden. swayosd-server maps a
              -- surface when a volume/brightness OSD appears, so expect a transient
              -- scanout drop on those keypresses; that is acceptable and not worth
              -- fixing.
              render = {
-               direct_scanout = 1,
+               direct_scanout = 0,
              },
 
              -- HARDWARE CURSORS ARE KEPT ON, AND THIS CONFLICTS WITH TEARING. Read
@@ -399,24 +399,13 @@ in {
            hl.bind(mainMod .. " + V", hl.dsp.window.float({ action = "toggle" }))
            hl.bind(mainMod .. " + F", hl.dsp.window.fullscreen())
            hl.bind(mainMod .. " + SPACE", hl.dsp.exec_cmd("${pkgs.fuzzel}/bin/fuzzel"))
-           -- Toggles the ironbar UNIT, not the process. Two reasons:
-           --
-           -- This bind was `pkill -SIGUSR1 ironbar`. SIGUSR1 is *waybar's* toggle
-           -- signal; ironbar installs no handler for it, so the default disposition
-           -- (terminate) applied. SIGUSR1 is not in systemd's default
-           -- SuccessExitStatus signal set, so systemd scored the death as a failure,
-           -- and Restart=on-failure + RestartSec=1sec brought the bar back exactly
-           -- one second later -- the reported "pops back up". (Plain `pkill ironbar`
-           -- stuck by contrast, because SIGTERM *is* in the default success set:
-           -- confirmed `code=killed, signal=TERM`, unit stayed inactive (dead).)
-           --
-           -- Stopping the unit is also the only form that survives the next
-           -- hyprland-session.target reload, and -- the part that matters for
-           -- render.direct_scanout above -- it actually UNMAPS the layer surface.
-           -- Scanout requires no mapped layer surface on the output, so a bar that
-           -- is merely hidden or restarted does not free the scanout path.
+           -- Toggles the waybar UNIT, not the process. Do NOT switch this to
+           -- waybar's SIGUSR1 hide: hiding keeps the layer surface mapped, and
+           -- render.direct_scanout above requires NO mapped layer surface on the
+           -- output. Stopping the unit unmaps it, and the stopped state also
+           -- survives graphical-session.target reloads.
            hl.bind(mainMod .. " + D", hl.dsp.exec_cmd(
-             "systemctl --user is-active --quiet ironbar && systemctl --user stop ironbar || systemctl --user start ironbar"
+             "systemctl --user is-active --quiet waybar && systemctl --user stop waybar || systemctl --user start waybar"
            ))
            -- Screenshot lived on SUPER + SHIFT + S until 2026-08-30. It moved here to
            -- free that chord for the special-workspace move below, which is where
@@ -573,219 +562,146 @@ in {
   };
 
   # ---------------------------------------------------------------------------
-  # STATUS BAR & GTK3 LAYER-SHELL (Ironbar - Native XDG/Systemd Implementation)
+  # STATUS BAR (Waybar, GTK3 layer-shell)
   # ---------------------------------------------------------------------------
-  xdg.configFile."ironbar/config.json".text = builtins.toJSON {
-    anchor = {
-      top = true;
-      left = true;
-      right = true;
-      bottom = false;
-    };
-    layer = "top";
-    height = 32;
-    margin = {
-      top = 0;
-      left = 0;
-      right = 0;
-      bottom = 0;
+  # Replaced ironbar 0.19.1 on 2026-11-07. Hyprland 0.57 sends workspace
+  # events as `createworkspacev2>>ADDRESS,NAME` where ADDRESS is the
+  # addressable name (src/workspace/HLWorkspace.cpp:100) -- "special:magic" for
+  # the scratchpad -- and `hyprctl workspaces -j` no longer gives special
+  # workspaces an "id". ironbar's hyprland-rs parses that field as an integer,
+  # logged `Failed to start listener: WorkspaceAddedV2: invalid integer error`,
+  # and its event listener died for the rest of the session: workspace buttons
+  # froze, and relaunching started from a broken snapshot. Waybar 0.15
+  # (modules/hyprland/workspaces.cpp parseWorkspaceId) wraps the parse in
+  # try/catch and skips non-numeric workspaces, and hides specials by default.
+  #
+  # GTK3 renders with Cairo only, so the bar never opens a Vulkan device (the
+  # reason ironbar needed GSK_RENDERER=cairo).
+  programs.waybar = {
+    enable = true;
+    systemd.enable = true;
+
+    settings.mainBar = {
+      layer = "top";
+      position = "top";
+      height = 32;
+      spacing = 0;
+      modules-left = ["hyprland/workspaces"];
+      modules-right = ["pulseaudio" "tray" "clock"];
+
+      "hyprland/workspaces" = {
+        format = "{name}";
+        all-outputs = false;
+        show-special = false;
+        sort-by-number = true;
+      };
+
+      pulseaudio = {
+        format = "{icon} {volume}%";
+        format-muted = "󰝟 {volume}%";
+        format-icons.default = ["󰕿" "󰖀" "󰕾"];
+        max-volume = 100;
+        on-scroll-up = "${pkgs.swayosd}/bin/swayosd-client --output-volume +2";
+        on-scroll-down = "${pkgs.swayosd}/bin/swayosd-client --output-volume -2";
+        tooltip = false;
+      };
+
+      tray = {
+        icon-size = 16;
+        spacing = 6;
+      };
+
+      clock = {
+        format = "{:%H:%M}";
+        interval = 60;
+        tooltip = false;
+      };
     };
 
-    start = [
-      {
-        type = "workspaces";
-        all_monitors = false;
-        name_map = {
-          "1" = "1";
-          "2" = "2";
-          "3" = "3";
-          "4" = "4";
-          "5" = "5";
-        };
+    # The root surface is opaque and square ON PURPOSE -- compositing cost, not
+    # looks. An opaque rectangular layer surface lets the compositor take its
+    # opaque-region shortcut and skip the blend pass; alpha, rounded corners
+    # and hover transitions all defeat it, and at 599.94 Hz that cost is paid
+    # 600x a second. Measured 2026-08-27 (omnibook), bar mapped vs stopped:
+    # DRAM reads 8872 -> 4230 MB/s, GPU power 19 -> 13 W. Stopping the unit
+    # (SUPER+D) is what frees direct scanout entirely. Child elements keep
+    # their alpha: they blend inside GTK against the opaque root.
+    style = ''
+      * {
+        font-family: "FiraCode Nerd Font", monospace;
+        font-size: 13px;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+        text-shadow: none;
+        min-height: 0;
+        transition: none;
       }
-    ];
 
-    end = [
-      {
-        type = "volume";
-        format = "{icon} {percentage}%";
-        max_volume = 100;
-        on_scroll_up = "${pkgs.swayosd}/bin/swayosd-client --output-volume +2";
-        on_scroll_down = "${pkgs.swayosd}/bin/swayosd-client --output-volume -2";
+      window#waybar {
+        background-color: rgb(40, 44, 52);
+        color: #abb2bf;
+        border-bottom: 1px solid rgb(56, 60, 70);
       }
-      {
-        type = "tray";
-        icon_size = 16;
+
+      #workspaces {
+        background-color: rgba(30, 34, 42, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 6px;
+        padding: 2px;
+        margin: 2px 8px 2px 6px;
       }
-      {
-        type = "clock";
-        format = "%H:%M";
+
+      #workspaces button {
+        background: transparent;
+        color: #abb2bf;
+        padding: 2px 10px;
+        border-radius: 4px;
+        font-weight: 500;
       }
-    ];
+
+      #workspaces button:hover {
+        background: rgba(255, 255, 255, 0.12);
+        color: #ffffff;
+      }
+
+      #workspaces button.active {
+        background-color: #ffffff;
+        color: #1e222a;
+        font-weight: 700;
+      }
+
+      #workspaces button.urgent {
+        background-color: #e06c75;
+        color: #1e222a;
+        font-weight: bold;
+      }
+
+      .modules-right {
+        background-color: rgba(30, 34, 42, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 6px;
+        padding: 2px 4px;
+        margin: 2px 6px 2px 0;
+      }
+
+      #pulseaudio, #tray, #clock {
+        background: transparent;
+        color: #ffffff;
+        padding: 2px 8px;
+      }
+
+      #tray {
+        padding: 2px 4px;
+      }
+    '';
   };
 
-  # Compiles GTK4 CSS into ~/.config/ironbar/style.css. ironbar 0.19 links
-  # gtk4-4.22.4 -- this said GTK3 until 2026-08-27, which is also why the
-  # GSK_RENDERER lever on the unit below works at all (GSK is GTK4-only; GTK3
-  # has no such renderer selection).
-  xdg.configFile."ironbar/style.css".text = ''
-    /* Universal GTK Reset */
-    * {
-      font-family: "FiraCode Nerd Font", monospace;
-      font-size: 13px;
-      border: none;
-      border-radius: 0;
-      box-shadow: none;
-      text-shadow: none;
-      min-height: 0;
-    }
+  systemd.user.services.waybar.Service.CPUAffinity = bgCores;
 
-    /* Root bar surface.
-     *
-     * The three properties below are COMPOSITING-COST choices, not aesthetic
-     * ones -- do not "restore" them without reading this.
-     *
-     * A layer surface that is fully opaque and rectangular lets the compositor
-     * take its opaque-region shortcut: it knows nothing behind the bar is
-     * visible, so it skips both the blend pass and the work of drawing what is
-     * underneath. Three things defeated that here:
-     *   - background-color alpha 0.95  -> non-opaque, forces a blend pass
-     *   - border-radius 8px            -> not rectangular, no opaque region
-     *   - transition on .item:hover    -> repaint churn on pointer movement
-     *
-     * At 599.94 Hz that cost is paid up to 600 times a second. Measured
-     * 2026-08-27, ironbar mapped vs stopped: DRAM reads 8872 -> 4230 MB/s,
-     * writes 3986 -> 1104 MB/s, GPU power 19 -> 13 W, GFX_SCLK 1643 -> 941 MHz.
-     * Opaque and square is what makes the bar cheap for the times it IS mapped;
-     * stopping the unit (SUPER+D) is what frees direct scanout entirely.
-     *
-     * Child elements (.item, module backgrounds) keep their alpha deliberately.
-     * Those blend inside GTK against an opaque root, on the CPU now that the
-     * renderer is Cairo, and do not change the surface opaque region the
-     * compositor reasons about. Only the ROOT surface needed to become opaque
-     * and rectangular -- there is no reason to strip the rest of the styling.
-     */
-    window,
-    window.background,
-    .bar,
-    #bar {
-      background-color: rgb(40, 44, 52);
-      color: #abb2bf;
-      border: 1px solid rgb(56, 60, 70);
-      border-radius: 0;
-      padding: 2px 6px;
-    }
-
-    .start, .center {
-      margin: 2px 0px;
-    }
-
-    /* Left-Side Container: Workspaces */
-    .workspaces {
-      background-color: rgba(30, 34, 42, 0.7);
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      border-radius: 6px;
-      padding: 2px;
-      margin-right: 8px;
-    }
-
-    /* Inactive Workspaces */
-    .workspaces button,
-    .workspaces .item {
-      background: transparent;
-      color: #abb2bf;
-      padding: 2px 10px;
-      border-radius: 4px;
-      font-weight: 500;
-    }
-
-    /* Interactive Hover State */
-    .workspaces button:hover,
-    .workspaces .item:hover {
-      background-color: rgba(255, 255, 255, 0.12);
-      color: #ffffff;
-      cursor: pointer;
-    }
-
-    /* Active / Focused Workspace (High-Contrast White Highlight) */
-    .workspaces .item.focused,
-    .workspaces .item.active,
-    .workspaces .item.current {
-      background-color: #ffffff;
-      color: #1e222a;
-      font-weight: 700;
-    }
-
-    /* Urgent Workspace Notification Flag */
-    .workspaces .item.urgent {
-      background-color: #e06c75;
-      color: #1e222a;
-      font-weight: bold;
-    }
-
-    /* Right-Side Container: Audio, Clock & Tray (Mirrors .workspaces) */
-    .end {
-      background-color: rgba(30, 34, 42, 0.7);
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      border-radius: 6px;
-      padding: 2px 4px;
-      margin: 2px 0px;
-    }
-
-    /* Nested Status Widgets */
-    .end .volume,
-    .end .clock,
-    .end .tray,
-    .volume,
-    .clock,
-    .tray {
-      background: transparent;
-      background-color: transparent;
-      color: #ffffff;
-      padding: 2px 8px;
-    }
-
-    /* Force text and icon inheritance across all GTK children */
-    .end label,
-    .end image,
-    .volume *,
-    .clock *,
-    .tray * {
-      background: transparent;
-      color: #ffffff;
-    }
-
-    .tray {
-      padding: 2px 4px;
-    }
-  '';
-
-  systemd.user.services.ironbar = {
-    Unit = {
-      Description = "Ironbar custom Wayland bar";
-      After = ["graphical-session.target"];
-      PartOf = ["graphical-session.target"];
-    };
-    Service = {
-      ExecStart = "${pkgs.ironbar}/bin/ironbar";
-      Restart = "on-failure";
-      RestartSec = "1sec";
-
-      # Force GTK4 onto its Cairo (CPU) renderer. Without this the journal shows
-      # GDK bringing up the Vulkan backend and binding a real device:
-      #   Vulkan: Using "AMD Radeon 880M Graphics (RADV STRIX1)"
-      # so the bar held a full Vulkan device and showed up in amdgpu_top's
-      # fdinfo as a GPU client (4 MiB VRAM / 8 MiB GTT). For a clock, a volume
-      # readout and five workspace buttons that is pure overhead on a GPU whose
-      # memory bus is shared with the CPU. Measured headroom for doing it on the
-      # CPU instead: 28 MiB peak RSS and 491 ms of CPU over two minutes.
-      Environment = ["GSK_RENDERER=cairo"];
-      CPUAffinity = bgCores;
-    };
-    Install = {
-      WantedBy = ["hyprland-session.target"];
-    };
-  };
+  # Mic filter chain. No preset is forced: EasyEffects restores the last-used
+  # input chain from ~/.config/easyeffects/db on start.
+  services.easyeffects.enable = true;
 
   # ---------------------------------------------------------------------------
   # LOW-LATENCY EDITOR (Neovim)
@@ -963,7 +879,6 @@ in {
     polkit_gnome
     docker-client
     playerctl
-    easyeffects
     overskride
     wineWow64Packages.staging
     winetricks

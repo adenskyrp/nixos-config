@@ -27,6 +27,11 @@
       default = "8-19";
       description = "Logical CPU list for background daemons, browsers, and desktop UI.";
     };
+    allCores = lib.mkOption {
+      type = lib.types.str;
+      example = "0-11";
+      description = "Every logical CPU. Used to let nix-daemon escape backgroundCores.";
+    };
     monitors = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = [
@@ -57,14 +62,9 @@
       };
     };
 
-    powerManagement.resumeCommands = lib.mkMerge [
-      (lib.mkIf config.systemd.services.xhci-irq-unpin.enable ''
-        ${pkgs.systemd}/bin/systemctl restart xhci-irq-unpin.service || true
-      '')
-      (lib.mkIf config.local.hardware.capCstates ''
-        ${config.boot.kernelPackages.cpupower}/bin/cpupower idle-set -D 350 || true
-      '')
-    ];
+    powerManagement.resumeCommands = lib.mkIf config.local.hardware.capCstates ''
+      ${config.boot.kernelPackages.cpupower}/bin/cpupower idle-set -D 350 || true
+    '';
 
     # ---------------------------------------------------------------------------
     # CPU SCHEDULER
@@ -81,7 +81,34 @@
     nix.settings = {
       experimental-features = ["nix-command" "flakes"];
       trusted-users = ["root" "@wheel"];
+      # 256 MiB: avoids "download buffer is full" stalls when substituting
+      # large paths (kernel, mesa-git, proton) on a fast link.
+      download-buffer-size = 268435456;
     };
+
+    # ---------------------------------------------------------------------------
+    # NIX BUILDS: ALL CORES, HIGH PRIORITY
+    # ---------------------------------------------------------------------------
+    # Every system service inherits Manager.CPUAffinity = backgroundCores, and
+    # system.slice is cpuset-confined to it, so builds ran on 4 threads (desktop).
+    # Builds are run when nothing latency-sensitive is, so nix-daemon gets its
+    # own top-level slice with every CPU and 10x the CPU/IO weight of
+    # user.slice / system.slice (weight is what arbitrates between cgroups;
+    # nice only orders tasks inside one).
+    systemd.slices.nixbuild = {
+      description = "Nix builds (all CPUs, high weight)";
+      sliceConfig = {
+        AllowedCPUs = config.local.hardware.allCores;
+        CPUWeight = 1000;
+        IOWeight = 1000;
+      };
+    };
+    systemd.services.nix-daemon.serviceConfig = {
+      Slice = "nixbuild.slice";
+      CPUAffinity = config.local.hardware.allCores;
+    };
+    nix.daemonIOSchedClass = "best-effort";
+    nix.daemonIOSchedPriority = 0;
 
     # ---------------------------------------------------------------------------
     # STORE MAINTENANCE (DEFERRED, NEVER CAUGHT UP MID-SESSION)
@@ -241,30 +268,6 @@
     ];
 
     hardware.uinput.enable = true;
-
-    # ---------------------------------------------------------------------------
-    # xHCI INTERRUPT AFFINITY (UNPINNED BASELINE UNLESS OVERRIDDEN BY HOST)
-    # ---------------------------------------------------------------------------
-    systemd.services.xhci-irq-unpin = {
-      description = "Restore default (all-CPU) IRQ affinity for xHCI controllers";
-      wantedBy = ["multi-user.target"];
-      after = ["systemd-modules-load.service"];
-
-      serviceConfig = {
-        Type = "oneshot";
-        RemainAfterExit = true;
-        ExecStart = pkgs.writeShellScript "xhci-irq-unpin" ''
-          mask="0-$(($(${pkgs.coreutils}/bin/nproc --all) - 1))"
-          for irq in $(${pkgs.gawk}/bin/awk -F: '/xhci_hcd/ {gsub(/ /, "", $1); print $1}' /proc/interrupts); do
-            if echo "$mask" > /proc/irq/"$irq"/smp_affinity_list 2>/dev/null; then
-              echo "irq $irq unpinned to $mask, now effective on cpu$(cat /proc/irq/"$irq"/effective_affinity_list)"
-            else
-              echo "irq $irq: affinity write rejected, left on cpu$(cat /proc/irq/"$irq"/effective_affinity_list)" >&2
-            fi
-          done
-        '';
-      };
-    };
 
     # ---------------------------------------------------------------------------
     # LOW-LATENCY AUDIO SUBSYSTEM (PipeWire: 256 realized = 5.33 ms @ 48 kHz)

@@ -9,7 +9,7 @@
   # ---------------------------------------------------------------------------
   # Reads host-specific core masks from config.local.hardware:
   # - omnibook (Ryzen AI 9 365): gameCores = "0-7" (Zen 5), gameCoresNoSmt = "0,2,4,6"
-  # - desktop (Ryzen 5 5600X):   gameCores = "0-11" (Zen 3 unified L3), gameCoresNoSmt = "0,2,4,6,8,10"
+  # - desktop (Ryzen 5 5600X):   gameCores = "0-3,6-9" (physical cores 0-3), gameCoresNoSmt = "0-3"
   zen5 = pkgs.writeShellScriptBin "zen5" ''
     exec ${pkgs.util-linux}/bin/taskset -c ${config.local.hardware.gameCores} "$@"
   '';
@@ -43,8 +43,8 @@ in {
                     fi
                     sed -i 's/threads = os.cpu_count().*/threads = 4/' "$out/proton"
 
-                    # Automatically pin all Proton games to gameCores (0-4,6-10 on desktop)
-                    # while keeping Steam/Heroic web helpers confined to backgroundCores (5,11)
+                    # Pin every Proton game to gameCores (desktop: 0-3,6-9)
+                    # while Steam/Heroic web helpers stay on backgroundCores.
                     mv "$out/proton" "$out/.proton-real"
                     cat << 'EOF' > "$out/proton"
           #!/bin/sh
@@ -100,7 +100,6 @@ in {
     MESA_VK_WSI_PRESENT_MODE = "immediate";
     SDL_VIDEO_WAYLAND_ALLOW_TEARING = "1";
     vblank_mode = "0";
-    RADV_PERFTEST = "nggc";
     PROTON_USE_NTSYNC = "1";
     PROTON_NO_ESYNC = "1";
     PROTON_USE_SDL = "1";
@@ -111,7 +110,10 @@ in {
     MESA_SHADER_CACHE_MAX_SIZE = "16G";
     NIXOS_OZONE_WL = "1";
     DISABLE_VK_LAYER_VALVE_steam_overlay_1 = "1";
-    VK_DRIVER_FILES = "/run/opengl-driver/share/vulkan/icd.d/radeon_icd.x86_64.json";
+    # RADV only (skips lavapipe/other Mesa ICDs). Both arches: with only the
+    # x86_64 JSON listed, 32-bit Vulkan clients (old-WoW64 Proton, i686 apps)
+    # find no device at all; the loader skips the wrong-arch entry by library_arch.
+    VK_DRIVER_FILES = "/run/opengl-driver/share/vulkan/icd.d/radeon_icd.x86_64.json:/run/opengl-driver-32/share/vulkan/icd.d/radeon_icd.i686.json";
     SDL_JOYSTICK_HIDAPI = "0";
     SDL_GAMECONTROLLERCONFIG = "";
   };
@@ -121,10 +123,13 @@ in {
   # ---------------------------------------------------------------------------
   environment.etc."dxvk.conf".text = ''
     # --- PRESENTATION & FRAME QUEUE LATENCY ---
+    # Every key here is verified against the option strings compiled into the
+    # DXVK 3.1.1 builds bundled in proton-cachyos (dxvk + dxvk-low-latency).
+    # Unknown keys are silently ignored, so dead ones are removed, not kept:
+    # dxvk.enableAsync / d3d9.enableAsync (dxvk-async fork only; DXVK 2+ uses
+    # graphics pipeline libraries instead), dxvk.syncInterval (never existed),
+    # dxgi.nvapiHack (renamed dxgi.hideNvidiaGpu; irrelevant on AMD).
     dxvk.numCompilerThreads = 4
-    dxvk.enableAsync = true
-    d3d9.enableAsync = true
-    dxvk.syncInterval = 0
     dxvk.tearFree = False
     dxgi.syncInterval = 0
     d3d9.presentInterval = 0
@@ -140,7 +145,6 @@ in {
     # --- RDNA / RADV HARDWARE PIPELINE ---
     dxvk.useRawSsbo = True
     d3d11.relaxedBarriers = True
-    dxgi.nvapiHack = False
     dxvk.trackPipelineLifetime = False
 
     # Optimizes D3D9 sampler state setup for titles like osu! stable

@@ -34,7 +34,7 @@ in {
     pkgs.vulkan-tools
   ];
 
-  # Graphics Stack & Driver Layers (RDNA 3.5 / Mesa RADV pure)
+  # Graphics Stack & Driver Layers (Mesa RADV)
   hardware.graphics = {
     enable = true;
     enable32Bit = true;
@@ -45,7 +45,6 @@ in {
 
   # Session Environment Variables
   environment.sessionVariables = {
-    AMD_VULKAN_ICD = "RADV";
     _JAVA_AWT_WM_NONREPARENTING = "1";
   };
 }

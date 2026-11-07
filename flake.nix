@@ -1,14 +1,9 @@
 {
   description = "adenskyrp's Pure Declarative Infrastructure & System Configurations";
 
-  nixConfig = {
-    extra-substituters = [
-      "https://chaotic-nyx.cachix.org/"
-    ];
-    extra-trusted-public-keys = [
-      "chaotic-nyx.cachix.org-1:HfnXSw4pj95iI/n17rIDy40agHj12WfF+Gqk6SonIT8="
-    ];
-  };
+  # No nixConfig block: chaotic.nixosModules.default already adds
+  # nyx-cache.chaotic.cx to nix.settings, and a flake-level nixConfig is
+  # ignored (with two warnings per command) unless accept-flake-config is set.
 
   # ---------------------------------------------------------------------------
   # FLAKE INPUTS (CHANNELS & PACKAGES)
@@ -82,7 +77,7 @@
       # HP OmniBook Ultra 14 (AMD Ryzen AI 9 365 / Radeon 880M / MediaTek MT7925)
       omnibook = mkHost {hostName = "omnibook";};
 
-      # Custom AM4 Desktop (AMD Ryzen 5 5600X / Radeon RX 5700 XT Navi 10 / ASRock B550M-HDV / Qualcomm WCN785x)
+      # Custom AM4 Desktop (AMD Ryzen 5 5600X / Radeon RX 7800 XT Navi 32 / ASRock B550M-HDV / Qualcomm WCN785x)
       desktop = mkHost {hostName = "desktop";};
     };
   };
