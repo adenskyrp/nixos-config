@@ -38,6 +38,22 @@
         ];
     }).run;
 
+  # osu!lazer is native (BASS -> libasound -> pipewire-alsa), so PIPEWIRE_LATENCY
+  # does nothing; osu-framework asks BASS for a 10 ms buffer at 44.1 kHz (pw-top:
+  # alsa_playback.osu! 441/44100, resampled to the 48 kHz graph). PIPEWIRE_ALSA
+  # constrains the plugin's hw params instead: 48 kHz, <=256-frame buffer in
+  # 128-frame periods (F32 stereo = 8 B/frame). Measured 128/48000, ERR 0 on the
+  # desktop ALC897 (2026-11-08). If it crackles, raise buffer-bytes to 4096.
+  osuLazer = pkgs.symlinkJoin {
+    name = "osu-lazer-bin-lowlatency";
+    paths = [pkgs.osu-lazer-bin];
+    nativeBuildInputs = [pkgs.makeWrapper];
+    postBuild = ''
+      wrapProgram "$out/bin/osu!" \
+        --set PIPEWIRE_ALSA '{ alsa.rate=48000 alsa.buffer-bytes=2048 alsa.period-bytes=1024 }'
+    '';
+  };
+
   osuStableLauncher = pkgs.writeShellScriptBin "osu-stable" ''
     COMPAT_DATA="$HOME/Games/osu-stable"
     PFX="$COMPAT_DATA/pfx"
@@ -934,7 +950,7 @@ in {
     hicolor-icon-theme
     obs-studio-plugins.obs-vkcapture
     libva-utils
-    osu-lazer-bin
+    osuLazer
     celluloid
     claude-code
     tor-browser
@@ -1108,7 +1124,7 @@ in {
     };
     "osu!" = {
       name = "osu!";
-      exec = "${pkgs.util-linux}/bin/taskset -c ${gameCores} osu! %U";
+      exec = "${pkgs.util-linux}/bin/taskset -c ${gameCores} ${osuLazer}/bin/osu! %U";
       terminal = false;
       type = "Application";
       icon = "osu";
