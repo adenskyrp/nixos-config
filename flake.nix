@@ -77,7 +77,7 @@
       # HP OmniBook Ultra 14 (AMD Ryzen AI 9 365 / Radeon 880M / MediaTek MT7925)
       omnibook = mkHost {hostName = "omnibook";};
 
-      # Custom AM4 Desktop (AMD Ryzen 5 5600X / Radeon RX 7800 XT Navi 32 / ASRock B550M-HDV / Qualcomm WCN785x)
+      # Custom AM4 Desktop (AMD Ryzen 5 5600X / Radeon RX 5700 XT Navi 10 / ASRock B550M-HDV / Qualcomm WCN785x)
       desktop = mkHost {hostName = "desktop";};
     };
   };

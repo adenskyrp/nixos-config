@@ -72,6 +72,9 @@
     # No sched-ext scheduler is loaded: the CachyOS kernel's own BORE
     # (Burst-Oriented Response Enhancer) EEVDF variant is used as-is, which
     # measured better on this machine than scx_lavd (tested 2026-08-20).
+    # Hosts must select linuxPackages_cachyos-bore explicitly; plain
+    # linuxPackages_cachyos became clang-LTO without BORE (found 2026-11-08,
+    # so the 08-20 comparison may have been against a non-BORE kernel).
 
     # ---------------------------------------------------------------------------
     # REPOSITORY EVALUATION POLICIES & FLAKE STATE
@@ -189,6 +192,10 @@
 
     boot.kernelParams = [
       "8250.nr_uarts=0"
+      # RCU callbacks for the game cores run in rcuo kthreads instead, which
+      # irq-affinity.nix moves to kthreadCpus. nohz_full is deliberately not
+      # used: it adds user/kernel accounting to every syscall (Wine is syscall-heavy).
+      "rcu_nocbs=${config.local.hardware.gameCores}"
     ];
 
     boot.kernel.sysctl = {
@@ -284,7 +291,11 @@
         "10-clock-quantum" = {
           "context.properties" = {
             "default.clock.rate" = 48000;
-            "default.clock.allowed-rates" = [44100 48000 96000];
+            # 48 kHz only: every alsa_output is pinned to audio.rate = 48000 below,
+            # so allowing 44.1 kHz just let osu! drag the graph to 44100 while the
+            # device stayed at 48000 (pw-top: driver 256/44100 vs S32LE 48000, xruns).
+            # 44.1 kHz streams are now resampled once, in their own adapter.
+            "default.clock.allowed-rates" = [48000];
             "default.clock.quantum" = 512;
             "default.clock.min-quantum" = 128;
             "default.clock.max-quantum" = 4096;
@@ -330,6 +341,22 @@
                   "api.alsa.period-size" = 256;
                   "api.alsa.headroom" = 256;
                   "api.alsa.disable-batch" = true;
+                };
+              };
+            }
+            {
+              # HD-Audio is not a batch device and reports an exact hw pointer, so
+              # it needs no headroom; the 256 frames above added a flat 5.33 ms to
+              # every sound on HDA outputs (desktop ALC897, GPU HDMI/DP).
+              matches = [
+                {
+                  "node.name" = "~alsa_output.*";
+                  "alsa.driver_name" = "snd_hda_intel";
+                }
+              ];
+              actions = {
+                update-props = {
+                  "api.alsa.headroom" = 0;
                 };
               };
             }
@@ -437,6 +464,15 @@
       variant = "";
     };
     services.fwupd.enable = false;
+    # On by default in NixOS; nothing here uses text-to-speech.
+    services.speechd.enable = false;
+
+    # `nh os switch` / `nh os build`: nixos-rebuild with an nvd package diff and
+    # build tree. nh.clean stays off (nix.gc above already owns GC).
+    programs.nh = {
+      enable = true;
+      flake = "/home/crazycat/nixos-config";
+    };
     services.gnome.gnome-keyring.enable = true;
     programs.fish.enable = true;
 

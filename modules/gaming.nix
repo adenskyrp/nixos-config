@@ -77,6 +77,13 @@ in {
     daemon.enable = true;
   };
 
+  # The tablet report path shares backgroundCores with Discord, which renices
+  # itself to -8, so at nice 0 the daemon lost to Discord during voice chat.
+  # -15 beats every SCHED_OTHER desktop task but stays below PipeWire's RT
+  # threads. Nice, not SCHED_FIFO: the .NET runtime's GC/JIT threads would
+  # inherit RT and could starve the core. (User manager LimitNICE=40 allows it.)
+  systemd.user.services.opentabletdriver.serviceConfig.Nice = -15;
+
   hardware.uinput.enable = true;
 
   # ---------------------------------------------------------------------------

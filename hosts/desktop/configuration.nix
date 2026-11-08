@@ -30,6 +30,9 @@
     gameCoresNoSmt = "0-3";
     backgroundCores = "4,5,10,11";
     allCores = "0-11";
+    # No cpuidle driver binds (see tmpfiles note below), so `cpupower idle-set`
+    # had nothing to act on. Cores already never leave C0/C1.
+    capCstates = false;
     monitors = [
       ''hl.monitor({ output = "DP-1", mode = "1920x1080@599.94", position = "0x0", scale = 1, bitdepth = 8, vrr = 0 })''
       # Catch-all: if a GPU swap renumbers connectors (DP-1 -> DP-2/3), come up
@@ -69,7 +72,9 @@
     configurationLimit = 15;
   };
   boot.loader.efi.canTouchEfiVariables = true;
-  boot.kernelPackages = pkgs.linuxPackages_cachyos;
+  # -bore explicitly: plain linuxPackages_cachyos is now the clang-LTO build
+  # with BORE compiled out (no CONFIG_SCHED_BORE, no kernel.sched_bore sysctl).
+  boot.kernelPackages = pkgs.linuxPackages_cachyos-bore;
 
   boot.kernelModules = [
     "nct6775"
@@ -94,12 +99,16 @@
     "iomem=relaxed"
     "reboot=pci"
     "mitigations=off"
+    # CachyOS defaults HDA codec power-save to 10 s: the ALC897 powers down when
+    # idle, so the first sound afterwards is late and pops.
+    "snd_hda_intel.power_save=0"
+    "snd_hda_intel.power_save_controller=N"
   ];
 
   boot.blacklistedKernelModules = ["sp5100_tco"];
 
   # ---------------------------------------------------------------------------
-  # GPU (vendor-generic: RX 5700 XT Navi 10 -> RX 7800 XT Navi 32)
+  # GPU (RX 5700 XT Navi 10 gfx1010; config is vendor-generic, no per-card keys)
   # ---------------------------------------------------------------------------
   hardware.amdgpu = {
     # Early KMS: amdgpu binds in stage 1, so tuigreet comes up at native
@@ -137,6 +146,22 @@
 
   environment.sessionVariables = {
     AQ_NO_MODIFIERS = lib.mkForce "0";
+  };
+
+  # Keep ALSA outputs open (desktop only: costs idle wakeups, irrelevant on
+  # mains power). WirePlumber otherwise closes the device after 5 s of silence,
+  # and reopening it on the next sound adds startup delay.
+  services.pipewire.wireplumber.extraConfig."13-alsa-no-suspend" = {
+    "monitor.alsa.rules" = [
+      {
+        matches = [{"node.name" = "~alsa_output.*";}];
+        actions = {
+          update-props = {
+            "session.suspend-timeout-seconds" = 0;
+          };
+        };
+      }
+    ];
   };
 
   # ---------------------------------------------------------------------------
@@ -177,12 +202,11 @@
   powerManagement.enable = true;
 
   systemd.tmpfiles.rules = [
-    # cpufreq rules are no-ops: CPPC is on in the BIOS but the firmware still
-    # publishes no _CPC/_PSS/_CST (most likely because Global C-state Control
-    # is off, which drops the whole CPU power SSDT), so no cpufreq/cpuidle
-    # driver binds. Boost is unaffected (measured 4.85 GHz, PBO +200).
-    "w /sys/devices/system/cpu/cpu[0-11]/cpufreq/scaling_governor - - - - performance"
-    "w /sys/devices/system/cpu/cpu[0-11]/cpufreq/energy_performance_preference - - - - performance"
+    # No cpufreq governor/EPP rules: the firmware publishes no _CPC/_PSS/_CST
+    # (Global C-state Control off drops the CPU power SSDT), so no cpufreq or
+    # cpuidle driver binds and those writes were dead. Re-add them (and set
+    # local.hardware.capCstates = true) if Global C-state Control is turned on.
+    # Boost is unaffected (measured 4.85 GHz, PBO +200).
     # 0x820 = CPUs 5 and 11 (physical core 5)
     "w /sys/devices/virtual/workqueue/cpumask - - - - 820"
     "w /sys/bus/workqueue/devices/writeback/cpumask - - - - 820"

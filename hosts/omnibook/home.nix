@@ -22,6 +22,11 @@
           alsa-lib
           alsa-plugins
         ];
+      # pipewire: osu! runs as an i386-unix (old WoW64) process, so Proton's
+      # winepipewire.drv needs a 32-bit libpipewire-0.3.so.0. Without it mmdevapi
+      # falls back to winealsa -> pipewire-alsa plugin, which ignores
+      # PIPEWIRE_LATENCY and runs at Wine's fixed 10 ms WASAPI period
+      # (pw-top showed alsa_playback.osu! at 441/44100).
       extraLibraries = pkgs:
         with pkgs; [
           freetype
@@ -29,6 +34,7 @@
           libpulseaudio
           alsa-lib
           alsa-plugins
+          pipewire
         ];
     }).run;
 
@@ -105,6 +111,9 @@
     export NIX_SSL_CERT_FILE="/etc/ssl/certs/ca-bundle.crt"
 
     # 4. Low-latency audio & display
+    # Only honoured on the winepipewire path (see osuFhs). Verify with `pw-top`
+    # during play: osu! should be a native stream at 128/48000, not
+    # alsa_playback.osu! at 441/44100.
     export PIPEWIRE_LATENCY="128/48000"
 
     # Exclusive fullscreen (Fullscreen = 1) at the focused output's real mode.
@@ -736,10 +745,6 @@ in {
   };
 
   systemd.user.services.waybar.Service.CPUAffinity = bgCores;
-
-  # Mic filter chain. No preset is forced: EasyEffects restores the last-used
-  # input chain from ~/.config/easyeffects/db on start.
-  services.easyeffects.enable = true;
 
   # ---------------------------------------------------------------------------
   # LOW-LATENCY EDITOR (Neovim)

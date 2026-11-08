@@ -142,8 +142,10 @@
       fi
     done
 
-    # Movable non-per-CPU kernel daemons -> kthreadCpus.
-    for pid in $(${pkgs.procps}/bin/ps -eo pid,comm --no-headers | "$awk_bin" '$2 ~ /^(jbd2\/|kswapd|kcompactd|khugepaged|ksmd|kauditd|khungtaskd|psimon|hwrng|watchdogd|usb-storage|scsi_eh_|kdevtmpfs)/ {print $1}'); do
+    # Movable non-per-CPU kernel daemons -> kthreadCpus. rcuo[gp]/N are the
+    # RCU callback-offload threads created for the rcu_nocbs= CPUs (core.nix);
+    # left unpinned they could run the offloaded work right back on game cores.
+    for pid in $(${pkgs.procps}/bin/ps -eo pid,comm --no-headers | "$awk_bin" '$2 ~ /^(jbd2\/|kswapd|kcompactd|khugepaged|ksmd|kauditd|khungtaskd|psimon|hwrng|watchdogd|usb-storage|scsi_eh_|kdevtmpfs|rcuo)/ {print $1}'); do
       ${pkgs.util-linux}/bin/taskset -pc ${cfg.kthreadCpus} "$pid" >/dev/null 2>&1 || true
     done
     echo "hardware-irq-pin: movable kthreads -> cpu ${cfg.kthreadCpus}"

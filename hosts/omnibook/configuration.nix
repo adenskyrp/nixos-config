@@ -121,8 +121,9 @@ in {
 
   # Uses pre-built Chaotic-Nyx BORE kernel directly from the binary cache
   # instead of .cachyOverride (which invalidated the binary cache and forced a
-  # full local kernel compile on every flake update).
-  boot.kernelPackages = pkgs.linuxPackages_cachyos;
+  # full local kernel compile on every flake update). Must be the -bore
+  # attribute: plain linuxPackages_cachyos is now clang-LTO with BORE compiled out.
+  boot.kernelPackages = pkgs.linuxPackages_cachyos-bore;
 
   boot.kernelParams = [
     # --- APU DYNAMIC VRAM (GTT) SIZING (24 GiB ceiling for 32 GB RAM) ---
