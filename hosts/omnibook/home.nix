@@ -177,6 +177,21 @@
       WINEPREFIX="$STEAM_COMPAT_DATA_PATH/pfx" "${pkgs.proton-cachyos-slr}/files/bin/wineserver" -w
       ' -- "$OSU_EXE" "''${ARGS[@]}"
   '';
+
+  # services.pipewire.jack.enable is deprecated (global LD_LIBRARY_PATH), so JACK
+  # clients go through pw-jack instead. The .desktop entry runs a bare
+  # `bitwig-studio`, so wrapping the bin also covers the launcher. yabridge
+  # plugin hosts inherit the env from Bitwig.
+  bitwigPwJack = pkgs.symlinkJoin {
+    name = "bitwig-studio-pw-jack";
+    paths = [pkgs.bitwig-studio];
+    nativeBuildInputs = [pkgs.makeWrapper];
+    postBuild = ''
+      rm $out/bin/bitwig-studio
+      makeWrapper ${pkgs.pipewire.jack}/bin/pw-jack $out/bin/bitwig-studio \
+        --add-flags ${pkgs.bitwig-studio}/bin/bitwig-studio
+    '';
+  };
 in {
   # ---------------------------------------------------------------------------
   # HYPRLAND: NATIVE LUA COMPOSITOR CONFIGURATION
@@ -960,7 +975,7 @@ in {
     file-roller
     unrar
     zip
-    ark
+    kdePackages.ark # top-level `ark` is now the Posit R Jupyter kernel
     scrcpy
     android-tools
     pear-desktop
@@ -968,7 +983,7 @@ in {
     en-croissant
     stockfish
     grimoire
-    bitwig-studio
+    bitwigPwJack
     yabridge
     yabridgectl
     aria2
