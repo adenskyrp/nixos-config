@@ -199,7 +199,7 @@
         matches = [{"node.name" = "~alsa_output.usb-GuangZhou_FiiO_Electronics_Co._Ltd_FiiO_K7.*";}];
         actions = {
           update-props = {
-            "api.alsa.period-size" = 64;
+            "api.alsa.period-size" = 128;
             "api.alsa.period-num" = 3;
             "api.alsa.headroom" = 0;
             # USB inputs default to 2109 vs 1109 for this sink, so in a call the
