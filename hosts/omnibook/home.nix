@@ -90,11 +90,12 @@
     if [ "$SERVER" != "Bancho (Official)" ]; then
       ARGS+=("-devserver" "$SERVER")
       sed -i "s/^CredentialEndpoint[^\r]*/CredentialEndpoint = $SERVER/" "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
-      export WINEDLLOVERRIDES="mscoree=n;xalia.exe=d;osu!auth.dll=d"
     else
       sed -i "s/^CredentialEndpoint[^\r]*/CredentialEndpoint =/" "$OSU_DIR"/osu!.*.cfg 2>/dev/null || true
-      export WINEDLLOVERRIDES="mscoree=n;xalia.exe=d"
     fi
+    # osu!auth.dll stays enabled on private servers too: with it disabled (=d) osu!
+    # has no anticheat result to send and shows the "test signing" no-submit warning.
+    export WINEDLLOVERRIDES="mscoree=n;xalia.exe=d"
 
     # 3. Proton environment
     export STEAM_COMPAT_DATA_PATH="$COMPAT_DATA"
