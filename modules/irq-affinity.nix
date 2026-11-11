@@ -3,11 +3,13 @@
 # Static IRQ / kthread pinning, shared by every host (replaces irqbalance).
 # Each host supplies its own pin table via `local.irqAffinity`.
 #
-# Pin keys are either an exact PCI function ("0000:c3:00.0") or
-# "driver:<name>", which expands at runtime to every PCI function currently
-# bound to that driver. Prefer driver keys: they survive GPU swaps, BIOS
-# updates, and slot moves that renumber PCI buses (a hardcoded-BDF table on the
-# desktop silently pinned nothing for months because of exactly that).
+# Pin keys are an exact PCI function ("0000:c3:00.0"), "driver:<name>", which
+# expands at runtime to every PCI function currently bound to that driver, or
+# "pci:<vendor>:<device>" (e.g. "pci:1022:149c"), every function with that ID.
+# Prefer driver keys, then ID keys (for two controllers sharing a driver): both
+# survive GPU swaps, BIOS updates, and slot moves that renumber PCI buses (a
+# hardcoded-BDF table on the desktop silently pinned nothing for months because
+# of exactly that).
 {
   config,
   pkgs,
@@ -21,13 +23,22 @@
     grep_bin=${pkgs.gnugrep}/bin/grep
     awk_bin=${pkgs.gawk}/bin/awk
 
-    # "driver:amdgpu" -> every bound PCI function; "0000:07:00.0" -> itself.
+    # "driver:amdgpu" -> every bound PCI function; "pci:1022:149c" -> every
+    # function with that vendor:device ID; "0000:07:00.0" -> itself.
     functions_of() {
-      local key=$1 dev
+      local key=$1 dev id want vendor device
       case "$key" in
         driver:*)
           for dev in /sys/bus/pci/drivers/"''${key#driver:}"/0000:*; do
             [ -e "$dev" ] && basename "$dev"
+          done
+          ;;
+        pci:*)
+          id=''${key#pci:}
+          want="0x''${id%%:*}:0x''${id#*:}"
+          for dev in /sys/bus/pci/devices/0000:*; do
+            read -r vendor < "$dev/vendor" && read -r device < "$dev/device" || continue
+            [ "$vendor:$device" = "$want" ] && basename "$dev"
           done
           ;;
         *) echo "$key" ;;
@@ -177,9 +188,10 @@ in {
         "0000:c2:00.0" = [12 18];
       };
       description = ''
-        IRQ pin table. Key: a PCI function address or `driver:<name>` (all PCI
-        functions bound to that driver). Value: CPUs; a device's vectors are
-        spread round-robin across the list.
+        IRQ pin table. Key: a PCI function address, `driver:<name>` (all PCI
+        functions bound to that driver) or `pci:<vendor>:<device>` (all
+        functions with that PCI ID, lowercase hex). Value: CPUs; a device's
+        vectors are spread round-robin across the list.
       '';
     };
 

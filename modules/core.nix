@@ -43,7 +43,12 @@
     capCstates = lib.mkOption {
       type = lib.types.bool;
       default = true;
-      description = "Disable C-states with exit latency >= 350us (C3/C6) at boot and resume.";
+      description = "Disable deep C-states (see capCstatesLatency) at boot and resume; warns if no cpuidle driver.";
+    };
+    capCstatesLatency = lib.mkOption {
+      type = lib.types.ints.positive;
+      default = 350;
+      description = "With capCstates, disable every idle state whose exit latency is >= this many us.";
     };
   };
 
@@ -51,19 +56,30 @@
     # ---------------------------------------------------------------------------
     # CPUIDLE C-STATE CEILING & RESUME HOOKS
     # ---------------------------------------------------------------------------
+    # Without a cpuidle driver (firmware publishes no _CST, e.g. desktop BIOS with
+    # Global C-state Control off) cores only ever HLT into C1, so there is nothing
+    # to cap: warn instead of failing the unit, and start working as soon as the
+    # firmware exposes C-states, with no config edit.
     systemd.services.cpu-idle-limit = lib.mkIf config.local.hardware.capCstates {
-      description = "Cap cpuidle at C2 (disable states with exit latency >= 350us)";
+      description = "Cap cpuidle (disable states with exit latency >= capCstatesLatency)";
       wantedBy = ["multi-user.target"];
       after = ["systemd-modules-load.service"];
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;
-        ExecStart = "${config.boot.kernelPackages.cpupower}/bin/cpupower idle-set -D 350";
+        ExecStart = pkgs.writeShellScript "cpu-idle-limit" ''
+          read -r drv < /sys/devices/system/cpu/cpuidle/current_driver 2>/dev/null || drv=none
+          if [ "$drv" = none ]; then
+            echo "cpu-idle-limit: WARNING no cpuidle driver bound (firmware has no _CST); cores stay in C0/C1" >&2
+            exit 0
+          fi
+          exec ${config.boot.kernelPackages.cpupower}/bin/cpupower idle-set -D ${toString config.local.hardware.capCstatesLatency}
+        '';
       };
     };
 
     powerManagement.resumeCommands = lib.mkIf config.local.hardware.capCstates ''
-      ${config.boot.kernelPackages.cpupower}/bin/cpupower idle-set -D 350 || true
+      ${pkgs.systemd}/bin/systemctl restart cpu-idle-limit.service || true
     '';
 
     # ---------------------------------------------------------------------------

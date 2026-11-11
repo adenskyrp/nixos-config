@@ -15,11 +15,15 @@ application code or test suite — this repo *is* the system and home-manager co
   Radeon 880M `gfx1150` iGPU with 24 GiB GTT ceiling, 32 GB LPDDR5X, Qualcomm WCN785x Wi-Fi 7).
 - **`desktop`** — AM4 desktop (Ryzen 5 5600X: 6x Zen 3, SMT siblings are `N`/`N+6`; Radeon
   RX 5700 XT `gfx1010` Navi 10 8 GB (a 7800 XT swap was trialled and reverted); ASRock B550M-HDV;
-  32 GB DDR4; Qualcomm WCN785x Wi-Fi 7 via `ath12k_wifi7_pci`; no wired NIC enabled).
-  CPU layout: physical cores 0-3 (`0-3,6-9`) games, core 4 (`4,10`) GPU IRQ/CRTC/audio, core 5
-  (`5,11`) xHCI/Wi-Fi/kthreads. BIOS currently has CPPC / Global C-state Control off, so there is
-  **no cpufreq or cpuidle driver** (`amd_pstate: _CPC object is not present`), so the desktop sets
-  `capCstates = false` and has no cpufreq tmpfiles rules; restore both if that BIOS setting changes.
+  32 GB DDR4; Qualcomm WCN785x Wi-Fi 7 via `ath12k_wifi7_pci`; no wired NIC enabled; FiiO K7
+  USB DAC/amp on the chipset xHCI is the audio output).
+  CPU layout (from measured per-core boost bins, see the host file): physical cores 1,2,4,5
+  (`1-2,4-5,7-8,10-11`) games; core 0 (`0,6`) Wi-Fi (ath12k hard-pins its single MSI to cpu0),
+  mouse xHCI, default IRQs, kthreads; core 3 (`3,9`, worst bin) GPU IRQ/CRTC, K7 xHCI, PipeWire.
+  As of 2026-11-11 the BIOS still publishes **no `_CPC`/`_CST`** even with CPPC and Global
+  C-state Control set to Enabled (no `cppc` CPUID flag), so there is no cpufreq or cpuidle
+  driver. `cpufreq-performance` and `cpu-idle-limit` warn and do nothing until that changes,
+  then apply automatically.
 - **Kernel**: both hosts use `linuxPackages_cachyos-bore`. Plain `linuxPackages_cachyos` is now the
   clang-LTO build with BORE compiled out; check with `sysctl kernel.sched_bore`.
 
@@ -54,12 +58,13 @@ pushes on success, so only use it when that is wanted.
   `osConfig.local.hardware`). `hosts/desktop/home.nix` imports it and disables `kanshi`.
 - **`modules/`**:
   - `core.nix` — defines `options.local.hardware` (`gameCores`, `gameCoresNoSmt`, `backgroundCores`,
-    `monitors`, `capCstates`) — the single source of truth for per-host CPU topology, consumed by
+    `monitors`, `capCstates`, `capCstatesLatency`) — the single source of truth for per-host CPU topology, consumed by
     `gaming.nix`, `irq-affinity.nix`, host configs and `home.nix`. Also Nix settings/GC/optimise
     (timers `persistent = false`), `fq`+`bbr` sysctls, udev rules, PipeWire/WirePlumber low-latency
     config, PAM realtime limits, base packages.
-  - `irq-affinity.nix` — shared `local.irqAffinity` module (both hosts): pins keyed by PCI address or
-    `driver:<name>` (preferred — survives GPU swaps and bus renumbering), `defaultCpus` sweep (needed
+  - `irq-affinity.nix` — shared `local.irqAffinity` module (both hosts): pins keyed by PCI address,
+    `driver:<name>` (preferred — survives GPU swaps and bus renumbering) or `pci:<vendor>:<device>`
+    (for two controllers on one driver, e.g. the desktop's xHCIs), `defaultCpus` sweep (needed
     because the kernel always adds cpu0 to `irqaffinity=`), CRTC worker / kthread pinning, optional
     xHCI IRQ-thread FIFO priority, re-run on resume and on NetworkManager Wi-Fi `up` (ath12k resets
     its IRQ affinity hint to cpu0 on firmware start).
