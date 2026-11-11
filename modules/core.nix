@@ -267,13 +267,13 @@
       ACTION=="add", SUBSYSTEM=="net", KERNEL=="wlan*|wlp*", RUN+="${pkgs.iw}/bin/iw dev %k set power_save off"
 
       # Low-latency NVMe queue scheduler
-      ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/scheduler}="none"
+      ACTION=="add|change", SUBSYSTEM=="block", ENV{DEVTYPE}=="disk", KERNEL=="nvme[0-9]*n[0-9]*", ATTR{queue/scheduler}="none"
 
       # Auto-authorize Thunderbolt 4 endpoints
       ACTION=="add", SUBSYSTEM=="thunderbolt", ATTR{authorized}=="0", ATTR{authorized}="1"
 
       # USB: Force continuous active power state (eliminates first-input wake delay)
-      ACTION=="add", SUBSYSTEM=="usb", ATTR{power/control}="on"
+      ACTION=="add", SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{power/control}="on"
 
       # Blind the GameSir motion sensor to prevent 5000Hz gyro CPU overhead
       ACTION=="add|change", SUBSYSTEM=="input", ATTRS{name}=="Guangzhou Chicken Run Network Technology Co., Ltd. Wireless Controller Motion Sensors", MODE="0000", ENV{ID_INPUT_ACCELEROMETER}="0", ENV{ID_INPUT_JOYSTICK}="0"

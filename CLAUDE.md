@@ -20,10 +20,12 @@ application code or test suite — this repo *is* the system and home-manager co
   CPU layout (from measured per-core boost bins, see the host file): physical cores 1,2,4,5
   (`1-2,4-5,7-8,10-11`) games; core 0 (`0,6`) Wi-Fi (ath12k hard-pins its single MSI to cpu0),
   mouse xHCI, default IRQs, kthreads; core 3 (`3,9`, worst bin) GPU IRQ/CRTC, K7 xHCI, PipeWire.
-  As of 2026-11-11 the BIOS still publishes **no `_CPC`/`_CST`** even with CPPC and Global
-  C-state Control set to Enabled (no `cppc` CPUID flag), so there is no cpufreq or cpuidle
-  driver. `cpufreq-performance` and `cpu-idle-limit` warn and do nothing until that changes,
-  then apply automatically.
+  CPPC and Global C-state Control are **deliberately Disabled** in BIOS (2026-11-11). Setting
+  them to Enabled made no difference: the BIOS published no `_CPC`/`_CST` and no `cppc` CPUID
+  flag either way. So there is no cpufreq or cpuidle driver; the SMU handles boost on its own
+  (4.84 GHz single-core) and cores only HLT into C1. `cpufreq-performance` and `cpu-idle-limit`
+  log their expected warning every boot and do nothing. They take effect automatically if the
+  firmware ever exposes those objects.
 - **Kernel**: both hosts use `linuxPackages_cachyos-bore`. Plain `linuxPackages_cachyos` is now the
   clang-LTO build with BORE compiled out; check with `sysctl kernel.sched_bore`.
 

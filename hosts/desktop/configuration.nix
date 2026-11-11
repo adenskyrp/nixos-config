@@ -266,7 +266,8 @@
   # BIOS P4.10 with CPPC + CPPC Preferred Cores + Global C-state Control set to
   # Enabled (2026-11-11), the kernel still logged "_CPC object is not present"
   # and CPUID lacked the `cppc` flag, so there is no cpufreq driver and the SMU
-  # runs boost on its own (4.84 GHz single-core, unaffected). This applies the
+  # runs boost on its own (4.84 GHz single-core, unaffected). CPPC and Global
+  # C-state Control were then set back to Disabled on purpose. This applies the
   # performance governor (amd-pstate then pins EPP to performance) as soon as a
   # driver exists, and warns until then. With prefcore active the scheduler also
   # starts using the CPPC ranking (ITMT) inside the game-core mask.
