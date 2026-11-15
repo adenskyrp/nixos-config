@@ -1,10 +1,9 @@
-# iBUYPOWER Z890: Core Ultra 7 270K Plus (8 P-cores + 16 E-cores, no SMT),
-# NVIDIA RTX 5070.
+# iBUYPOWER Z890 (ASUS board): Core Ultra 7 270K Plus (8 P-cores + 16 E-cores,
+# no SMT), NVIDIA RTX 5070, MediaTek MT7925 Wi-Fi 7, no wired NIC.
 #
-# DRAFT. Written from hosts/desktop without access to the machine: every line
-# marked VERIFY must be checked on the live system (lscpu -e, lspci -nnk,
-# /proc/interrupts) before it is trusted. hardware-configuration.nix is a
-# placeholder too; regenerate it on the box.
+# First written from hosts/desktop without access to the machine. The IRQ
+# table has since been checked against it; every line still marked VERIFY has
+# not.
 {pkgs, ...}: {
   imports = [
     ./hardware-configuration.nix
@@ -26,8 +25,9 @@
   # boot if the numbering is different.
   # - P-cores 0-7: games. cpu0 still takes boot-CPU-only kernel work; if that
   #   shows up in frametimes, try gameCores = "1-7".
-  # - E cluster 8-11: nvidia IRQ, DRM workers.
-  # - E cluster 12-15: xHCI (mouse, K7), PipeWire.
+  # - E cluster 8-11: nvidia IRQ.
+  # - E cluster 12-15: xHCI (mouse, keyboard, K7), PipeWire.
+  # - E cluster 16-19: Wi-Fi IRQ on 16.
   # - E cluster 20-23: default IRQs, kthreads, workqueues.
   # AAA titles with more than 8 busy threads may prefer gameCores = "0-15".
   local.hardware = {
@@ -82,18 +82,32 @@
     };
   };
 
+  # Checked on the machine on 2026-11-15 (lspci -nnk, lsusb -t,
+  # /proc/interrupts, the unit's journal):
+  # - 02:00.0 RTX 5070: 8 MSI-X vectors, two of them active. They exist before
+  #   this unit runs at boot.
+  # - 80:14.0 chipset xHCI [8086:7f6e]: every USB device is on it (two
+  #   high-speed HID devices, the K7 and the Yeti behind a hub, webcam, tablet,
+  #   Bluetooth). 00:0d.0 CPU xHCI [8086:7ec0] serves the Thunderbolt ports and
+  #   had raised no interrupt. Its root hub has a single USB 2 port, so a USB 2
+  #   device on a Thunderbolt port presumably still lands on the chipset
+  #   controller: check `lsusb -t` before assuming mouse and K7 can be split
+  #   across controllers the way hosts/desktop does. One driver key covers both.
+  # - 83:00.0 MediaTek MT7925 Wi-Fi 7, the only network device: one MSI vector.
+  # - 02:00.1 GPU HDMI/DP audio is the only snd_hda_intel device and uses a
+  #   legacy IO-APIC line (IRQ 17). The pin table finds vectors by PCI address,
+  #   which only MSI lines carry, so it has no pin and follows the default
+  #   sweep to cpu20.
   local.irqAffinity = {
     enable = true;
     pins = {
       "driver:nvidia" = [8];
-      # One key for every xHCI until the controllers are identified. VERIFY with
-      # `lspci -nnk | grep -A3 -i usb`, then split mouse and audio by
-      # "pci:<vendor>:<device>" the way hosts/desktop does.
       "driver:xhci_hcd" = [12];
+      "driver:mt7925e" = [16];
     };
     defaultCpus = "20";
-    # The NVIDIA driver may not create `cardN-crtcM` kthreads at all, in which
-    # case this matches nothing.
+    # The NVIDIA driver creates no `cardN-crtcM` kthreads (the journal shows no
+    # DRM worker being pinned), so this currently matches nothing.
     crtcCpus = "8-11";
     kthreadCpus = "20-23";
     xhciThreadPriority = 90;

@@ -26,19 +26,22 @@ application code or test suite — this repo *is* the system and home-manager co
   (4.84 GHz single-core) and cores only HLT into C1. `cpufreq-performance` and `cpu-idle-limit`
   log their expected warning every boot and do nothing. They take effect automatically if the
   firmware ever exposes those objects.
-- **`z890`** — iBUYPOWER Z890 desktop (Core Ultra 7 270K Plus: 8 P-cores `0-7` + 16 E-cores
-  `8-23`, no SMT; NVIDIA RTX 5070 on the open kernel modules). **Draft, written without access
-  to the machine**: `hardware-configuration.nix` is a by-label placeholder, and every `VERIFY`
-  line in the host file is unchecked. `z890-topology-check` fails at boot if the CPU numbering
-  is not the assumed one. C-states are capped on the E-cores only (`capCstatesCpus`), which
-  keeps the P-cores' 2-core turbo bin. Imports `gpu/nvidia.nix` instead of `gpu/amd.nix`.
+- **`z890`** — iBUYPOWER Z890 desktop on an ASUS board (Core Ultra 7 270K Plus: 8 P-cores `0-7` +
+  16 E-cores `8-23`, no SMT; NVIDIA RTX 5070 on the open kernel modules; MediaTek MT7925 Wi-Fi 7,
+  no wired NIC; FiiO K7). First written without access to the machine. Checked on it since
+  (2026-11-15): `hardware-configuration.nix` is real, and the IRQ table matches `lspci`,
+  `lsusb -t` and `/proc/interrupts` (all USB on the chipset xHCI `80:14.0`; GPU audio on a legacy
+  IO-APIC line, so unpinnable; no DRM CRTC kthreads on NVIDIA). Lines still marked `VERIFY` in the
+  host file are unchecked. `z890-topology-check` fails at boot if the CPU numbering is not the
+  assumed one. C-states are capped on the E-cores only (`capCstatesCpus`), which keeps the
+  P-cores' 2-core turbo bin. Imports `gpu/nvidia.nix` instead of `gpu/amd.nix`.
 - **Kernel**: all hosts use `linuxPackages_cachyos-bore`. Plain `linuxPackages_cachyos` is now the
   clang-LTO build with BORE compiled out; check with `sysctl kernel.sched_bore`.
 
 ## Commands
 
 ```fish
-sysdeploy "message"                        # git add, verify lock as user, rebuild+switch, commit, push
+sysdeploy "message"                        # git add, rebuild+switch, commit, push the current branch
 sudo nixos-rebuild switch --no-write-lock-file --flake .#(hostname)
 nh os build                                # build current host, show nvd package diff, no switch
 nix flake check                            # evaluates ALL hosts; must stay warning-free
@@ -47,8 +50,9 @@ nix flake update                           # bump flake.lock
 alejandra <file>                           # format; avoid `alejandra .` (reflows untouched home.nix)
 ```
 
-`sysdeploy` is a fish function in `home/cli.nix`. It commits and pushes to `main` on success, so
-only use it when that is wanted.
+`sysdeploy` is a fish function in `home/cli.nix`. It commits and pushes the current branch on
+success, so only use it when that is wanted. A failed unit after the switch (exit 4) is reported
+as such and not committed.
 
 ## Architecture
 

@@ -22,17 +22,23 @@
 
         set -l target_host (hostname)
         echo "--> Initiating declarative system rebuild for host: $target_host..."
-        if sudo nixos-rebuild switch --no-write-lock-file --flake .#$target_host
+        sudo nixos-rebuild switch --no-write-lock-file --flake .#$target_host
+        set -l rc $status
+        if test $rc -eq 0
           set -l commit_msg "$argv"
           if test -z "$commit_msg"
             set commit_msg "chore($target_host): automated system state update"
           end
           git commit -m "$commit_msg"
           echo "--> Pushing new generation to GitHub..."
-          git push origin main
+          git push origin HEAD
           echo "--> System successfully deployed and tracked."
+        else if test $rc -eq 4
+          # switch-to-configuration exits 4 when the new system is active but
+          # a unit failed to start; nixos-rebuild passes that code through.
+          echo "--> Switched, but a unit failed to start (see above). Git commit aborted."
         else
-          echo "--> Build failed. Git commit aborted. Fix your Nix syntax."
+          echo "--> Build failed. Nothing was switched. Git commit aborted."
         end
 
         cd $current_dir
