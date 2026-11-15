@@ -1,9 +1,10 @@
 # iBUYPOWER Z890 (ASUS board): Core Ultra 7 270K Plus (8 P-cores + 16 E-cores,
 # no SMT), NVIDIA RTX 5070, MediaTek MT7925 Wi-Fi 7, no wired NIC.
 #
-# First written from hosts/desktop without access to the machine. The IRQ
-# table has since been checked against it; every line still marked VERIFY has
-# not.
+# First written from hosts/desktop without access to the machine, then checked
+# against it on 2026-11-15: CPU numbering, IRQ table, monitor connector, IOMMU
+# mode, idle-state cap and Vulkan driver path. Lines still marked VERIFY have
+# not been checked.
 {pkgs, ...}: {
   imports = [
     ./hardware-configuration.nix
@@ -18,14 +19,12 @@
   # ---------------------------------------------------------------------------
   # CPU TOPOLOGY
   # ---------------------------------------------------------------------------
-  # VERIFY the numbering with `lscpu -e=CPU,CORE,MAXMHZ`. This assumes the usual
-  # Arrow Lake layout: CPUs 0-7 are the P-cores, 8-23 the E-cores, and E-cores
-  # share an L2 in clusters of four (8-11, 12-15, 16-19, 20-23). If the P-cores
-  # are not 0-7, every list below must change; z890-topology-check fails at
-  # boot if the numbering is different.
+  # CPUs 0-7 are the P-cores, 8-23 the E-cores, and E-cores share an L2 in
+  # clusters of four (8-11, 12-15, 16-19, 20-23). z890-topology-check confirms
+  # this at every boot and fails if a firmware update ever renumbers them.
   # - P-cores 0-7: games. cpu0 still takes boot-CPU-only kernel work; if that
   #   shows up in frametimes, try gameCores = "1-7".
-  # - E cluster 8-11: nvidia IRQ.
+  # - E cluster 8-11: nvidia IRQ and the NVIDIA kernel threads.
   # - E cluster 12-15: xHCI (mouse, keyboard, K7), PipeWire.
   # - E cluster 16-19: Wi-Fi IRQ on 16.
   # - E cluster 20-23: default IRQs, kthreads, workqueues.
@@ -43,14 +42,15 @@
     # flat 47x for the E-cores, and the P and E limits are counted separately.
     # The P-cores stay uncapped so a 1-2 thread game (osu!) keeps the 55x bin,
     # which needs the other P-cores out of C0/C1. Latency 2 leaves POLL + C1.
-    # VERIFY with `cpupower -c 8 idle-info` and `cpupower -c 0 idle-info`.
+    # Confirmed in sysfs: the states are POLL, C1_ACPI, C2_ACPI, C3_ACPI; cpu8
+    # has C2/C3 disabled, cpu0 has none disabled.
     capCstates = true;
     capCstatesLatency = 2;
     capCstatesCpus = "8-23";
   };
 
   # Nothing else would notice a different CPU numbering: games would just be
-  # pinned to E-cores. Fail a unit at boot instead.
+  # pinned to E-cores. Fail a unit at boot instead. Passes on this machine.
   systemd.services.z890-topology-check = {
     description = "Verify the CPU numbering this host's core lists assume";
     wantedBy = ["multi-user.target"];
@@ -106,8 +106,7 @@
       "driver:mt7925e" = [16];
     };
     defaultCpus = "20";
-    # The NVIDIA driver creates no `cardN-crtcM` kthreads (the journal shows no
-    # DRM worker being pinned), so this currently matches nothing.
+    # For the NVIDIA kernel threads (gpuKthreadPattern in gpu/nvidia.nix).
     crtcCpus = "8-11";
     kthreadCpus = "20-23";
     xhciThreadPriority = 90;
@@ -122,11 +121,12 @@
   # ---------------------------------------------------------------------------
   # intel_pstate binds in active (HWP) mode by default; no parameter needed.
   boot.kernelParams = [
-    # DMA bypasses the IOMMU (interrupt remapping stays on). Without it every
-    # USB transfer (8 kHz mouse, K7 isochronous audio) and NIC packet pays an
-    # IOVA map/unmap. Same trust trade as mitigations=off. No-op if VT-d is off
-    # in the BIOS. VERIFY: `dmesg | grep -i 'default domain type'` should say
-    # Passthrough.
+    # DMA bypasses the IOMMU. Without it every USB transfer (8 kHz mouse, K7
+    # isochronous audio) and Wi-Fi packet pays an IOVA map/unmap. Same trust
+    # trade as mitigations=off. dmesg confirms "iommu: Default domain type:
+    # Passthrough". Interrupt remapping is not in use here (/proc/interrupts
+    # shows plain PCI-MSI), which is why a re-pinned idle vector reports
+    # "pending" until it next fires.
     "iommu.passthrough=1"
   ];
 
@@ -140,10 +140,6 @@
   # ---------------------------------------------------------------------------
   # GPU (RTX 5070, modules/gpu/nvidia.nix)
   # ---------------------------------------------------------------------------
-  # VERIFY the iGPU is off: this CPU has one, and if the firmware leaves it
-  # enabled Hyprland can pick it as the render device and copy every frame to
-  # the NVIDIA outputs. `ls /sys/class/drm` should show a single cardN. If it
-  # shows two, disable the iGPU in the BIOS (the "multi-monitor" iGPU option).
-  # VERIFY the connector name with `hyprctl monitors`; stationary.nix assumes
-  # DP-1 and its catch-all rule covers a different numbering.
+  # The card is the only DRM device (card1; the iGPU is off in the firmware)
+  # and the panel is on DP-1, which is what stationary.nix assumes.
 }

@@ -132,9 +132,9 @@
       done
     ''}
 
-    # DRM atomic-commit (SCHED_FIFO) CRTC workers share L1/L2 with the GPU IRQ
-    # and stay off the game cores.
-    for pid in $(${pkgs.procps}/bin/ps -eo pid,comm --no-headers | "$awk_bin" '$2 ~ /^card[0-9]+-crtc/ {print $1}'); do
+    # The GPU driver's worker kthreads (amdgpu: the SCHED_FIFO atomic-commit
+    # CRTC workers) share L1/L2 with the GPU IRQ and stay off the game cores.
+    for pid in $(${pkgs.procps}/bin/ps -eo pid,comm --no-headers | "$awk_bin" '$2 ~ /${cfg.gpuKthreadPattern}/ {print $1}'); do
       if ${pkgs.util-linux}/bin/taskset -pc ${cfg.crtcCpus} "$pid" >/dev/null 2>&1; then
         echo "hardware-irq-pin: DRM worker pid $pid pinned to cpu ${cfg.crtcCpus}"
       fi
@@ -196,7 +196,18 @@ in {
 
     crtcCpus = lib.mkOption {
       type = lib.types.str;
-      description = "CPU list for the DRM `cardN-crtcM` atomic-commit kthreads.";
+      description = "CPU list for the GPU driver's worker kthreads (see gpuKthreadPattern).";
+    };
+
+    gpuKthreadPattern = lib.mkOption {
+      type = lib.types.str;
+      default = "^card[0-9]+-crtc";
+      description = ''
+        awk regex (no `/` or `'`) matched against thread names; matching
+        kthreads are pinned to crtcCpus. The default is the DRM `cardN-crtcM`
+        atomic-commit workers; gpu/nvidia.nix replaces it, because the NVIDIA
+        modules run their work in differently named threads.
+      '';
     };
 
     kthreadCpus = lib.mkOption {

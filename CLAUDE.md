@@ -27,14 +27,15 @@ application code or test suite — this repo *is* the system and home-manager co
   log their expected warning every boot and do nothing. They take effect automatically if the
   firmware ever exposes those objects.
 - **`z890`** — iBUYPOWER Z890 desktop on an ASUS board (Core Ultra 7 270K Plus: 8 P-cores `0-7` +
-  16 E-cores `8-23`, no SMT; NVIDIA RTX 5070 on the open kernel modules; MediaTek MT7925 Wi-Fi 7,
-  no wired NIC; FiiO K7). First written without access to the machine. Checked on it since
-  (2026-11-15): `hardware-configuration.nix` is real, and the IRQ table matches `lspci`,
-  `lsusb -t` and `/proc/interrupts` (all USB on the chipset xHCI `80:14.0`; GPU audio on a legacy
-  IO-APIC line, so unpinnable; no DRM CRTC kthreads on NVIDIA). Lines still marked `VERIFY` in the
-  host file are unchecked. `z890-topology-check` fails at boot if the CPU numbering is not the
-  assumed one. C-states are capped on the E-cores only (`capCstatesCpus`), which keeps the
-  P-cores' 2-core turbo bin. Imports `gpu/nvidia.nix` instead of `gpu/amd.nix`.
+  16 E-cores `8-23`, no SMT; NVIDIA RTX 5070 on the open kernel modules, the only DRM device;
+  MediaTek MT7925 Wi-Fi 7, no wired NIC; FiiO K7). Checked on the machine (2026-11-15): CPU
+  numbering (`z890-topology-check` re-checks it every boot), IRQ table (all USB on the chipset
+  xHCI `80:14.0`; GPU audio on a legacy IO-APIC line, so unpinnable), panel on `DP-1`, IOMMU
+  passthrough, and the idle-state cap. C-states are capped on the E-cores only
+  (`capCstatesCpus`), which keeps the P-cores' 2-core turbo bin. Imports `gpu/nvidia.nix`, which
+  also names the NVIDIA kernel threads for `irq-affinity.nix` (there are no `cardN-crtcM`
+  workers) and points `VK_DRIVER_FILES` at `nvidia_icd.json` (no arch suffix, unlike Mesa's).
+  Lines still marked `VERIFY` (state version, sensor module, VA-API, Sober) are unchecked.
 - **Kernel**: all hosts use `linuxPackages_cachyos-bore`. Plain `linuxPackages_cachyos` is now the
   clang-LTO build with BORE compiled out; check with `sysctl kernel.sched_bore`.
 
@@ -87,8 +88,8 @@ home/                        the user profile: hyprland.nix, desktop.nix, apps.n
 - **`modules/irq-affinity.nix`** — pins keyed by PCI address, `driver:<name>` (preferred — survives
   GPU swaps and bus renumbering) or `pci:<vendor>:<device>` (for two controllers on one driver,
   e.g. the desktop's xHCIs). `defaultCpus` (default `housekeepingCores`) sweeps unlisted IRQs,
-  needed because the kernel always adds cpu0 to `irqaffinity=`. Also CRTC worker / kthread
-  pinning, optional xHCI IRQ-thread FIFO priority, re-run on resume and on NetworkManager Wi-Fi
+  needed because the kernel always adds cpu0 to `irqaffinity=`. Also GPU worker kthreads
+  (`gpuKthreadPattern` -> `crtcCpus`) and housekeeping kthread pinning, optional xHCI IRQ-thread FIFO priority, re-run on resume and on NetworkManager Wi-Fi
   `up` (ath12k resets its IRQ affinity hint to cpu0 on firmware start).
 - **`modules/session.nix`** — greetd/tuigreet, console palette, portals, keyring, Thunar. Defines
   `local.hardware.monitors` (Hyprland monitor rules; set by `stationary.nix` or the host).

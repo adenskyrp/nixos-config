@@ -22,10 +22,23 @@
   # ["nvidia" "nvidia_modeset" "nvidia_uvm" "nvidia_drm"] to
   # boot.initrd.kernelModules and check `du -sh /boot`.
 
+  # The NVIDIA modules create no DRM `cardN-crtcM` workers. Their work runs in
+  # these kthreads instead (names from `ps` on the z890, 2026-11-15): nv_queue,
+  # nv_open_q, nv_mem_pool_scrubber_queue, nvidia, nvidia-modeset/kthread_q,
+  # nvidia-modeset/deferred_close_kthread_q, and one nvidia-drm/timeline-<id>
+  # per explicit-sync timeline. Unpinned, they were running on the game cores.
+  # irq-affinity.nix moves the ones that exist when it runs to crtcCpus.
+  # Timeline threads come and go with each client, so one created later starts
+  # unpinned until the unit runs again (resume, Wi-Fi up, rebuild).
+  local.irqAffinity.gpuKthreadPattern = "^(nv_queue|nv_open_q|nv_mem_pool|nvidia$|nvidia-modeset.|nvidia-drm.)";
+
   environment.sessionVariables = {
-    # VERIFY both paths exist after first boot:
-    #   ls /run/opengl-driver{,-32}/share/vulkan/icd.d/
-    VK_DRIVER_FILES = "/run/opengl-driver/share/vulkan/icd.d/nvidia_icd.x86_64.json:/run/opengl-driver-32/share/vulkan/icd.d/nvidia_icd.i686.json";
+    # NVIDIA only. /run/opengl-driver also carries every Mesa ICD (lavapipe,
+    # nouveau, ...), and the loader would enumerate them all. Unlike Mesa's,
+    # the NVIDIA file has no architecture in its name: it is nvidia_icd.json in
+    # both the 64-bit and the 32-bit tree (checked on the z890, 2026-11-15; a
+    # path that does not exist here leaves Vulkan with no device at all).
+    VK_DRIVER_FILES = "/run/opengl-driver/share/vulkan/icd.d/nvidia_icd.json:/run/opengl-driver-32/share/vulkan/icd.d/nvidia_icd.json";
     __GLX_VENDOR_LIBRARY_NAME = "nvidia";
     # VA-API through nvidia-vaapi-driver, which hardware.nvidia installs by
     # default. The Firefox profile turns on media.ffmpeg.vaapi.enabled; Firefox
