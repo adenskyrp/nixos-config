@@ -10,6 +10,7 @@
   # Reads host-specific core masks from config.local.hardware:
   # - omnibook (Ryzen AI 9 365): gameCores = "0-7" (Zen 5), gameCoresNoSmt = "0,2,4,6"
   # - desktop (Ryzen 5 5600X):   gameCores = "1-2,4-5,7-8,10-11" (physical cores 1,2,4,5), gameCoresNoSmt = "1,2,4,5"
+  # - z890 (Core Ultra 7 270K Plus): gameCores = gameCoresNoSmt = "0-7" (P-cores, no SMT)
   zen5 = pkgs.writeShellScriptBin "zen5" ''
     exec ${pkgs.util-linux}/bin/taskset -c ${config.local.hardware.gameCores} "$@"
   '';

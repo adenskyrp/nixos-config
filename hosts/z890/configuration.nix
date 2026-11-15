@@ -7,6 +7,7 @@
   # DRAFT for the iBUYPOWER Z890 box. Written from hosts/desktop without access
   # to the machine: every line marked VERIFY must be checked on the live system
   # (lscpu -e, lspci -nnk, /proc/interrupts) before it is trusted.
+  # hardware-configuration.nix is a placeholder too; regenerate it on the box.
 
   nixpkgs.config.permittedInsecurePackages = [
     "electron-40.10.5"
@@ -30,6 +31,7 @@
   # Arrow Lake layout: CPUs 0-7 are the P-cores, 8-23 the E-cores, and E-cores
   # share an L2 in clusters of four (8-11, 12-15, 16-19, 20-23). If the P-cores
   # are not 0-7, every list below and the hex mask in tmpfiles must change.
+  # z890-topology-check (below) fails at boot if the numbering is different.
   # - P-cores 0-7: games. cpu0 still takes boot-CPU-only kernel work; if that
   #   shows up in frametimes, try gameCores = "1-7".
   # - E cluster 8-11: nvidia IRQ, DRM workers.
@@ -88,8 +90,12 @@
   # against it on each kernel or driver bump.
   boot.kernelPackages = pkgs.linuxPackages_cachyos-bore;
 
-  # Early KMS so tuigreet comes up at native resolution.
-  boot.initrd.kernelModules = ["nvidia" "nvidia_modeset" "nvidia_uvm" "nvidia_drm"];
+  # No NVIDIA modules in the initrd, unlike amdgpu on hosts/desktop. They are
+  # large, every generation keeps its own initrd on /boot (15 here), and
+  # tuigreet is a text greeter that runs fine on the firmware framebuffer until
+  # udev loads the driver in stage 2. If the console ever comes up at the wrong
+  # resolution, add ["nvidia" "nvidia_modeset" "nvidia_uvm" "nvidia_drm"] to
+  # boot.initrd.kernelModules and check `du -sh /boot`.
 
   boot.kernelModules = [
     "i2c-dev" # decode-dimms (SPD read-out)
@@ -131,11 +137,21 @@
     # package defaults to nvidiaPackages.stable for the running kernel.
   };
 
+  # VERIFY the iGPU is off: this CPU has one, and if the firmware leaves it
+  # enabled Hyprland can pick it as the render device and copy every frame to
+  # the NVIDIA outputs. `ls /sys/class/drm` should show a single cardN. If it
+  # shows two, disable the iGPU in the BIOS (the "multi-monitor" iGPU option).
+
   # No chaotic.mesa-git here: Mesa does not drive this card.
   hardware.graphics = {
     enable = true;
     enable32Bit = true;
   };
+
+  # VERIFY Sober: Flatpak needs the org.freedesktop.Platform.GL.nvidia-<version>
+  # runtime extension that matches this driver exactly. It is pulled in when
+  # Sober is installed, but a driver bump needs `flatpak update` before Sober
+  # starts again.
 
   environment.sessionVariables = {
     # gaming.nix pins VK_DRIVER_FILES to the RADV ICDs, which would leave Vulkan
@@ -144,6 +160,17 @@
     VK_DRIVER_FILES = lib.mkForce "/run/opengl-driver/share/vulkan/icd.d/nvidia_icd.x86_64.json:/run/opengl-driver-32/share/vulkan/icd.d/nvidia_icd.i686.json";
     AQ_NO_MODIFIERS = lib.mkForce "0";
     __GLX_VENDOR_LIBRARY_NAME = "nvidia";
+    # VA-API through nvidia-vaapi-driver, which hardware.nvidia installs by
+    # default. home.nix turns on media.ffmpeg.vaapi.enabled in Firefox; Firefox
+    # may also need MOZ_DISABLE_RDD_SANDBOX=1 before it decodes on the GPU.
+    # VERIFY with `vainfo`.
+    LIBVA_DRIVER_NAME = "nvidia";
+    # The NVIDIA counterparts of two Mesa-only variables in gaming.nix.
+    # vblank_mode=0: no driver-forced vsync for OpenGL (osu! stable).
+    __GL_SYNC_TO_VBLANK = "0";
+    # MESA_SHADER_CACHE_MAX_SIZE=16G: the driver's shader cache limit in bytes,
+    # so a large DXVK/VKD3D library is not evicted and recompiled.
+    __GL_SHADER_DISK_CACHE_SIZE = "17179869184";
   };
 
   services.udev.extraRules = ''
@@ -227,6 +254,40 @@
     "w /sys/bus/workqueue/devices/writeback/cpumask - - - - f00000"
     "w /sys/kernel/mm/transparent_hugepage/khugepaged/defrag - - - - 0"
   ];
+
+  # Every CPU list in this file assumes P-cores 0-7 and E-cores 8-23 in L2
+  # clusters of four. Nothing else would notice a different numbering: games
+  # would just be pinned to E-cores. Fail the unit at boot instead.
+  systemd.services.z890-topology-check = {
+    description = "Verify the CPU numbering this host's core lists assume";
+    wantedBy = ["multi-user.target"];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = pkgs.writeShellScript "z890-topology-check" ''
+        fail=0
+        expect() {
+          local got
+          if ! read -r got < "$1" 2>/dev/null; then
+            echo "z890-topology-check: $1 is missing" >&2
+            fail=1
+          elif [ "$got" != "$2" ]; then
+            echo "z890-topology-check: $1 is '$got', this host assumes '$2'" >&2
+            fail=1
+          fi
+        }
+        expect /sys/devices/cpu_core/cpus 0-7
+        expect /sys/devices/cpu_atom/cpus 8-23
+        for first in 8 12 16 20; do
+          expect "/sys/devices/system/cpu/cpu$first/cache/index2/shared_cpu_list" "$first-$((first + 3))"
+        done
+        if [ "$fail" -eq 0 ]; then
+          echo "z890-topology-check: P-cores 0-7, E-cores 8-23 in L2 clusters of four"
+        fi
+        exit "$fail"
+      '';
+    };
+  };
 
   # Performance governor on every policy; with intel_pstate in active mode this
   # also pins EPP to performance.
