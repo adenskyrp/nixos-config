@@ -86,7 +86,6 @@
     enable = true;
     pins = {
       "driver:nvidia" = [8];
-      "driver:snd_hda_intel" = [9];
       # One key for every xHCI until the controllers are identified. VERIFY with
       # `lspci -nnk | grep -A3 -i usb`, then split mouse and audio by
       # "pci:<vendor>:<device>" the way hosts/desktop does.
