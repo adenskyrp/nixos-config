@@ -142,4 +142,9 @@
   # ---------------------------------------------------------------------------
   # The card is the only DRM device (card1; the iGPU is off in the firmware)
   # and the panel is on DP-1, which is what stationary.nix assumes.
+
+  # LACT owns clock offsets, power limit and fan curve. It talks to the driver
+  # through NVML, so it works under Wayland (nvidia-settings overclocking needs
+  # X11). Settings live in /etc/lact/config.yaml, left mutable for the GUI.
+  services.lact.enable = true;
 }
