@@ -26,7 +26,13 @@ application code or test suite — this repo *is* the system and home-manager co
   (4.84 GHz single-core) and cores only HLT into C1. `cpufreq-performance` and `cpu-idle-limit`
   log their expected warning every boot and do nothing. They take effect automatically if the
   firmware ever exposes those objects.
-- **Kernel**: both hosts use `linuxPackages_cachyos-bore`. Plain `linuxPackages_cachyos` is now the
+- **`z890`** — iBUYPOWER Z890 desktop (Core Ultra 7 270K Plus: 8 P-cores `0-7` + 16 E-cores
+  `8-23`, no SMT; NVIDIA RTX 5070 on the open kernel modules). **Draft, written without access
+  to the machine**: `hardware-configuration.nix` is a by-label placeholder, and every `VERIFY`
+  line in the host file is unchecked. `z890-topology-check` fails at boot if the CPU numbering
+  is not the assumed one. The host overrides the RADV-only bits of `gaming.nix`
+  (`VK_DRIVER_FILES`, shader cache size, vsync) with their NVIDIA counterparts.
+- **Kernel**: all hosts use `linuxPackages_cachyos-bore`. Plain `linuxPackages_cachyos` is now the
   clang-LTO build with BORE compiled out; check with `sysctl kernel.sched_bore`.
 
 ## Commands
@@ -35,7 +41,7 @@ application code or test suite — this repo *is* the system and home-manager co
 sysdeploy "message"                        # git add, verify lock as user, rebuild+switch, commit, push
 sudo nixos-rebuild switch --no-write-lock-file --flake .#(hostname)
 nh os build                                # build current host, show nvd package diff, no switch
-nix flake check                            # evaluates BOTH hosts; must stay warning-free
+nix flake check                            # evaluates ALL hosts; must stay warning-free
 nix build --no-link .#nixosConfigurations.desktop.config.system.build.toplevel  # build, no ./result
 nix flake update                           # bump flake.lock
 alejandra <file>                           # format; avoid `alejandra .` (reflows untouched home.nix)
@@ -49,7 +55,7 @@ pushes on success, so only use it when that is wanted.
 - **`flake.nix`** — inputs: `chaotic` (Chaotic-Nyx: cached `linuxPackages_cachyos`, `mesa-git`; its
   module also configures the `nyx-cache.chaotic.cx` substituter), `nixpkgs` follows `chaotic/nixpkgs`
   so the kernel/Mesa always hit that cache, `grimoire`, `home-manager`, `nix-flatpak` (pinned tag,
-  zero inputs). A `mkHost` builder produces `nixosConfigurations.{omnibook,desktop}`.
+  zero inputs). A `mkHost` builder produces `nixosConfigurations.{omnibook,desktop,z890}`.
 - **`hosts/<host>/configuration.nix`** — per-host root: imports, `local.hardware` (CPU topology +
   Hyprland monitor rules), `local.irqAffinity` (IRQ pin table), kernel params, tmpfiles sysfs writes,
   systemd `CPUAffinity`/`AllowedCPUs` = `backgroundCores`, greetd. `omnibook` adds the `ryzenadj`
@@ -57,7 +63,7 @@ pushes on success, so only use it when that is wanted.
   (mutable `/etc/lact/config.yaml`, keyed per GPU PCI ID+slot).
 - **`hosts/<host>/home.nix`** — `hosts/omnibook/home.nix` is the full user profile (Hyprland Lua,
   `osuStableLauncher`, ironbar, fuzzel, Neovim, Firefox policies, `xdg.desktopEntries` built from
-  `osConfig.local.hardware`). `hosts/desktop/home.nix` imports it and disables `kanshi`.
+  `osConfig.local.hardware`). `hosts/desktop/home.nix` and `hosts/z890/home.nix` import it and disable `kanshi`.
 - **`modules/`**:
   - `core.nix` — defines `options.local.hardware` (`gameCores`, `gameCoresNoSmt`, `backgroundCores`,
     `monitors`, `capCstates`, `capCstatesLatency`) — the single source of truth for per-host CPU topology, consumed by

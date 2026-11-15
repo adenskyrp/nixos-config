@@ -79,6 +79,9 @@
 
       # Custom AM4 Desktop (AMD Ryzen 5 5600X / Radeon RX 5700 XT Navi 10 / ASRock B550M-HDV / Qualcomm WCN785x)
       desktop = mkHost {hostName = "desktop";};
+
+      # iBUYPOWER Z890 (Intel Core Ultra 7 270K Plus / NVIDIA RTX 5070). Draft: see the VERIFY notes in the host file.
+      z890 = mkHost {hostName = "z890";};
     };
   };
 }
