@@ -1,87 +1,76 @@
 {
-  description = "adenskyrp's Pure Declarative Infrastructure & System Configurations";
+  description = "adenskyrp's NixOS machines: low-latency Hyprland desktops";
 
   # No nixConfig block: chaotic.nixosModules.default already adds
   # nyx-cache.chaotic.cx to nix.settings, and a flake-level nixConfig is
   # ignored (with two warnings per command) unless accept-flake-config is set.
 
-  # ---------------------------------------------------------------------------
-  # FLAKE INPUTS (CHANNELS & PACKAGES)
-  # ---------------------------------------------------------------------------
   inputs = {
-    # Chaotic Nyx: CachyOS BORE Kernel, git Mesa, and performance overlays
+    # Chaotic Nyx: CachyOS BORE kernel, git Mesa, and performance overlays.
     chaotic.url = "github:chaotic-cx/nyx/nyxpkgs-unstable";
 
-    # Unify root nixpkgs onto Chaotic's exact nixpkgs revision so kernel module
-    # aggregation and Mesa-git never skew ahead of Chaotic's binary cache.
+    # Root nixpkgs is Chaotic's exact nixpkgs revision, so the kernel and
+    # Mesa-git never skew ahead of Chaotic's binary cache.
     nixpkgs.follows = "chaotic/nixpkgs";
 
-    # Deadlock Mod Manager overlay -- unified onto root nixpkgs to avoid evaluating a second nixpkgs tree
-    grimoire = {
-      url = "github:Slush97/grimoire";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    # Declarative user-space environment management
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # Declarative Flatpak state: remotes, installed refs, per-app sandbox
-    # overrides. Consumed by modules/sober.nix.
-    # NO `inputs.nixpkgs.follows` HERE, DELIBERATELY (nix-flatpak has zero inputs).
+    # Deadlock mod manager overlay.
+    grimoire = {
+      url = "github:Slush97/grimoire";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    # Declarative Flatpak state, consumed by modules/sober.nix. No
+    # `inputs.nixpkgs.follows`: nix-flatpak has zero inputs.
     nix-flatpak.url = "github:gmodena/nix-flatpak/?ref=v0.7.0";
   };
 
-  # ---------------------------------------------------------------------------
-  # FLAKE OUTPUTS (SYSTEM COMPILATION MATRICES)
-  # ---------------------------------------------------------------------------
   outputs = {
-    self,
     nixpkgs,
     chaotic,
     home-manager,
     grimoire,
     nix-flatpak,
     ...
-  } @ inputs: let
-    mkHost = {
-      hostName,
-      extraModules ? [],
-    }:
-      nixpkgs.lib.nixosSystem {
+  }: let
+    inherit (nixpkgs) lib;
+
+    # A host is hosts/<name>/configuration.nix on top of ./modules, with the
+    # shared user profile in ./home. hosts/<name>/home.nix, where it exists,
+    # adds host-only user configuration (the omnibook's kanshi profiles).
+    mkHost = hostName:
+      lib.nixosSystem {
         system = "x86_64-linux";
-        specialArgs = {inherit inputs;};
-        modules =
-          [
-            {
-              nixpkgs.overlays = [
-                grimoire.overlays.default
-              ];
-            }
-            chaotic.nixosModules.default
-            nix-flatpak.nixosModules.nix-flatpak
-            home-manager.nixosModules.home-manager
-            {
-              home-manager.useGlobalPkgs = true;
-              home-manager.useUserPackages = true;
-              home-manager.users.crazycat = import ./hosts/${hostName}/home.nix;
-            }
-            ./hosts/${hostName}/configuration.nix
-          ]
-          ++ extraModules;
+        modules = [
+          chaotic.nixosModules.default
+          nix-flatpak.nixosModules.nix-flatpak
+          home-manager.nixosModules.home-manager
+          ./modules
+          ./hosts/${hostName}/configuration.nix
+          {
+            networking.hostName = hostName;
+            nixpkgs.overlays = [grimoire.overlays.default];
+            home-manager = {
+              useGlobalPkgs = true;
+              useUserPackages = true;
+              # Move an unmanaged file aside instead of failing activation
+              # when home-manager starts owning its path.
+              backupFileExtension = "hm-backup";
+              users.crazycat.imports =
+                [./home]
+                ++ lib.optional (builtins.pathExists ./hosts/${hostName}/home.nix) ./hosts/${hostName}/home.nix;
+            };
+          }
+        ];
       };
   in {
-    nixosConfigurations = {
-      # HP OmniBook Ultra 14 (AMD Ryzen AI 9 365 / Radeon 880M / MediaTek MT7925)
-      omnibook = mkHost {hostName = "omnibook";};
-
-      # Custom AM4 Desktop (AMD Ryzen 5 5600X / Radeon RX 5700 XT Navi 10 / ASRock B550M-HDV / Qualcomm WCN785x)
-      desktop = mkHost {hostName = "desktop";};
-
-      # iBUYPOWER Z890 (Intel Core Ultra 7 270K Plus / NVIDIA RTX 5070). Draft: see the VERIFY notes in the host file.
-      z890 = mkHost {hostName = "z890";};
-    };
+    # omnibook: HP OmniBook Ultra 14 (Ryzen AI 9 365, Radeon 880M)
+    # desktop:  AM4 tower (Ryzen 5 5600X, Radeon RX 5700 XT)
+    # z890:     iBUYPOWER Z890 (Core Ultra 7 270K Plus, RTX 5070)
+    nixosConfigurations = lib.genAttrs ["omnibook" "desktop" "z890"] mkHost;
   };
 }

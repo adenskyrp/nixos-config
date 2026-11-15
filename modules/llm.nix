@@ -1,5 +1,6 @@
+# Local LLM serving on the omnibook's iGPU (llama.cpp on Vulkan). Imported by
+# hosts/omnibook only.
 {
-  config,
   pkgs,
   lib,
   ...
@@ -34,7 +35,7 @@
   # On 30.65 GiB of usable LPDDR5X-7500 RAM:
   #
   #   GTT ceiling      24.00 GiB   (ttm.pages_limit, hosts/omnibook)
-  #   zram swap       ~15.30 GiB   (core.nix, zramSwap.memoryPercent = 50)
+  #   zram swap       ~30.65 GiB   (core.nix, zramSwap.memoryPercent = 100)
   #   model weights   ~15.60 GiB   (Gemma 4 26B-A4B Q4_K_M, down from 19.71 GiB)
   #
   # With q8_0 KV cache + compute buffers, total GTT residency sits around

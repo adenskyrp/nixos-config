@@ -5,12 +5,11 @@
   ...
 }: let
   # ---------------------------------------------------------------------------
-  # CCX PINNING WRAPPERS (STEAM LAUNCH-OPTION PREFIXES)
+  # GAME-CORE PINNING WRAPPERS (STEAM LAUNCH-OPTION PREFIXES)
   # ---------------------------------------------------------------------------
-  # Reads host-specific core masks from config.local.hardware:
-  # - omnibook (Ryzen AI 9 365): gameCores = "0-7" (Zen 5), gameCoresNoSmt = "0,2,4,6"
-  # - desktop (Ryzen 5 5600X):   gameCores = "1-2,4-5,7-8,10-11" (physical cores 1,2,4,5), gameCoresNoSmt = "1,2,4,5"
-  # - z890 (Core Ultra 7 270K Plus): gameCores = gameCoresNoSmt = "0-7" (P-cores, no SMT)
+  # `zen5 %command%` / `zen5-nosmt %command%` pin to the host's gameCores /
+  # gameCoresNoSmt (cpu.nix). The names date from the omnibook and are kept
+  # because they are saved in Steam launch options.
   zen5 = pkgs.writeShellScriptBin "zen5" ''
     exec ${pkgs.util-linux}/bin/taskset -c ${config.local.hardware.gameCores} "$@"
   '';
@@ -44,7 +43,7 @@ in {
                     fi
                     sed -i 's/threads = os.cpu_count().*/threads = 4/' "$out/proton"
 
-                    # Pin every Proton game to gameCores (desktop: 1-2,4-5,7-8,10-11)
+                    # Pin every Proton game to gameCores
                     # while Steam/Heroic web helpers stay on backgroundCores.
                     mv "$out/proton" "$out/.proton-real"
                     cat << 'EOF' > "$out/proton"
@@ -85,8 +84,6 @@ in {
   # inherit RT and could starve the core. (User manager LimitNICE=40 allows it.)
   systemd.user.services.opentabletdriver.serviceConfig.Nice = -15;
 
-  hardware.uinput.enable = true;
-
   # ---------------------------------------------------------------------------
   # STEAM & PROTON RUNTIME PIPELINE
   # ---------------------------------------------------------------------------
@@ -101,13 +98,12 @@ in {
   hardware.steam-hardware.enable = lib.mkForce false;
 
   # ---------------------------------------------------------------------------
-  # LOW-LATENCY PROTON & DRIVER ENVIRONMENT
+  # LOW-LATENCY PROTON ENVIRONMENT
   # ---------------------------------------------------------------------------
+  # Driver-specific variables (present mode, vsync, shader cache, Vulkan ICD)
+  # are in gpu/amd.nix and gpu/nvidia.nix.
   environment.sessionVariables = {
-    AQ_NO_MODIFIERS = "1";
-    MESA_VK_WSI_PRESENT_MODE = "immediate";
     SDL_VIDEO_WAYLAND_ALLOW_TEARING = "1";
-    vblank_mode = "0";
     PROTON_USE_NTSYNC = "1";
     PROTON_NO_ESYNC = "1";
     PROTON_USE_SDL = "1";
@@ -115,13 +111,8 @@ in {
     PROTON_DXVK_LOWLATENCY = "1";
     # Must be an absolute path so DXVK resolves /etc/dxvk.conf regardless of cwd
     DXVK_CONFIG_FILE = "/etc/dxvk.conf";
-    MESA_SHADER_CACHE_MAX_SIZE = "16G";
     NIXOS_OZONE_WL = "1";
     DISABLE_VK_LAYER_VALVE_steam_overlay_1 = "1";
-    # RADV only (skips lavapipe/other Mesa ICDs). Both arches: with only the
-    # x86_64 JSON listed, 32-bit Vulkan clients (old-WoW64 Proton, i686 apps)
-    # find no device at all; the loader skips the wrong-arch entry by library_arch.
-    VK_DRIVER_FILES = "/run/opengl-driver/share/vulkan/icd.d/radeon_icd.x86_64.json:/run/opengl-driver-32/share/vulkan/icd.d/radeon_icd.i686.json";
     SDL_JOYSTICK_HIDAPI = "0";
     SDL_GAMECONTROLLERCONFIG = "";
   };
@@ -166,12 +157,10 @@ in {
   environment.systemPackages = with pkgs; [
     zen5
     zen5-nosmt
-    lact
     heroic
     umu-launcher
     libnotify
     mangohud
-    amdgpu_top
     usbutils
     evtest
     evhz

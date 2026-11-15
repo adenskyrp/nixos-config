@@ -5,8 +5,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## What this is
 
 A personal NixOS flake configuration for adenskyrp's machines, tuned aggressively for low-latency
-desktop/gaming use (Hyprland on Wayland with native Lua config, CachyOS BORE kernel, Mesa-git RADV,
-PipeWire realtime audio, static IRQ/CPU isolation, per-game Hyprland/DXVK rules). There is no
+desktop/gaming use (Hyprland on Wayland with native Lua config, CachyOS BORE kernel, Mesa-git RADV
+or NVIDIA, PipeWire realtime audio, static IRQ/CPU isolation, per-game Hyprland/DXVK rules). There is no
 application code or test suite — this repo *is* the system and home-manager configuration.
 
 ## Hosts
@@ -31,8 +31,7 @@ application code or test suite — this repo *is* the system and home-manager co
   to the machine**: `hardware-configuration.nix` is a by-label placeholder, and every `VERIFY`
   line in the host file is unchecked. `z890-topology-check` fails at boot if the CPU numbering
   is not the assumed one. C-states are capped on the E-cores only (`capCstatesCpus`), which
-  keeps the P-cores' 2-core turbo bin. The host overrides the RADV-only bits of `gaming.nix`
-  (`VK_DRIVER_FILES`, shader cache size, vsync) with their NVIDIA counterparts.
+  keeps the P-cores' 2-core turbo bin. Imports `gpu/nvidia.nix` instead of `gpu/amd.nix`.
 - **Kernel**: all hosts use `linuxPackages_cachyos-bore`. Plain `linuxPackages_cachyos` is now the
   clang-LTO build with BORE compiled out; check with `sysctl kernel.sched_bore`.
 
@@ -48,42 +47,59 @@ nix flake update                           # bump flake.lock
 alejandra <file>                           # format; avoid `alejandra .` (reflows untouched home.nix)
 ```
 
-`sysdeploy` is a fish function in `hosts/omnibook/home.nix` (shared by both hosts). It commits and
-pushes on success, so only use it when that is wanted.
+`sysdeploy` is a fish function in `home/cli.nix`. It commits and pushes to `main` on success, so
+only use it when that is wanted.
 
 ## Architecture
 
-- **`flake.nix`** — inputs: `chaotic` (Chaotic-Nyx: cached `linuxPackages_cachyos`, `mesa-git`; its
-  module also configures the `nyx-cache.chaotic.cx` substituter), `nixpkgs` follows `chaotic/nixpkgs`
-  so the kernel/Mesa always hit that cache, `grimoire`, `home-manager`, `nix-flatpak` (pinned tag,
-  zero inputs). A `mkHost` builder produces `nixosConfigurations.{omnibook,desktop,z890}`.
-- **`hosts/<host>/configuration.nix`** — per-host root: imports, `local.hardware` (CPU topology +
-  Hyprland monitor rules), `local.irqAffinity` (IRQ pin table), kernel params, tmpfiles sysfs writes,
-  systemd `CPUAffinity`/`AllowedCPUs` = `backgroundCores`, greetd. `omnibook` adds the `ryzenadj`
-  oneshot; `desktop` adds `hardware.amdgpu` (initrd KMS, overdrive `0xfffd7fff`) and `services.lact`
-  (mutable `/etc/lact/config.yaml`, keyed per GPU PCI ID+slot).
-- **`hosts/<host>/home.nix`** — `hosts/omnibook/home.nix` is the full user profile (Hyprland Lua,
-  `osuStableLauncher`, ironbar, fuzzel, Neovim, Firefox policies, `xdg.desktopEntries` built from
-  `osConfig.local.hardware`). `hosts/desktop/home.nix` and `hosts/z890/home.nix` import it and disable `kanshi`.
-- **`modules/`**:
-  - `core.nix` — defines `options.local.hardware` (`gameCores`, `gameCoresNoSmt`, `backgroundCores`,
-    `monitors`, `capCstates`, `capCstatesLatency`, `capCstatesCpus`) — the single source of truth for per-host CPU topology, consumed by
-    `gaming.nix`, `irq-affinity.nix`, host configs and `home.nix`. Also Nix settings/GC/optimise
-    (timers `persistent = false`), `fq`+`bbr` sysctls, udev rules, PipeWire/WirePlumber low-latency
-    config, PAM realtime limits, base packages.
-  - `irq-affinity.nix` — shared `local.irqAffinity` module (both hosts): pins keyed by PCI address,
-    `driver:<name>` (preferred — survives GPU swaps and bus renumbering) or `pci:<vendor>:<device>`
-    (for two controllers on one driver, e.g. the desktop's xHCIs), `defaultCpus` sweep (needed
-    because the kernel always adds cpu0 to `irqaffinity=`), CRTC worker / kthread pinning, optional
-    xHCI IRQ-thread FIFO priority, re-run on resume and on NetworkManager Wi-Fi `up` (ath12k resets
-    its IRQ affinity hint to cpu0 on firmware start).
-  - `gaming.nix` — `pkgs.proton-cachyos-slr` overlay from `proton-cachyos.json` (wrapped to
-    `taskset -c gameCores`), Steam, OpenTabletDriver, Proton/Mesa session vars, `/etc/dxvk.conf`
-    (keys verified against the bundled DXVK; unknown keys are silently ignored), `zen5`/`zen5-nosmt`
-    wrappers.
-  - `minecraft.nix` (Prism + Temurin/Zulu 21), `sober.nix` (Flatpak Sober + portals), `webcam.nix`
-    (Pixel via `v4l2loopback`/scrcpy), `diagnostics.nix` (opt-in frametime/PSI telemetry),
-    `llm.nix` (`omnibook` only; Vulkan llama.cpp).
+```
+flake.nix                    mkHost: ./modules + hosts/<name>/configuration.nix + ./home
+modules/                     shared by every host (modules/default.nix imports them)
+  cpu.nix                    local.hardware options -> kernel params, affinity, masks, C-states, governor
+  irq-affinity.nix           local.irqAffinity pin table, kthread and CRTC-worker pinning
+  core.nix                   boot, kernel, memory, udev, user, base packages
+  nix.nix network.nix audio.nix session.nix
+  gaming.nix minecraft.nix sober.nix webcam.nix diagnostics.nix
+  lib.nix                    cpuListToMask
+modules/gpu/{amd,nvidia}.nix opt-in: a host imports exactly one
+modules/stationary.nix       opt-in: desktop + z890 (panel, FiiO K7, wired NIC, swap file)
+modules/llm.nix              opt-in: omnibook
+hosts/<name>/                configuration.nix (hardware facts only), hardware-configuration.nix,
+                             optional home.nix (omnibook: kanshi)
+home/                        the user profile: hyprland.nix, desktop.nix, apps.nix, osu.nix,
+                             cli.nix, theme.nix (palette + font)
+```
+
+- **`flake.nix`** — inputs: `chaotic` (Chaotic-Nyx: cached `linuxPackages_cachyos-bore`, `mesa-git`;
+  its module also configures the `nyx-cache.chaotic.cx` substituter), `nixpkgs` follows
+  `chaotic/nixpkgs` so the kernel/Mesa always hit that cache, `grimoire`, `home-manager`,
+  `nix-flatpak` (pinned tag, zero inputs). `mkHost` sets `networking.hostName` and imports
+  `hosts/<name>/home.nix` only if it exists.
+- **`modules/cpu.nix`** — the single source of truth for CPU numbers. A host sets
+  `local.hardware.{gameCores,gameCoresNoSmt,backgroundCores,housekeepingCores,allCores}` and
+  optionally `capCstates*`; the module derives `rcu_nocbs=`, `irqaffinity=`, systemd
+  `CPUAffinity`/`AllowedCPUs`, the workqueue cpumasks (hex computed by `lib.nix`), the
+  `cpu-idle-limit` and `cpufreq-performance` units. Never write a CPU list or mask anywhere else.
+- **`modules/irq-affinity.nix`** — pins keyed by PCI address, `driver:<name>` (preferred — survives
+  GPU swaps and bus renumbering) or `pci:<vendor>:<device>` (for two controllers on one driver,
+  e.g. the desktop's xHCIs). `defaultCpus` (default `housekeepingCores`) sweeps unlisted IRQs,
+  needed because the kernel always adds cpu0 to `irqaffinity=`. Also CRTC worker / kthread
+  pinning, optional xHCI IRQ-thread FIFO priority, re-run on resume and on NetworkManager Wi-Fi
+  `up` (ath12k resets its IRQ affinity hint to cpu0 on firmware start).
+- **`modules/session.nix`** — greetd/tuigreet, console palette, portals, keyring, Thunar. Defines
+  `local.hardware.monitors` (Hyprland monitor rules; set by `stationary.nix` or the host).
+- **`modules/gaming.nix`** — `pkgs.proton-cachyos-slr` overlay from `proton-cachyos.json` (wrapped to
+  `taskset -c gameCores`), Steam, OpenTabletDriver, Proton session vars, `/etc/dxvk.conf` (keys
+  verified against the bundled DXVK; unknown keys are silently ignored), `zen5`/`zen5-nosmt`
+  wrappers. Driver-specific variables live in `gpu/*.nix`.
+- **`home/hyprland.nix`** — native Lua config. Game window rules are generated from one list.
+  `hl.config` reports an unknown scalar key but silently skips an unknown key whose value is a
+  list (that is how `exec_once` and `bindm` sat dead); check new keys with
+  `hyprctl getoption <section>:<key>`. Programs start as systemd user units, not from the config.
+- **`home/theme.nix`** — the One Dark palette and the font, consumed by waybar, fuzzel, kitty,
+  tuigreet and the kernel console. Change a colour there, nowhere else.
+- `diagnostics.nix` is opt-in frametime/PSI telemetry (amdgpu-specific);
+  `home/cli.nix` carries `sysdeploy` and `update-proton-cachyos`.
 
 ## Conventions
 
@@ -91,3 +107,6 @@ pushes on success, so only use it when that is wanted.
   key, sysfs path), remove it and leave a one-line note rather than keeping it "just in case".
 - Verify hardware claims against the live machine (`lspci -nnk`, `/proc/interrupts`,
   `/sys/bus/pci/drivers/*`) before encoding PCI addresses or CPU numbers.
+- A host file holds hardware facts only. Anything two hosts share goes in a module; anything
+  derived from a CPU list is computed in `cpu.nix`.
+- Files that are new to git must be `git add`ed before the flake can see them.
