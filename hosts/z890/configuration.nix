@@ -43,11 +43,17 @@
     gameCoresNoSmt = "0-7";
     backgroundCores = "8-23";
     allCores = "0-23";
-    # Left off on purpose. On Intel, turbo ratios are chosen by how many cores
-    # are out of deep C-states, so capping to C1 makes every core count as
-    # active and forfeits any few-core ratio above the all-core limit. A/B this
-    # against the BIOS per-core-usage ratios before turning it on.
-    capCstates = false;
+    # C-state cap on the E-cores only. Every IRQ, PipeWire and the compositor
+    # live there, so a deep idle state on those CPUs is wake-up latency on the
+    # mouse, audio and GPU-interrupt paths. It costs no clock: this CPU's
+    # turbo table is 55x for up to 2 active P-cores, 54x for up to 8, and a
+    # flat 47x for the E-cores, and the P and E limits are counted separately.
+    # The P-cores stay uncapped so a 1-2 thread game (osu!) keeps the 55x bin,
+    # which needs the other P-cores out of C0/C1. Latency 2 leaves POLL + C1.
+    # VERIFY with `cpupower -c 8 idle-info` and `cpupower -c 0 idle-info`.
+    capCstates = true;
+    capCstatesLatency = 2;
+    capCstatesCpus = "8-23";
     monitors = [
       # VERIFY the connector name with `hyprctl monitors`; the catch-all below
       # covers it if the NVIDIA card numbers its outputs differently.
@@ -107,6 +113,12 @@
   boot.kernelParams = [
     # intel_pstate binds in active (HWP) mode by default; no parameter needed.
     "pcie_aspm=off"
+    # DMA bypasses the IOMMU (interrupt remapping stays on). Without it every
+    # USB transfer (8 kHz mouse, K7 isochronous audio) and NIC packet pays an
+    # IOVA map/unmap. Same trust trade as mitigations=off below. No-op if VT-d
+    # is off in the BIOS. VERIFY: `dmesg | grep -i 'default domain type'`
+    # should say Passthrough.
+    "iommu.passthrough=1"
     "irqaffinity=20-23"
     "zswap.enabled=0"
     "systemd.gpt_auto=0"
@@ -135,6 +147,8 @@
     # Saves and restores VRAM across suspend.
     powerManagement.enable = true;
     # package defaults to nvidiaPackages.stable for the running kernel.
+    # No NVreg_RegistryDwords tuning: RMIntrLockingMode (the interrupt-locking
+    # mode that cuts stutter) has been on by default since driver 580.
   };
 
   # VERIFY the iGPU is off: this CPU has one, and if the firmware leaves it

@@ -30,7 +30,8 @@ application code or test suite — this repo *is* the system and home-manager co
   `8-23`, no SMT; NVIDIA RTX 5070 on the open kernel modules). **Draft, written without access
   to the machine**: `hardware-configuration.nix` is a by-label placeholder, and every `VERIFY`
   line in the host file is unchecked. `z890-topology-check` fails at boot if the CPU numbering
-  is not the assumed one. The host overrides the RADV-only bits of `gaming.nix`
+  is not the assumed one. C-states are capped on the E-cores only (`capCstatesCpus`), which
+  keeps the P-cores' 2-core turbo bin. The host overrides the RADV-only bits of `gaming.nix`
   (`VK_DRIVER_FILES`, shader cache size, vsync) with their NVIDIA counterparts.
 - **Kernel**: all hosts use `linuxPackages_cachyos-bore`. Plain `linuxPackages_cachyos` is now the
   clang-LTO build with BORE compiled out; check with `sysctl kernel.sched_bore`.
@@ -66,7 +67,7 @@ pushes on success, so only use it when that is wanted.
   `osConfig.local.hardware`). `hosts/desktop/home.nix` and `hosts/z890/home.nix` import it and disable `kanshi`.
 - **`modules/`**:
   - `core.nix` — defines `options.local.hardware` (`gameCores`, `gameCoresNoSmt`, `backgroundCores`,
-    `monitors`, `capCstates`, `capCstatesLatency`) — the single source of truth for per-host CPU topology, consumed by
+    `monitors`, `capCstates`, `capCstatesLatency`, `capCstatesCpus`) — the single source of truth for per-host CPU topology, consumed by
     `gaming.nix`, `irq-affinity.nix`, host configs and `home.nix`. Also Nix settings/GC/optimise
     (timers `persistent = false`), `fq`+`bbr` sysctls, udev rules, PipeWire/WirePlumber low-latency
     config, PAM realtime limits, base packages.

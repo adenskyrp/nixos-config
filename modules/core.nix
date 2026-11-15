@@ -50,6 +50,12 @@
       default = 350;
       description = "With capCstates, disable every idle state whose exit latency is >= this many us.";
     };
+    capCstatesCpus = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      example = "8-23";
+      description = "With capCstates, the CPU list the cap applies to. null caps every CPU.";
+    };
   };
 
   config = {
@@ -73,7 +79,7 @@
             echo "cpu-idle-limit: WARNING no cpuidle driver bound (firmware has no _CST); cores stay in C0/C1" >&2
             exit 0
           fi
-          exec ${config.boot.kernelPackages.cpupower}/bin/cpupower idle-set -D ${toString config.local.hardware.capCstatesLatency}
+          exec ${config.boot.kernelPackages.cpupower}/bin/cpupower ${lib.optionalString (config.local.hardware.capCstatesCpus != null) "-c ${config.local.hardware.capCstatesCpus} "}idle-set -D ${toString config.local.hardware.capCstatesLatency}
         '';
       };
     };
