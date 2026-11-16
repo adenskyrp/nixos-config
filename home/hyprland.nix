@@ -110,7 +110,7 @@ in {
         -- mapped layer surface on the output, which is why SUPER+D stops the
         -- bar instead of hiding it. swayosd maps a surface while an OSD is
         -- shown, so expect a transient scanout drop on volume keys.
-        render = { direct_scanout = 0 },
+        render = { direct_scanout = 1 },
 
         -- Hardware cursors stay ON (an int: 0 = HW cursors, 1 = never,
         -- 2 = auto). A software cursor is composited INTO the frame, so the
