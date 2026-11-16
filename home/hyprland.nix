@@ -82,6 +82,18 @@
     {class = "steam_app_2073850";} # THE FINALS
   ];
 in {
+  # xdg-desktop-portal-hyprland reads its own hyprlang file, not the Lua
+  # config. Every captured frame makes Hyprland composite and copy the
+  # output, and while a capture is live direct scanout and tearing are
+  # blocked ("screen record/screenshot" in `hyprctl monitors`). Discord
+  # streams at 60 fps at most, so the default cap of 120 only doubles that
+  # cost on the game.
+  xdg.configFile."hypr/xdph.conf".text = ''
+    screencopy {
+      max_fps = 60
+    }
+  '';
+
   wayland.windowManager.hyprland = {
     enable = true;
     xwayland.enable = true;
