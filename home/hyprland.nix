@@ -35,8 +35,17 @@
     );
 
   gameRules = map gameRule [
-    {class = ''rocketleague\\.exe'';}
-    {class = "steam_app_252950";} # Rocket League
+    # Rocket League (Proton winex11, DX11): same startup fullscreen/maximize
+    # requests as osu!stable below, which launched it windowed. Pinned the
+    # same way.
+    {
+      class = ''rocketleague\\.exe'';
+      extra = ["fullscreen = true" ''suppress_event = "fullscreen maximize"''];
+    }
+    {
+      class = "steam_app_252950";
+      extra = ["fullscreen = true" ''suppress_event = "fullscreen maximize"''];
+    }
     {class = "steam_app_default";} # non-Steam shortcuts
     {
       class = "steam_app_1422450"; # Deadlock
