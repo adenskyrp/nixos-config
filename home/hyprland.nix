@@ -112,43 +112,27 @@ in {
         xwayland = { force_zero_scaling = true },
 
         -- Direct scanout hands the client's buffer straight to the display
-        -- controller, skipping the compositor's blend pass. An INT, not a bool
-        -- (`hyprctl getoption render:direct_scanout` reports `int: 0`):
+        -- controller, skipping the compositor's blend pass. An INT, not a bool:
         -- 0 = off, 1 = on, 2 = auto.
         --
-        -- CURRENTLY OFF. It has been switched between 0 and 1 several times,
-        -- last on 2026-11-07. The case for 1, as measured on the omnibook on
-        -- 2026-08-27: with the bar mapped the output pulled 8872 MB/s of DRAM
-        -- reads, with the bar stopped 4230 MB/s, close to one 1920x1080x4
-        -- framebuffer read per refresh (1920*1080*4*600 = 4977 MB/s). What
-        -- remains is the composite pass, and scanout is the lever that
-        -- removes it. 1 rather than 2 because `auto` gates on the client
-        -- tagging its surface via wp_content_type_v1, and whether osu! lazer
-        -- sets that hint is unverified.
-        --
-        -- Preconditions if it is turned on, all at once: fullscreen (the game
-        -- rules set fullscreen_state = "2 2"), a single opaque surface, and NO
-        -- mapped layer surface on the output, which is why SUPER+D stops the
-        -- bar instead of hiding it. swayosd maps a surface while an OSD is
-        -- shown, so expect a transient scanout drop on volume keys.
-        render = { direct_scanout = 1 },
+        -- OFF since 2026-11-16 (z890), together with hardware cursors on, after
+        -- testing Discord screenshare frame drops. It has flipped between 0 and
+        -- 1 several times. The case for 1 (omnibook, 2026-08-27): the composite
+        -- pass costs about one framebuffer read per refresh (1920*1080*4*600 =
+        -- 4977 MB/s of DRAM reads), and scanout is the lever that removes it.
+        -- Any screencast blocks scanout anyway ("screen record/screenshot" in
+        -- `hyprctl monitors`). Preconditions if it goes back on: fullscreen, a
+        -- single opaque surface, and NO mapped layer surface on the output
+        -- (why SUPER+D stops the bar instead of hiding it).
+        render = { direct_scanout = 0 },
 
-        -- Hardware cursors stay ON (an int: 0 = HW cursors, 1 = never,
-        -- 2 = auto). A software cursor is composited INTO the frame, so the
-        -- buffer handed to the display controller is no longer the client's
-        -- own and direct scanout is defeated. The old claim that tearing needs
-        -- software cursors rested on a log line,
-        --   tearingBlockedBy: next frame is not torn, missing candidate, hw cursor
-        -- that does not appear in the current log at all. It is only emitted
-        -- when a tearing page-flip is attempted, so check with a fullscreen
-        -- tearing client VISIBLE:
-        --   grep -iE 'tearing|torn|blocked' \
-        --     $XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/hyprland.log
-        -- Confirmed from the log instead: hardware cursors are in use
-        --   aquamarine: drm: Cursor buffer imported into KMS with id 519/520
-        -- Do not set this to 1 to chase tearing without first confirming
-        -- tearing is actually blocked, and accepting the scanout loss.
-        cursor = { no_hardware_cursors = 1 },
+        -- Hardware cursors ON (an int: 0 = HW cursors, 1 = never, 2 = auto).
+        -- Trade-off, verified live on 2026-11-16: with HW cursors on,
+        -- `hyprctl monitors` reports
+        --   tearingBlockedBy: ..., hw cursor
+        -- so the `immediate` game rules do not tear. Setting 1 (software
+        -- cursor) re-enables tearing but composites the cursor into every frame.
+        cursor = { no_hardware_cursors = 0 },
 
         general = {
           allow_tearing = true, -- master switch for wp_tearing_control_v1
