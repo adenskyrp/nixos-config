@@ -127,7 +127,7 @@ in {
         --   aquamarine: drm: Cursor buffer imported into KMS with id 519/520
         -- Do not set this to 1 to chase tearing without first confirming
         -- tearing is actually blocked, and accepting the scanout loss.
-        cursor = { no_hardware_cursors = 0 },
+        cursor = { no_hardware_cursors = 1 },
 
         general = {
           allow_tearing = true, -- master switch for wp_tearing_control_v1
