@@ -255,14 +255,6 @@ in {
       type = "Application";
       icon = "discord";
     };
-    "org.vinegarhq.Sober" = {
-      name = "Sober";
-      exec = "${taskset} -c ${gameCores} flatpak run org.vinegarhq.Sober %U";
-      icon = "org.vinegarhq.Sober";
-      terminal = false;
-      categories = ["Game"];
-      mimeType = ["x-scheme-handler/roblox" "x-scheme-handler/roblox-player"];
-    };
     grimoire = {
       name = "Grimoire";
       genericName = "Deadlock Mod Manager";
@@ -272,6 +264,18 @@ in {
       categories = ["Game" "Utility"];
     };
   };
+
+  # In XDG_DATA_HOME, not desktopEntries: Flatpak's unpinned export of the same ID precedes the profile.
+  xdg.dataFile."applications/org.vinegarhq.Sober.desktop".text = ''
+    [Desktop Entry]
+    Type=Application
+    Name=Sober
+    Exec=${taskset} -c ${gameCores} flatpak run org.vinegarhq.Sober %U
+    Icon=org.vinegarhq.Sober
+    Terminal=false
+    Categories=Game;
+    MimeType=x-scheme-handler/roblox;x-scheme-handler/roblox-player;
+  '';
 
   home.sessionVariables.MOZ_USE_XDG = "1";
 }

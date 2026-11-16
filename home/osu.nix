@@ -42,12 +42,16 @@
   # constrains the plugin's hw params instead: 48 kHz, <=256-frame buffer in
   # 128-frame periods (F32 stereo = 8 B/frame). Measured 128/48000, ERR 0 on the
   # desktop ALC897 (2026-11-08). If it crackles, raise buffer-bytes to 4096.
+  # The gameCores pin lives in the wrapper, not the desktop entry, so a bare
+  # `osu!` from PATH (terminal, fuzzel run mode) is pinned too.
   osuLazer = pkgs.symlinkJoin {
     name = "osu-lazer-bin-lowlatency";
     paths = [pkgs.osu-lazer-bin];
     nativeBuildInputs = [pkgs.makeWrapper];
     postBuild = ''
-      wrapProgram "$out/bin/osu!" \
+      rm "$out/bin/osu!"
+      makeWrapper ${pkgs.util-linux}/bin/taskset "$out/bin/osu!" \
+        --add-flags "-c ${gameCores} ${pkgs.osu-lazer-bin}/bin/osu!" \
         --set PIPEWIRE_ALSA '{ alsa.rate=48000 alsa.buffer-bytes=2048 alsa.period-bytes=1024 }'
     '';
   };
@@ -176,20 +180,61 @@
       WINEPREFIX="$STEAM_COMPAT_DATA_PATH/pfx" "${pkgs.proton-cachyos-slr}/files/bin/wineserver" -w
       ' -- "$OSU_EXE" "''${ARGS[@]}"
   '';
+  # shared-mime-info has no osu! types (every one detected as application/zip),
+  # so the entry's MimeType list needs these definitions to match any file.
+  osuMimeTypes = pkgs.writeTextDir "share/mime/packages/osu-lazer.xml" ''
+    <?xml version="1.0" encoding="UTF-8"?>
+    <mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+      <mime-type type="application/x-osu-beatmap-archive">
+        <comment>osu! beatmap archive</comment>
+        <sub-class-of type="application/zip"/>
+        <glob pattern="*.osz"/>
+      </mime-type>
+      <mime-type type="application/x-osu-skin-archive">
+        <comment>osu! skin archive</comment>
+        <sub-class-of type="application/zip"/>
+        <glob pattern="*.osk"/>
+      </mime-type>
+      <mime-type type="application/x-osu-beatmap">
+        <comment>osu! beatmap</comment>
+        <sub-class-of type="text/plain"/>
+        <glob pattern="*.osu"/>
+      </mime-type>
+      <mime-type type="application/x-osu-storyboard">
+        <comment>osu! storyboard</comment>
+        <sub-class-of type="text/plain"/>
+        <glob pattern="*.osb"/>
+      </mime-type>
+      <mime-type type="application/x-osu-replay">
+        <comment>osu! replay</comment>
+        <glob pattern="*.osr"/>
+      </mime-type>
+    </mime-info>
+  '';
 in {
   home.packages = [
     osuLazer
     osuStableLauncher
+    osuMimeTypes
   ];
 
   xdg.desktopEntries = {
     "osu!" = {
       name = "osu!";
-      exec = "${pkgs.util-linux}/bin/taskset -c ${gameCores} ${osuLazer}/bin/osu! %U";
+      exec = "${osuLazer}/bin/osu! %U";
       terminal = false;
       type = "Application";
       icon = "osu";
       categories = ["Game"];
+      # Same list as the package's own osu!.desktop, which this entry replaces.
+      mimeType = [
+        "application/x-osu-beatmap-archive"
+        "application/x-osu-skin-archive"
+        "application/x-osu-beatmap"
+        "application/x-osu-storyboard"
+        "application/x-osu-replay"
+        "x-scheme-handler/osu"
+      ];
     };
     "osu-stable" = {
       name = "osu! (Stable)";
