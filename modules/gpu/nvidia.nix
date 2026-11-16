@@ -50,5 +50,9 @@
     # MESA_SHADER_CACHE_MAX_SIZE=16G on Mesa: the shader cache limit in bytes,
     # so a large DXVK/VKD3D library is not evicted and recompiled.
     __GL_SHADER_DISK_CACHE_SIZE = "17179869184";
+    # proton-cachyos force-adds "fsr4" and copies AMD's amdxcffx64.dll into
+    # every prefix (WINE_UPSCALER_REPLACE=fsr4). It needs an RDNA4 GPU; "0"
+    # makes check_environment drop it. DLSS upgrades are unaffected.
+    PROTON_FSR4_UPGRADE = "0";
   };
 }

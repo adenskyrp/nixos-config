@@ -109,6 +109,10 @@ in {
     PROTON_USE_SDL = "1";
     PROTON_VKD3D_LOWLATENCY = "1";
     PROTON_DXVK_LOWLATENCY = "1";
+    # Proton starts xalia.exe (gamepad UI accessibility layer) for every game
+    # unless this is set. Measured on z890 (2026-11-16): 5.7% CPU on game core
+    # 7 during Rocket League, doing nothing. "0" survives Proton's own default.
+    PROTON_USE_XALIA = "0";
     # Must be an absolute path so DXVK resolves /etc/dxvk.conf regardless of cwd
     DXVK_CONFIG_FILE = "/etc/dxvk.conf";
     NIXOS_OZONE_WL = "1";
@@ -141,9 +145,7 @@ in {
     dxgi.maxFrameRate = 0
     d3d9.maxFrameRate = 0
 
-    # --- RDNA / RADV HARDWARE PIPELINE ---
-    dxvk.useRawSsbo = True
-    d3d11.relaxedBarriers = True
+    # RDNA/RADV-specific keys (useRawSsbo, relaxedBarriers) are in gpu/amd.nix.
     dxvk.trackPipelineLifetime = False
 
     # Optimizes D3D9 sampler state setup for titles like osu! stable

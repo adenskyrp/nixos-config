@@ -12,6 +12,16 @@
     VK_DRIVER_FILES = "/run/opengl-driver/share/vulkan/icd.d/radeon_icd.x86_64.json:/run/opengl-driver-32/share/vulkan/icd.d/radeon_icd.i686.json";
   };
 
+  # Appended to the shared /etc/dxvk.conf from gaming.nix (types.lines merges).
+  # AMD only: on NVIDIA, DXVK's Auto leaves raw SSBOs off (16-byte storage
+  # buffer alignment), and relaxed barriers trade correctness for a RADV win.
+  environment.etc."dxvk.conf".text = ''
+
+    # --- RDNA / RADV HARDWARE PIPELINE ---
+    dxvk.useRawSsbo = True
+    d3d11.relaxedBarriers = True
+  '';
+
   environment.systemPackages = with pkgs; [
     lact
     amdgpu_top
