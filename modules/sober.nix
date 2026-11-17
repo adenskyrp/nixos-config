@@ -16,61 +16,12 @@
 # these declarations but does NOT roll the installed Flatpak commit back. That
 # is separate state, moved with
 #   flatpak update --commit=<hash> org.vinegarhq.Sober
-{
-  config,
-  lib,
-  pkgs,
-  ...
-}: {
-  # ---------------------------------------------------------------------------
-  # GPU: AMD / MESA RADV
-  # ---------------------------------------------------------------------------
-  # Sober's Android compat layer renders via Vulkan by default. RADV (Mesa's
-  # open Vulkan driver) ships in nixpkgs out of the box for AMD -- no
-  # proprietary blob, no kernel module juggling like NVIDIA would need.
-  #
-  # Redundant with hosts/omnibook/configuration.nix and modules/minecraft.nix,
-  # which already assert the same two booleans. That is deliberate and safe:
-  # types.bool merges via mergeEqualOption, so identical definitions collapse
-  # rather than conflict, and the module stays self-describing about what it
-  # needs instead of depending on a sibling module having been imported.
-  hardware.graphics = {
-    enable = true;
-
-    # Not required by Sober itself (it is 64-bit only), but Flathub's
-    # freedesktop runtime assumes 32-bit ICDs are resolvable on the host for
-    # the general case. Cheap insurance for the next flatpak app that does
-    # need it.
-    enable32Bit = true;
-  };
-
-  # ---------------------------------------------------------------------------
-  # XDG PORTALS: THE PIECE HYPRLAND DOES NOT GIVE YOU FOR FREE
-  # ---------------------------------------------------------------------------
-  # Flatpak sandboxes talk to the outside world *only* through
-  # xdg-desktop-portal (a D-Bus broker for screen capture, file dialogs,
-  # notifications). GNOME/KDE bundle a portal implementation; wlroots-based
-  # compositors like Hyprland deliberately do not. Skip this block and Sober's
-  # screen-share ("captures") feature and notifications silently hang.
-  #
-  # This is also load-bearing for the flatpak module itself: nixpkgs'
-  # services.flatpak carries an assertion that xdg.portal.enable is true, so
-  # without this the evaluation fails outright rather than degrading.
-  #
-  # Nothing else in this tree enables portals. Hyprland here is configured
-  # purely from home-manager (wayland.windowManager.hyprland in
-  # hosts/omnibook/home.nix); programs.hyprland is NOT set at the system level,
-  # so the portal wiring that option would have pulled in never happened.
-  xdg.portal = {
-    enable = true;
-    extraPortals = [
-      pkgs.xdg-desktop-portal-hyprland # native: screencopy / screenshot
-      pkgs.xdg-desktop-portal-gtk # fallback: file chooser, notifications
-    ];
-    # Try the hyprland backend for every interface, fall back to gtk for the
-    # ones it does not implement (FileChooser, Notification).
-    config.common.default = ["hyprland" "gtk"];
-  };
+{...}: {
+  # Needs two things this file does not declare: xdg.portal (session.nix; the
+  # flatpak module asserts it) and a Vulkan driver (the host's GPU module).
+  # On NVIDIA, Flatpak also needs the org.freedesktop.Platform.GL.nvidia-<version>
+  # runtime extension matching the driver exactly: it is pulled in when Sober is
+  # installed, but a driver bump needs `flatpak update` before Sober starts again.
 
   # ---------------------------------------------------------------------------
   # FLATPAK STATE, DECLARED
@@ -122,8 +73,8 @@
           # anything else.
           sockets = ["wayland" "!x11" "!fallback-x11" "pulseaudio"];
 
-          # dri = render node + device access, what RADV needs to see the GPU
-          # from inside the sandbox.
+          # dri = render node + device access, what the Vulkan driver needs to
+          # see the GPU from inside the sandbox.
           devices = ["dri"];
         };
       };

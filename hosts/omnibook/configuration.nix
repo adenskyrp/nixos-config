@@ -1,53 +1,43 @@
-{
-  config,
-  pkgs,
-  lib,
-  inputs,
-  ...
-}: let
-  # GPU DPM level, applied at boot and re-applied on resume.
-  gpuDpmLevel = "high";
-
+# HP OmniBook Ultra 14: Ryzen AI 9 365 (4x Zen 5 + 6x Zen 5c), Radeon 880M,
+# 32 GB LPDDR5X, Qualcomm WCN785x Wi-Fi 7. Usually docked (Anker dock) to the
+# 600 Hz panel.
+{pkgs, ...}: let
   ryzenadjCmd = "${pkgs.ryzenadj}/bin/ryzenadj -a 45000 -b 57000 -c 45000 -f 100 --vrm-current=70000 --vrmmax-current=70000 --stapm-time=0xffffffff --slow-time=0xffffffff --max-performance";
 in {
-  nixpkgs.config.permittedInsecurePackages = [
-    "electron-40.10.5"
-  ];
-
-  # ---------------------------------------------------------------------------
-  # MODULAR ARCHITECTURE IMPORTS
-  # ---------------------------------------------------------------------------
   imports = [
     ./hardware-configuration.nix
-    ../../modules/core.nix
-    ../../modules/gaming.nix
-    ../../modules/minecraft.nix
-    ../../modules/sober.nix
-    ../../modules/diagnostics.nix
+    ../../modules/gpu/amd.nix
     ../../modules/llm.nix
-    ../../modules/webcam.nix
-    ../../modules/irq-affinity.nix
   ];
 
+  system.stateVersion = "25.11";
+
   # ---------------------------------------------------------------------------
-  # HOST CPU TOPOLOGY (Ryzen AI 9 365: 4x Zen 5 [0-7] + 6x Zen 5c [8-19])
+  # CPU TOPOLOGY (Zen 5 = CPUs 0-7, Zen 5c = CPUs 8-19, SMT siblings adjacent)
   # ---------------------------------------------------------------------------
+  # - CPUs 0-7   (Zen 5): games
+  # - CPUs 8-9   (Zen 5c core 1): Radeon 880M, DP audio, card*-crtc* workers
+  # - CPUs 10-11 (Zen 5c core 2): 8 kHz USB dock on 10, internal USB on 11
+  # - CPUs 12-13 (Zen 5c core 3): Wi-Fi 7, even MSI-X vectors on 12
+  # - CPUs 14-17 (Zen 5c cores 4-5): unlisted IRQs, systemd, workqueues
+  # - CPUs 18-19 (Zen 5c core 6): Wi-Fi 7, odd MSI-X vectors on 18
   local.hardware = {
     gameCores = "0-7";
     gameCoresNoSmt = "0,2,4,6";
     backgroundCores = "8-9,14-17";
+    housekeepingCores = "14-17";
     allCores = "0-19";
+    monitors = [
+      # Fallback so Hyprland comes up at the right mode before kanshi's profile
+      # lands (hosts/omnibook/home.nix); kanshi matches on EDID and stays the
+      # authority. DP-2 also exists (the panel hangs off an MST hub) but never
+      # gets a CRTC, so a rule naming it would be dead.
+      ''hl.monitor({ output = "DP-1", mode = "1920x1080@599.94", position = "0x0", scale = 1, bitdepth = 8, vrr = 0 })''
+      # Off while docked, to free APU display-engine bandwidth.
+      ''hl.monitor({ output = "eDP-1", disabled = true })''
+    ];
   };
-  networking.hostName = "omnibook";
 
-  # ---------------------------------------------------------------------------
-  # IRQ PIN TABLE (modules/irq-affinity.nix) -- ZEN 5C CORES ONLY (CPUs 8-19)
-  # ---------------------------------------------------------------------------
-  # - CPUs 8-9   (Zen 5c Core 1): Radeon 880M, DP Audio, card*-crtc* workers
-  # - CPUs 10-11 (Zen 5c Core 2): 8kHz USB dock (c5:00.4) on 10, internal USB (c5:00.0) on 11
-  # - CPUs 12-13 (Zen 5c Core 3): Wi-Fi 7 (c2:00.0) even MSI-X vectors on 12
-  # - CPUs 14-17 (Zen 5c Cores 4-5): unlisted IRQs, systemd, workqueues, kthreads
-  # - CPUs 18-19 (Zen 5c Core 6): Wi-Fi 7 (c2:00.0) odd MSI-X vectors on 18
   local.irqAffinity = {
     enable = true;
     pins = {
@@ -58,18 +48,16 @@ in {
       "0000:c2:00.0" = [12 18]; # Qualcomm WCN785x Wi-Fi 7 (15 MSI-X vectors)
       "0000:c3:00.6" = [14]; # AMD Ryzen HD Audio Controller
     };
-    # irqaffinity=14-17 alone still leaves unlisted IRQs on cpu0 (see module).
-    defaultCpus = "14-17";
     crtcCpus = "8-9";
   };
 
   # ---------------------------------------------------------------------------
-  # APU POWER ENVELOPE (ONESHOOT AT BOOT & RESUME -- NO 10s SMU POLLING)
+  # APU POWER ENVELOPE (ONESHOT AT BOOT & RESUME -- NO 10s SMU POLLING)
   # ---------------------------------------------------------------------------
   # Calling ryzenadj every 10s via a timer contended with the SMU mailbox
-  # mid-game. Because --stapm-time=0xffffffff and --slow-time=0xffffffff pin
-  # the time constants permanently, we apply once at boot and re-apply on
-  # s2idle resume via powerManagement.resumeCommands.
+  # mid-game. --stapm-time=0xffffffff and --slow-time=0xffffffff pin the time
+  # constants permanently, so it is applied once at boot and again on s2idle
+  # resume.
   boot.blacklistedKernelModules = ["amd_pmf" "amdxdna"];
 
   systemd.services.ryzenadj-tdp-unlock = {
@@ -82,16 +70,44 @@ in {
       ExecStart = ryzenadjCmd;
     };
   };
+  powerManagement.resumeCommands = ''
+    ${ryzenadjCmd} || true
+  '';
 
-  environment.systemPackages = with pkgs; [
-    ryzenadj
-    ethtool
-    wireguard-tools
-    openresolv
+  systemd.tmpfiles.rules = [
+    "w /sys/firmware/acpi/platform_profile - - - - performance"
+    "w /sys/class/drm/card*/device/power_dpm_force_performance_level - - - - high"
   ];
 
+  # ---------------------------------------------------------------------------
+  # KERNEL & GRAPHICS
+  # ---------------------------------------------------------------------------
+  boot.kernelParams = [
+    # APU dynamic VRAM (GTT) sizing: 24 GiB ceiling for 32 GB RAM.
+    "ttm.pages_limit=6291456"
+    "ttm.page_pool_size=6291456"
+    "amdgpu.gttsize=24576"
+    "amdgpu.ppfeaturemask=0xffffffff"
+    # Display scatter-gather off: candidate fix for MST 600 Hz scanout.
+    "amdgpu.sg_display=0"
+    "amd_pstate=active"
+    "reboot=pci"
+  ];
+
+  # Aquamarine (Hyprland's backend) allocates scanout buffers without DRM
+  # format modifiers. Only this host sets it.
+  environment.sessionVariables.AQ_NO_MODIFIERS = "1";
+
+  # ---------------------------------------------------------------------------
+  # PERIPHERALS
+  # ---------------------------------------------------------------------------
   # Thunderbolt 4 / USB4 daemon for the Anker dock
   services.hardware.bolt.enable = true;
+
+  services.udev.extraRules = ''
+    # Qualcomm WCN785x Wi-Fi 7: no runtime PM
+    ACTION=="add", SUBSYSTEM=="pci", ATTR{vendor}=="0x17cb", ATTR{device}=="0x1107", ATTR{power/control}="on"
+  '';
 
   systemd.services.optimize-nic = {
     description = "Tune USB Ethernet adapter for competitive gaming latency";
@@ -113,151 +129,9 @@ in {
     };
   };
 
-  # ---------------------------------------------------------------------------
-  # BOOTLOADER & CACHYOS BORE KERNEL (BINARY CACHE HIT)
-  # ---------------------------------------------------------------------------
-  boot.loader.systemd-boot.enable = true;
-  boot.loader.efi.canTouchEfiVariables = true;
-
-  # Uses pre-built Chaotic-Nyx BORE kernel directly from the binary cache
-  # instead of .cachyOverride (which invalidated the binary cache and forced a
-  # full local kernel compile on every flake update). Must be the -bore
-  # attribute: plain linuxPackages_cachyos is now clang-LTO with BORE compiled out.
-  boot.kernelPackages = pkgs.linuxPackages_cachyos-bore;
-
-  boot.kernelParams = [
-    # --- APU DYNAMIC VRAM (GTT) SIZING (24 GiB ceiling for 32 GB RAM) ---
-    "ttm.pages_limit=6291456"
-    "ttm.page_pool_size=6291456"
-    "amdgpu.gttsize=24576"
-
-    # Driver Performance: Active autonomous CPPC power scaling
-    "amd_pstate=active"
-    "amdgpu.ppfeaturemask=0xffffffff"
-    "pcie_aspm=off"
-
-    # Route all unmanaged/platform IRQs (I2C, ACPI, RTC, speaker amp) and RCU
-    # offload threads to background Zen 5c cores (8-9,14-17), keeping Zen 5
-    # game cores (0-7) and dedicated USB/Wi-Fi 7 IRQ cores (10-13,18-19) clean.
-    "irqaffinity=14-17"
-
-    # Memory latency: disable zswap (zram is used) and restrict THP to explicit
-    # madvise() calls so background khugepaged scans never stall LPDDR5X.
-    "zswap.enabled=0"
-    "transparent_hugepage=madvise"
-
-    # Interrupt & Clock Optimization
-    "split_lock_detect=off"
-    "threadirqs"
-    "nowatchdog"
-    "nmi_watchdog=0"
-    "tsc=reliable"
-    "clocksource=tsc"
-    "usbcore.autosuspend=-1"
-    "iomem=relaxed"
-    "reboot=pci"
-
-    # --- SPECULATIVE EXECUTION MITIGATIONS: OFF (KNOWN SECURITY TRADE-OFF) ---
-    "mitigations=off"
-
-    # --- DISPLAY SCATTER-GATHER: OFF (CANDIDATE FIX FOR MST 600Hz SCANOUT) ---
-    "amdgpu.sg_display=0"
+  environment.systemPackages = with pkgs; [
+    ryzenadj
+    wireguard-tools
+    openresolv
   ];
-  # ---------------------------------------------------------------------------
-  # WI-FI RADIO LINK (MediaTek MT7925 / Filogic 360, 2x2 802.11be)
-  # ---------------------------------------------------------------------------
-  services.udev.extraRules = ''
-    ACTION=="add", SUBSYSTEM=="pci", ATTR{vendor}=="0x17cb", ATTR{device}=="0x1107", ATTR{power/control}="on"
-  '';
-  # ---------------------------------------------------------------------------
-  # POWER MANAGEMENT & S2IDLE RESUME HOOKS
-  # ---------------------------------------------------------------------------
-  # MUST be true so NixOS generates post-resume.service and executes
-  # powerManagement.resumeCommands (for hardware-irq-pin and ryzenadj).
-  powerManagement = {
-    enable = true;
-    resumeCommands = ''
-      ${ryzenadjCmd} || true
-      ${config.boot.kernelPackages.cpupower}/bin/cpupower idle-set -D 350 || true
-    '';
-  };
-
-  # ---------------------------------------------------------------------------
-  # DECLARATIVE SYSFS REGISTER INJECTION (tmpfiles.rules)
-  # ---------------------------------------------------------------------------
-  systemd.tmpfiles.rules = [
-    "w /sys/firmware/acpi/platform_profile - - - - performance"
-    "w /sys/devices/system/cpu/cpu[0-9]/cpufreq/scaling_governor - - - - performance"
-    "w /sys/devices/system/cpu/cpu[0-9]/cpufreq/energy_performance_preference - - - - performance"
-    "w /sys/devices/system/cpu/cpu1[0-9]/cpufreq/scaling_governor - - - - performance"
-    "w /sys/devices/system/cpu/cpu1[0-9]/cpufreq/energy_performance_preference - - - - performance"
-    "w /sys/class/drm/card*/device/power_dpm_force_performance_level - - - - ${gpuDpmLevel}"
-    # Confine all unbound kernel workqueues (ttm, gfx, events_unbound, writeback)
-    # to CPUs 14-17 (0x3c000), keeping them off Zen 5 game cores (0-7) AND off
-    # dedicated GPU/USB/Wi-Fi 7 IRQ cores (8-13,18-19).
-    "w /sys/devices/virtual/workqueue/cpumask - - - - 3c000"
-    "w /sys/bus/workqueue/devices/writeback/cpumask - - - - 3c000"
-    # Never stall on synchronous THP compaction
-    "w /sys/kernel/mm/transparent_hugepage/khugepaged/defrag - - - - 0"
-  ];
-  # --- ASYMMETRIC CPU ISOLATION (ZEN 5C SYSTEM & AUDIO DAEMONS: CPUs 8-19) ---
-  systemd.settings.Manager = {
-    CPUAffinity = config.local.hardware.backgroundCores;
-  };
-  systemd.user.settings.Manager = {
-    CPUAffinity = config.local.hardware.backgroundCores;
-  };
-  systemd.slices."system".sliceConfig.AllowedCPUs = config.local.hardware.backgroundCores;
-
-  # ---------------------------------------------------------------------------
-  # GRAPHICS & BLEEDING-EDGE MESA STACK
-  # ---------------------------------------------------------------------------
-  chaotic.mesa-git.enable = true;
-  hardware.graphics = {
-    enable = true;
-    enable32Bit = true;
-  };
-
-  # ---------------------------------------------------------------------------
-  # PERIPHERALS & GREETD / TUIGREET COMPOSITOR LAUNCHER
-  # ---------------------------------------------------------------------------
-  services.udev.packages = [pkgs.swayosd];
-
-  services.greetd = {
-    enable = true;
-    settings = {
-      default_session = {
-        command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --cmd '${pkgs.util-linux}/bin/taskset -c ${config.local.hardware.backgroundCores} start-hyprland'";
-        user = "crazycat";
-      };
-    };
-  };
-  systemd.services.greetd = {
-    wants = lib.mkForce [];
-    after = lib.mkForce ["systemd-user-sessions.service"];
-  };
-
-  hardware.bluetooth = {
-    enable = true;
-    powerOnBoot = false;
-    settings.General = {
-      Experimental = true;
-      FastConnectable = true;
-    };
-  };
-
-  services.avahi.enable = true;
-  services.gnome.gnome-keyring.enable = true;
-  security.pam.services.login.enableGnomeKeyring = true;
-  security.pam.services.greetd.enableGnomeKeyring = true;
-
-  # ---------------------------------------------------------------------------
-  # STUTTER INVESTIGATION HARNESS
-  # ---------------------------------------------------------------------------
-  local.diagnostics = {
-    enable = false;
-    unsafeTracing = false;
-  };
-
-  system.stateVersion = "25.11";
 }

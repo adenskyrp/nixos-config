@@ -1,27 +1,14 @@
-# modules/minecraft.nix
-{
-  config,
-  pkgs,
-  lib,
-  ...
-}: let
+# Minecraft: Prism Launcher with two Java 21 runtimes and a Wayland-patched GLFW.
+{pkgs, ...}: let
   prismlauncher-wrapped = pkgs.prismlauncher.override {
     additionalPrograms = [
       pkgs.temurin-bin-21 # Eclipse Temurin OpenJDK 21 LTS (Generational ZGC)
       pkgs.zulu21 # Azul Zulu 21 OpenJDK
-      # pkgs.gamemode IS DELIBERATELY ABSENT -- removed 2026-09-12.
-      #
-      # It put `gamemoderun` on PATH inside the launcher, but
-      # `programs.gamemode.enable` appears nowhere in this repo, so there was no
-      # daemon for it to talk to and every invocation was a silent no-op that
-      # read as live configuration.
-      #
-      # Not re-added, and not enabled either. Every lever gamemode would pull is
-      # already pinned harder and declaratively elsewhere: cpuFreqGovernor =
-      # "performance", EPP via tmpfiles.rules, power_dpm_force_performance_level
-      # via tmpfiles.rules, and the SMU envelope via the amd-power-boost
-      # oneshot. A daemon toggling those at process start and exit would fight
-      # the static config, and its failure mode is silence.
+      # pkgs.gamemode is deliberately absent (removed 2026-09-12). Nothing
+      # enables programs.gamemode, so `gamemoderun` was a silent no-op, and
+      # every lever it would pull (governor, EPP, GPU power level, power
+      # limits) is already pinned statically in cpu.nix and the host files; a
+      # daemon toggling them at process start and exit would fight that.
       pkgs.util-linux # Provides 'taskset' for CPU affinity pinning
     ];
   };
@@ -34,14 +21,8 @@ in {
     pkgs.vulkan-tools
   ];
 
-  # Graphics Stack & Driver Layers (Mesa RADV)
-  hardware.graphics = {
-    enable = true;
-    enable32Bit = true;
-    extraPackages = with pkgs; [
-      libva # Hardware video acceleration (VA-API)
-    ];
-  };
+  # VA-API loader next to the drivers in /run/opengl-driver.
+  hardware.graphics.extraPackages = [pkgs.libva];
 
   # Session Environment Variables
   environment.sessionVariables = {

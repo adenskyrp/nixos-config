@@ -1,5 +1,3 @@
-# modules/webcam.nix
-#
 # PHONE-AS-WEBCAM: a Pixel's camera presented to the host as an ordinary V4L2
 # capture device.
 #
@@ -14,45 +12,20 @@
 # better than the 1080p module in the lid, which is the whole motivation.
 #
 # WHY A SEPARATE MODULE: this is host-independent behaviour -- it names no PCI
-# address, no wattage and no panel -- so per the convention in CLAUDE.md it
-# lives here and is imported from hosts/*/configuration.nix. Deleting that one
-# import line is the full revert; nothing below leaves state behind in the
-# running kernel the way a /proc write would.
-{
-  config,
-  pkgs,
-  lib,
-  ...
-}: {
+# address, no wattage and no panel. Deleting its line in modules/default.nix is
+# the full revert; nothing below leaves state behind in the running kernel the
+# way a /proc write would.
+{pkgs, ...}: {
   # ---------------------------------------------------------------------------
   # V4L2 LOOPBACK KERNEL MODULE
   # ---------------------------------------------------------------------------
-  # config.boot.kernelPackages, NOT pkgs.linuxPackages. v4l2loopback is an
-  # out-of-tree module, so it is compiled against a specific kernel's headers
-  # and refuses to load into any other one (vermagic mismatch -- modprobe fails
-  # with "Invalid module format" and dmesg names the version it wanted).
-  # pkgs.linuxPackages is nixpkgs' default kernel, which is NOT what this host
-  # runs: hosts/omnibook/configuration.nix sets boot.kernelPackages to
-  # pkgs.linuxPackages_cachyos. Referring to the option instead of a concrete
-  # package set means this file follows whatever kernel the host picked, and
-  # keeps following it across a CachyOS bump.
+  # No boot.extraModulePackages entry: the CachyOS kernel carries v4l2loopback
+  # in-tree (lib/modules/*/kernel/drivers/media/v4l2-core/v4l2loopback.ko.zst),
+  # and that copy is the one that loads. `modinfo v4l2loopback | head -2`
+  # prints the loaded file's path. On a stock kernel, add
+  # config.boot.kernelPackages.v4l2loopback there (never pkgs.linuxPackages:
+  # an out-of-tree module only loads into the kernel it was built against).
   #
-  # REDUNDANT ON THIS HOST TODAY, KEPT DELIBERATELY. The CachyOS kernel already
-  # carries v4l2loopback in-tree -- its own module tree ships
-  #     lib/modules/7.2.3-cachyos/kernel/drivers/media/v4l2-core/v4l2loopback.ko.zst
-  # and both builds are the same upstream release (verified with modinfo:
-  # version 0.15.4, vermagic "7.2.3-cachyos SMP preempt mod_unload", identical
-  # on both). This line adds a second copy under updates/, which depmod ranks
-  # ahead of kernel/, so the standalone build is the one that actually loads.
-  #
-  # Kept anyway, for two reasons: it pins the module to a derivation nixpkgs
-  # tracks rather than to a patch CachyOS may drop without notice, and it keeps
-  # this file correct on a host running a stock kernel (the desktop stub), where
-  # nothing would provide the module otherwise. The cost is one extra
-  # out-of-tree compile per kernel bump. If that ever stops being worth it, drop
-  # this line and the in-tree module takes over with no other change -- confirm
-  # with `modinfo v4l2loopback | head -2` after, which prints the loaded file's
-  # path.
   # Load at boot rather than leaving it to on-demand autoloading. There is no
   # hardware event that would ever trigger a loopback module -- the device it
   # creates is the reason to load it, not a consequence of something appearing
@@ -79,8 +52,7 @@
   #               only CAPTURE once a producer has it open.
   #
   # types.lines, so this concatenates with the cfg80211 stanza in
-  # modules/core.nix and the mt7925 stanza in hosts/omnibook/configuration.nix
-  # rather than clashing with either.
+  # modules/network.nix rather than clashing with it.
   boot.extraModprobeConfig = ''
     options v4l2loopback devices=1 video_nr=10 card_label="VirtualCam" exclusive_caps=1
   '';

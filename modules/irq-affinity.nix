@@ -1,5 +1,3 @@
-# modules/irq-affinity.nix
-#
 # Static IRQ / kthread pinning, shared by every host (replaces irqbalance).
 # Each host supplies its own pin table via `local.irqAffinity`.
 #
@@ -17,6 +15,7 @@
   ...
 }: let
   cfg = config.local.irqAffinity;
+  inherit (import ./lib.nix {inherit lib;}) cpuListToMask;
 
   scriptPrologue = ''
     set -u
@@ -58,18 +57,6 @@
         echo "?"
       fi
     }
-
-    # "14-17" / "5,11" -> hex bitmask for /proc/irq/default_smp_affinity
-    cpulist_to_mask() {
-      local mask=0 part a b i
-      local IFS=,
-      for part in $1; do
-        a=''${part%-*}
-        b=''${part#*-}
-        for ((i = a; i <= b; i++)); do mask=$((mask | (1 << i))); done
-      done
-      printf '%x' "$mask"
-    }
   '';
 
   pinLines = lib.concatStringsSep "\n" (
@@ -88,7 +75,7 @@
       # this sweep every IRQ not in the pin table lands on cpu0 -- a game core.
       # Managed IRQs (NVMe per-queue vectors) reject the write; that is fine,
       # they only fire on the CPU that submitted the I/O.
-      echo "$(cpulist_to_mask "${cfg.defaultCpus}")" 2>/dev/null > /proc/irq/default_smp_affinity || true
+      echo ${cpuListToMask cfg.defaultCpus} 2>/dev/null > /proc/irq/default_smp_affinity || true
       for d in /proc/irq/[0-9]*; do
         echo "${cfg.defaultCpus}" 2>/dev/null > "$d/smp_affinity_list" || true
       done
@@ -145,9 +132,9 @@
       done
     ''}
 
-    # amdgpu DRM atomic-commit (SCHED_FIFO) CRTC workers share L1/L2 with the
-    # amdgpu IRQ and stay off the game cores.
-    for pid in $(${pkgs.procps}/bin/ps -eo pid,comm --no-headers | "$awk_bin" '$2 ~ /^card[0-9]+-crtc/ {print $1}'); do
+    # The GPU driver's worker kthreads (amdgpu: the SCHED_FIFO atomic-commit
+    # CRTC workers) share L1/L2 with the GPU IRQ and stay off the game cores.
+    for pid in $(${pkgs.procps}/bin/ps -eo pid,comm --no-headers | "$awk_bin" '$2 ~ /${cfg.gpuKthreadPattern}/ {print $1}'); do
       if ${pkgs.util-linux}/bin/taskset -pc ${cfg.crtcCpus} "$pid" >/dev/null 2>&1; then
         echo "hardware-irq-pin: DRM worker pid $pid pinned to cpu ${cfg.crtcCpus}"
       fi
@@ -197,17 +184,30 @@ in {
 
     defaultCpus = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
-      default = null;
+      default = config.local.hardware.housekeepingCores;
+      defaultText = lib.literalExpression "config.local.hardware.housekeepingCores";
       example = "14-17";
       description = ''
         CPU list for /proc/irq/default_smp_affinity and every movable IRQ not in
         `pins`. Needed because `irqaffinity=` always gets the boot CPU added.
+        null skips the sweep.
       '';
     };
 
     crtcCpus = lib.mkOption {
       type = lib.types.str;
-      description = "CPU list for amdgpu `cardN-crtcM` atomic-commit kthreads.";
+      description = "CPU list for the GPU driver's worker kthreads (see gpuKthreadPattern).";
+    };
+
+    gpuKthreadPattern = lib.mkOption {
+      type = lib.types.str;
+      default = "^card[0-9]+-crtc";
+      description = ''
+        awk regex (no `/` or `'`) matched against thread names; matching
+        kthreads are pinned to crtcCpus. The default is the DRM `cardN-crtcM`
+        atomic-commit workers; gpu/nvidia.nix replaces it, because the NVIDIA
+        modules run their work in differently named threads.
+      '';
     };
 
     kthreadCpus = lib.mkOption {
