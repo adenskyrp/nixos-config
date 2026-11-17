@@ -47,9 +47,12 @@
     LIBVA_DRIVER_NAME = "nvidia";
     # vblank_mode=0 on Mesa: no driver-forced vsync for OpenGL (osu! stable).
     __GL_SYNC_TO_VBLANK = "0";
-    # MESA_SHADER_CACHE_MAX_SIZE=16G on Mesa: the shader cache limit in bytes,
-    # so a large DXVK/VKD3D library is not evicted and recompiled.
-    __GL_SHADER_DISK_CACHE_SIZE = "17179869184";
+    # MESA_SHADER_CACHE_MAX_SIZE on Mesa: never evict from the shader cache, so
+    # a large DXVK/VKD3D library is never recompiled mid-game. The cache grows
+    # without limit; clear ~/.cache/nvidia/GLCache by hand if it gets too big.
+    # __GL_SHADER_DISK_CACHE_SIZE (was 16G) is not enforced once cleanup is
+    # skipped, so it was removed.
+    __GL_SHADER_DISK_CACHE_SKIP_CLEANUP = "1";
     # proton-cachyos force-adds "fsr4" and copies AMD's amdxcffx64.dll into
     # every prefix (WINE_UPSCALER_REPLACE=fsr4). It needs an RDNA4 GPU; "0"
     # makes check_environment drop it. DLSS upgrades are unaffected.
